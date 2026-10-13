@@ -46,8 +46,28 @@ export interface Probe {
   signupsOpen: boolean | null;
 }
 
-/** Whether the project answers, accepts both keys, and still lets anyone sign up. */
+/** A good answer is kept this long, so a page load does not ask Supabase every time. */
+const PROBE_FRESH_MS = 30_000;
+let lastGood: { key: string; at: number; probe: Probe } | null = null;
+
+/**
+ * Whether the project answers, accepts both keys, and still lets anyone sign
+ * up. A failure is asked again once, a second later, before it is believed:
+ * one dropped request on a load showed "Supabase isn't answering" (13 Oct).
+ */
 export async function probeProject(config: AppConfig): Promise<Probe> {
+  const key = `${config.url}|${config.publishableKey}|${config.secretKey}`;
+  if (lastGood?.key === key && Date.now() - lastGood.at < PROBE_FRESH_MS) return lastGood.probe;
+  let probe = await probeOnce(config);
+  if (probe.reach === "unreachable") {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    probe = await probeOnce(config);
+  }
+  lastGood = probe.reach === "ok" ? { key, at: Date.now(), probe } : null;
+  return probe;
+}
+
+async function probeOnce(config: AppConfig): Promise<Probe> {
   let response: Response;
   try {
     response = await fetch(`${config.url}/auth/v1/settings`, {

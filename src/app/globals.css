@@ -68,7 +68,6 @@
    * edit here rather than 388 edits out in the components, which is exactly
    * what the previous note said it was for.
    */
-  --ui-radius-xs: 0px;
   --ui-radius-sm: 0px;
   --ui-radius-md: 0px;
   --ui-radius-lg: 0px;
@@ -80,14 +79,12 @@
    * list and wants only a hint of one. Both are named for what they are, so
    * the flat scale above stays flat.
    */
-  --ui-radius-card: 14px;
   --ui-radius-item: 4px;
   /* Every tooltip, ours and the chart library's. They are small floating
      labels rather than controls, and a sharp corner on a 20px-tall bubble
      reads as a rendering fault. */
   --ui-radius-tooltip: 8px;
   /* The Pomodoro face is 340px square and reads as a shape, not a control. */
-  --ui-radius-feature: 56px;
   --ui-radius-round: 9999px;
   /*
    * Insights is the one control in the app that is meant to catch the eye, so
@@ -104,15 +101,10 @@
   --ui-type-subtitle: 16px;
   --ui-type-title-sm: 18px;
   --ui-type-title: 24px;
-  --ui-type-display-sm: 28px;
-  --ui-type-display: 32px;
-  --ui-type-display-lg: 48px;
-  --ui-type-timer: 110px;
   --ui-disabled-opacity: 0.5;
   --app-nav-clearance: 104px;
 
   --page-bg: #1c1c1c;
-  --sidebar-bg: #141414;
   --c-text-1: #e8e8e8;
   --c-text-2: #bdbdbd;
   --c-text-3: #a6a6a6;
@@ -138,44 +130,18 @@
   --c-accent-strong: #0d7d59;
   --c-on-accent: #ffffff;
   --c-success: #74c990;
-  --c-warning: #e4b86a;
   --c-info: #88aff0;
   --c-danger: #df6b62;
 
   /* Market ribbon. Deliberately louder than --c-success/--c-danger:
      those are tuned for body text, and at ribbon size they read as
      washed out rather than as an exchange board. */
-  --ticker-up: #26e07f;
-  --ticker-down: #ff4d4d;
   /* Investments charts: the account and its benchmark. Checked as a pair
      against this theme's surface (lightness, chroma, colour-blind distance). */
-  --chart-account: #2fa97f;
-  --chart-benchmark: #7a86e8;
-  --ticker-board-bg: #232323;
-  --ticker-board-dot: rgba(255,255,255,0.075);
-  --ticker-board-line: rgba(255,255,255,0.09);
-  --c-grid-line: rgba(255,255,255,0.06);
-  --nav-bg: #111111;
-  --nav-bg-glass: rgba(14,14,14,0.45);
-  --nav-border: rgba(255,255,255,0.10);
-  --nav-text: rgba(255,255,255,0.65);
-  --nav-text-active: #fff;
-  --nav-active-bg: rgba(255,255,255,0.10);
-  --nav-active-border: rgba(255,255,255,0.13);
-  --nav-shadow: 0 8px 32px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06);
-  --nav-divider: rgba(255,255,255,0.10);
-  --nav-gear: rgba(255,255,255,0.45);
-  --nav-gear-hover: rgba(255,255,255,0.75);
   /* From --c-accent's channels, not a copy of the old mint's. These were the
      last two places the retired moss palette survived, and being a wash they
      were subtle enough to sit there unnoticed while everything around them
      moved to the emerald. */
-  --nav-home-bg: rgba(47,169,127,0.12);
-  --nav-home-border: rgba(47,169,127,0.22);
-  --nav-home-text: #a9ddc4;
-  --nav-pill-bg: rgba(255,255,255,0.04);
-  --nav-pill-border: rgba(255,255,255,0.06);
-  --nav-pill-hover: rgba(255,255,255,0.07);
   /*
    * The nav pill while it is announcing a completed task.
    *
@@ -184,57 +150,17 @@
    * tuned the other way round — a fill dark enough to carry white at 5:1 or
    * better in every theme, checked rather than eyeballed.
    */
-  --nav-celebrate-bg: #15803D;
-  --nav-celebrate-text: #ffffff;
-  --nav-celebrate-glow: rgba(21,128,61,0.42);
   --dashboard-card-bg: var(--c-card-bg);
   --dashboard-card-border: rgba(255,255,255,0.12);
   /* Standardized elevation — soft, contained (negative spread), not bottom-heavy */
   --shadow-xs: 0 1px 2px rgba(0,0,0,0.22);
   --shadow-soft: 0 1px 2px rgba(0,0,0,0.18), 0 6px 16px -6px rgba(0,0,0,0.30);
-  --shadow-raised: 0 2px 4px rgba(0,0,0,0.20), 0 10px 24px -8px rgba(0,0,0,0.36);
   --shadow-pop: 0 6px 16px -4px rgba(0,0,0,0.34), 0 18px 44px -12px rgba(0,0,0,0.48);
-  --dashboard-card-shadow: var(--shadow-soft);
-  --dashboard-card-hover-shadow: var(--shadow-raised);
-  --dashboard-item-bg: rgba(255,255,255,0.05);
-  --dashboard-item-hover-bg: rgba(255,255,255,0.075);
-  --dashboard-item-border: rgba(255,255,255,0.08);
-  --clock-pill-night-bg: rgba(107,126,176,0.18);
-  --clock-pill-night-text: #a8bbe9;
-  --clock-pill-night-border: rgba(107,126,176,0.28);
-  --clock-pill-morning-bg: rgba(91,168,217,0.16);
-  --clock-pill-morning-text: #9bd3f2;
-  --clock-pill-morning-border: rgba(91,168,217,0.26);
-  --clock-pill-afternoon-bg: rgba(200,162,77,0.18);
-  --clock-pill-afternoon-text: #e8cc86;
-  --clock-pill-afternoon-border: rgba(200,162,77,0.28);
-  --clock-pill-evening-bg: rgba(212,122,58,0.20);
-  --clock-pill-evening-text: #f1b27a;
-  --clock-pill-evening-border: rgba(212,122,58,0.30);
   --task-shadow: var(--shadow-xs);
-  --cal-weekday-bg: rgba(255,255,255,0.02);
   /* Saturday and Sunday read as a darker column, not just an untinted one. */
-  --cal-weekend-bg: rgba(0,0,0,0.20);
-  --cal-task-pill-bg: rgba(255,255,255,0.13);
-  --cal-task-pill-border: rgba(255,255,255,0.20);
-  --cal-selection-bg: rgba(66, 133, 244, 0.25);
-  --cal-selection-border: rgba(66, 133, 244, 0.6);
-  --cal-selection-text: rgba(66, 133, 244, 0.9);
-  --cal-current-time: var(--c-danger);
-  --cal-event-shadow: var(--shadow-xs);
-  --cal-event-title-text: rgba(255,255,255,0.92);
-  --cal-event-time-text: rgba(255,255,255,0.65);
-  --cal-toggle-on-bg: #3b82f6;
-  --cal-google-toggle-on-bg: #4285F4;
   --cal-toggle-off-bg: rgba(120,120,120,0.30);
   --cal-toggle-border: var(--c-field-border);
   --cal-toggle-knob: #fff;
-  --cal-today-text: #fff;
-  --cal-accent-text: #fff;
-  --cal-danger-bg: rgba(239,68,68,0.08);
-  --cal-danger-border: rgba(239,68,68,0.28);
-  --cal-danger-text: #fca5a5;
-  --cal-danger-hover: var(--c-danger);
   --dot-color: rgba(255,255,255,0.07);
   --c-scrim: rgba(0,0,0,0.60);
 
@@ -242,8 +168,7 @@
      differences nobody can perceive — and mostly the browser default easing.
      Three tiers and one curve. */
   --motion-fast: 120ms;   /* micro: ticks, small icon swaps */
-  --motion-base: 150ms;   /* standard: hover, background, border */
-  --motion-slow: 300ms;   /* deliberate: panels, expand/collapse */
+  --motion-base: 150ms;   /* standard: hover, background, border */   /* deliberate: panels, expand/collapse */
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
   /* The properties hover and active states in this app actually change. Replaces
      `transition: all`, which also animated layout properties and caused jank. */
@@ -271,7 +196,6 @@
    * .ui-hue-chip and .ui-hue-ink in @layer components.
    */
   --hue-ink: 44%;
-  --hue-fill: 12%;
   /*
    * Task priority as a hue: the ring, and the tint the row is filled with
    * (TaskControls.module.css). The ring needs 3:1 against the card. Critical and Medium borrow
@@ -355,11 +279,8 @@
   /* Mirrors PUBLIC_RADIUS in lib/public-site.ts, for the rules that moved into
      @layer components below and cannot read the TS constant. Keep the two in
      step; the public site is square. */
-  --public-radius: 0px;
-  --public-panel: rgba(20, 20, 20, 0.042);
   /* Hover dims the surface only — never a lift, and never a drop shadow. It
      has to clear the panel tint now that panels are tinted too. */
-  --public-dim: rgba(20, 20, 20, 0.085);
   /*
    * Frost. Diffuses the dust behind a card into a glow rather than showing
    * hard pixels through it, which is what makes the card read as a pane of
@@ -371,7 +292,6 @@
    * which is why the frost was briefly removed instead of the cause being
    * fixed. See the note at the top of PixelDust.tsx.
    */
-  --public-glass-blur: blur(14px) saturate(130%);
   /* There is deliberately no gradient over the pane. A 152deg raking light
      used to sit here, on the theory that it separated frosted glass from a
      flat translucent rectangle. It did the opposite: a directional wash across
@@ -379,15 +299,7 @@
      plainly a light corner fading to a dark one, with the diagonal visible.
      Frost is the blur above; the edge is the 1px border. Light belongs on an
      edge (see --public-glass-sheen), never raked across a face. */
-
-  --public-line: rgba(20, 20, 20, 0.11);
-  --public-line-hover: rgba(20, 20, 20, 0.22);
   /* A firmer rule for short dividers, which all but vanish at 12px tall. */
-  --public-line-strong: rgba(20, 20, 20, 0.26);
-
-  --public-ink: #141414;
-  --public-ink-soft: #3d3d3d;
-  --public-muted: #666663;
 
   /* ── One green ───────────────────────────────────────────────────────────
      The emerald the mark, the favicon and the app icon are built on. The
@@ -407,110 +319,6 @@
      7.5:1 on the light page. The dark variant is lifted because #0a6e4f on
      #1c1c1c is 1.5:1 and unreadable. */
   --public-brand: #0a6e4f;
-  --public-accent: #0a6e4f;
-  --public-button: #0a6e4f;
-  --public-button-hover: #085a41;
-  --public-button-hover-deep: #074e38;
-  --public-on-button: #ffffff;
-
-  /* Chrome and decoration */
-  --public-nav-bg: rgba(255, 255, 255, 0.84);
-  --public-nav-border: rgba(40, 34, 29, 0.10);
-  /*
-   * Nav at rest: the page colour at low strength, so it disappears against
-   * the page but still mutes the cursor dust drifting behind the links.
-   *
-   * "The page colour" is load-bearing and exact. A veil of any other colour
-   * composites to something the page is not, and because the bar is a wide
-   * flat band the eye reads even a two-level difference as a seam. Whatever
-   * --public-bg is in this block, this has to be the same RGB. Only the alpha
-   * is a free choice.
-   */
-  --public-nav-veil: rgba(255, 255, 255, 0.5);
-  --public-glass-bg: rgba(255, 255, 255, 0.62);
-  --public-glass-border: rgba(40, 34, 29, 0.14);
-  --public-glass-sheen: rgba(255, 255, 255, 0.9);
-  /* The wash behind a dialog on the public site. Neutral, like every other
-     ink here — a tinted scrim over a white page reads as a colour cast
-     rather than as the page being set back. */
-  --public-scrim: rgba(20, 20, 20, 0.32);
-  --public-grid-line: rgba(10, 110, 79, 0.085);
-  --public-backdrop-core: rgba(255, 255, 255, 0.94);
-  --public-backdrop-edge: rgba(255, 255, 255, 0.76);
-  --public-glow: rgba(10, 110, 79, 0.06);
-  --public-selection: rgba(10, 110, 79, 0.18);
-  /* The lift on a hovered row's logo. Dark on light, light on dark. */
-  --public-logo-shadow: rgba(20, 20, 20, 0.16);
-  --public-accent-ring: rgba(10, 110, 79, 0.54);
-  --public-accent-wash: rgba(10, 110, 79, 0.07);
-  --public-accent-wash-strong: rgba(10, 110, 79, 0.12);
-  --public-danger-ink: #b91c1c;
-  --public-danger-wash: rgba(254, 242, 242, 0.92);
-  --public-danger-line: rgba(220, 38, 38, 0.14);
-  /* The opposite answer to danger, for the sign-in PIN turning right in front
-     of you. A real green, not the mossy accent: the accent is a surface
-     colour chosen to sit quietly behind text, and at any mix it reads grey
-     rather than "correct". The washes are derived from this with color-mix at
-     the one place that uses them. */
-  --public-success-ink: #15803d;
-
-  /*
-   * The resource icon tiles. Their own tokens rather than the accent wash:
-   * that wash is tuned to be barely there for hover states, and a duotone
-   * glyph on it came out as a grey smudge. A gradient from a solid tint down
-   * to a faint one gives the tile body, and the ink is deeper than the accent
-   * so the mark reads at 21px.
-   */
-  --public-icon-tile-from: rgba(10, 110, 79, 0.18);
-  --public-icon-tile-to: rgba(10, 110, 79, 0.05);
-  --public-icon-tile-line: rgba(10, 110, 79, 0.22);
-  --public-icon-ink: #08543c;
-
-  /*
-   * The GitHub contribution chart on /projects: an empty day, then GitHub's
-   * four quartiles, stepping up to the brand emerald. Solid rather than
-   * translucent, so the frost behind the card cannot muddy one step into the
-   * next. The line is the hairline that keeps an empty square visible.
-   */
-  --public-contrib-0: rgba(20, 20, 20, 0.07);
-  --public-contrib-1: #b3dbc8;
-  --public-contrib-2: #6dba97;
-  --public-contrib-3: #2a9170;
-  --public-contrib-4: #0a6e4f;
-  --public-contrib-line: rgba(20, 20, 20, 0.06);
-
-  /* The plate behind a work-experience mark that is dark ink on transparency.
-     It stays light in both themes on purpose — the plate is what those marks
-     are legible against, so following the surface into dark would erase them.
-     Its own ink and edge therefore stay dark in both themes too. */
-  --public-logo-plate: #ffffff;
-  --public-logo-plate-line: rgba(20, 20, 20, 0.11);
-  --public-logo-plate-ink: #666663;
-
-  /* Employment pills. Four hues that have to stay apart at 10px: red, amber,
-     green, blue.
-
-     Each ink is measured against its own wash composited over the page, not
-     against bare white — the wash costs about 0.3 of a contrast point, which
-     is enough to drop an ink that looked fine on white below 4.5:1. Measured:
-     red 4.99, amber 5.11, green 5.40, blue 5.65.
-
-     Amber is the constrained one. A brighter, more yellow amber cannot reach
-     4.5:1 on a light ground at all, and deepening the wash to compensate only
-     lowers it further, so this is as bright as the label goes while staying
-     legible. */
-  --public-pill-full-time-ink: #bd281d;
-  --public-pill-full-time-wash: rgba(198, 43, 31, 0.12);
-  --public-pill-full-time-line: rgba(198, 43, 31, 0.32);
-  --public-pill-co-op-ink: #a34a08;
-  --public-pill-co-op-wash: rgba(217, 119, 6, 0.14);
-  --public-pill-co-op-line: rgba(217, 119, 6, 0.34);
-  --public-pill-internship-ink: #136e35;
-  --public-pill-internship-wash: rgba(21, 128, 61, 0.12);
-  --public-pill-internship-line: rgba(21, 128, 61, 0.30);
-  --public-pill-part-time-ink: #1d4ed8;
-  --public-pill-part-time-wash: rgba(29, 78, 216, 0.11);
-  --public-pill-part-time-line: rgba(29, 78, 216, 0.30);
 }
 
 /* ── Public site, dark ──────────────────────────────────────────────────────
@@ -524,17 +332,6 @@
    ground with near-black text, 7.7:1, rather than white on green at 2.4:1. */
 [data-public-theme="dark"] {
   --public-bg: #1c1c1c;
-  --public-panel: rgba(255, 255, 255, 0.055);
-  --public-dim: rgba(255, 255, 255, 0.105);
-  --public-glass-blur: blur(14px) saturate(130%);
-
-  --public-line: rgba(255, 255, 255, 0.10);
-  --public-line-hover: rgba(255, 255, 255, 0.24);
-  --public-line-strong: rgba(255, 255, 255, 0.28);
-
-  --public-ink: #e8e8e8;
-  --public-ink-soft: #bdbdbd;
-  --public-muted: #a6a6a6;
 
   /* Accent stays the light mint for arrows, marks and focus rings, which sit
      directly on the page and need to lift off it. The buttons do not use it:
@@ -547,74 +344,10 @@
      a solid fill needs to sit above the page and below white text, which
      neither the mark's value nor the accent's manages on a dark ground. */
   --public-brand: #2fa97f;
-  --public-accent: #2fa97f;
-  --public-button: #0d7d59;
-  --public-button-hover: #0f8b63;
-  --public-button-hover-deep: #11976b;
-  --public-on-button: #ffffff;
-
-  --public-nav-bg: rgba(24, 24, 24, 0.78);
-  --public-nav-border: rgba(255, 255, 255, 0.12);
-  /* #1c1c1c — the page colour, per the note on the light veil above. This was
-     rgba(24, 24, 24, …), four levels darker than the page, which composited
-     to 26 against a page of 28 and left the bar as a visible dark band across
-     the top of every page in dark mode. Light was correct; this was not. */
-  --public-nav-veil: rgba(28, 28, 28, 0.46);
-  --public-glass-bg: rgba(39, 39, 39, 0.58);
-  --public-glass-border: rgba(255, 255, 255, 0.14);
-  --public-glass-sheen: rgba(255, 255, 255, 0.06);
-  --public-scrim: rgba(10, 10, 10, 0.60);
-  --public-grid-line: rgba(47, 169, 127, 0.07);
-  --public-backdrop-core: rgba(28, 28, 28, 0.94);
-  --public-backdrop-edge: rgba(18, 18, 18, 0.76);
-  --public-glow: rgba(47, 169, 127, 0.07);
-  --public-selection: rgba(47, 169, 127, 0.26);
-  --public-logo-shadow: rgba(255, 255, 255, 0.14);
-  --public-accent-ring: rgba(47, 169, 127, 0.60);
-  --public-accent-wash: rgba(47, 169, 127, 0.10);
-  --public-accent-wash-strong: rgba(47, 169, 127, 0.16);
-  --public-danger-ink: #f87171;
-  --public-danger-wash: rgba(248, 113, 113, 0.12);
-  --public-danger-line: rgba(248, 113, 113, 0.28);
-  --public-success-ink: #4ade80;
-
-  --public-icon-tile-from: rgba(47, 169, 127, 0.24);
-  --public-icon-tile-to: rgba(47, 169, 127, 0.06);
-  --public-icon-tile-line: rgba(47, 169, 127, 0.26);
-  --public-icon-ink: #7fd8b4;
-
-  /* Brightest at the top on dark, so the busiest day is still the loudest. */
-  --public-contrib-0: rgba(255, 255, 255, 0.07);
-  --public-contrib-1: #17563e;
-  --public-contrib-2: #196d4f;
-  --public-contrib-3: #25976c;
-  --public-contrib-4: #3fc794;
-  --public-contrib-line: rgba(255, 255, 255, 0.05);
-
-  /* Held light, so dark marks stay readable. Knocked a little off white so a
-     44px square does not glare against #1c1c1c, and edged in black rather
-     than white because the edge sits inside a light plate. */
-  --public-logo-plate: #f1f1ee;
-  --public-logo-plate-line: rgba(0, 0, 0, 0.16);
-  --public-logo-plate-ink: #5f5f5c;
-
-  --public-pill-full-time-ink: #f87171;
-  --public-pill-full-time-wash: rgba(248, 113, 113, 0.14);
-  --public-pill-full-time-line: rgba(248, 113, 113, 0.32);
-  --public-pill-co-op-ink: #fbbf24;
-  --public-pill-co-op-wash: rgba(251, 191, 36, 0.14);
-  --public-pill-co-op-line: rgba(251, 191, 36, 0.32);
-  --public-pill-internship-ink: #4ade80;
-  --public-pill-internship-wash: rgba(74, 222, 128, 0.13);
-  --public-pill-internship-line: rgba(74, 222, 128, 0.30);
-  --public-pill-part-time-ink: #8ab4f8;
-  --public-pill-part-time-wash: rgba(138, 180, 248, 0.13);
-  --public-pill-part-time-line: rgba(138, 180, 248, 0.30);
 }
 
 [data-theme="light"] {
   --page-bg: #f7f8f7;
-  --sidebar-bg: #f1f3f1;
   --c-text-1: #17201b;
   --c-text-2: #37423b;
   --c-text-3: #56625b;
@@ -631,11 +364,9 @@
   --c-accent-strong: #365f4e;
   --c-on-accent: #ffffff;
   --c-success: #237a46;
-  --c-warning: #8a5a00;
   --c-info: #245ea8;
   --c-focus: #285fc8;
   --hue-ink: 40%;
-  --hue-fill: 12%;
   --priority-high: #b45f06;
   --priority-low: #6f6f6f;
   --event-fill: 30%;
@@ -650,84 +381,19 @@
   /* Market ribbon. Deliberately louder than --c-success/--c-danger:
      those are tuned for body text, and at ribbon size they read as
      washed out rather than as an exchange board. */
-  --ticker-up: #00a34a;
-  --ticker-down: #d92020;
   /* Investments charts: the account and its benchmark. Checked as a pair
      against this theme's surface (lightness, chroma, colour-blind distance). */
-  --chart-account: #1f8a5c;
-  --chart-benchmark: #4a5fc1;
-  --ticker-board-bg: #ffffff;
-  --ticker-board-dot: rgba(0,0,0,0.075);
-  --ticker-board-line: rgba(0,0,0,0.10);
-  --c-grid-line: rgba(0,0,0,0.08);
-  --nav-bg: #f8f9f8;
-  --nav-bg-glass: rgba(248,249,248,0.86);
-  --nav-border: rgba(18,36,26,0.13);
-  --nav-text: rgba(23,32,27,0.68);
-  --nav-text-active: #17201b;
-  --nav-active-bg: rgba(62,112,91,0.10);
-  --nav-active-border: rgba(62,112,91,0.20);
-  --nav-shadow: 0 8px 28px rgba(13,29,20,0.12), inset 0 1px 0 rgba(255,255,255,0.9);
-  --nav-divider: rgba(18,36,26,0.12);
-  --nav-gear: rgba(23,32,27,0.48);
-  --nav-gear-hover: rgba(23,32,27,0.76);
-  --nav-home-bg: var(--nav-active-bg);
-  --nav-home-border: var(--nav-active-border);
-  --nav-home-text: var(--c-accent);
-  --nav-pill-bg: rgba(18,36,26,0.04);
-  --nav-pill-border: rgba(18,36,26,0.07);
-  --nav-pill-hover: rgba(18,36,26,0.07);
   /* Deeper here: the pill sits on a near-white page, so the fill has to carry
      the contrast on its own. White on this is 7.1:1. */
-  --nav-celebrate-bg: #166534;
-  --nav-celebrate-text: #ffffff;
-  --nav-celebrate-glow: rgba(22,101,52,0.30);
   --dashboard-card-bg: var(--c-card-bg);
   --dashboard-card-border: rgba(0,0,0,0.10);
   --shadow-xs: 0 1px 2px rgba(13,29,20,0.05);
   --shadow-soft: 0 1px 2px rgba(13,29,20,0.05), 0 6px 16px -6px rgba(13,29,20,0.12);
-  --shadow-raised: 0 2px 4px rgba(13,29,20,0.06), 0 10px 24px -8px rgba(13,29,20,0.15);
   --shadow-pop: 0 6px 16px -4px rgba(13,29,20,0.09), 0 18px 44px -12px rgba(13,29,20,0.18);
-  --dashboard-card-shadow: var(--shadow-soft);
-  --dashboard-card-hover-shadow: var(--shadow-raised);
-  --dashboard-item-bg: rgba(0,0,0,0.035);
-  --dashboard-item-hover-bg: rgba(0,0,0,0.055);
-  --dashboard-item-border: rgba(0,0,0,0.06);
-  --clock-pill-night-bg: rgba(78,96,145,0.14);
-  --clock-pill-night-text: #476094;
-  --clock-pill-night-border: rgba(78,96,145,0.18);
-  --clock-pill-morning-bg: rgba(64,128,186,0.12);
-  --clock-pill-morning-text: #3b6694;
-  --clock-pill-morning-border: rgba(64,128,186,0.18);
-  --clock-pill-afternoon-bg: rgba(193,154,67,0.13);
-  --clock-pill-afternoon-text: #83601a;
-  --clock-pill-afternoon-border: rgba(193,154,67,0.18);
-  --clock-pill-evening-bg: rgba(198,117,58,0.14);
-  --clock-pill-evening-text: #935321;
-  --clock-pill-evening-border: rgba(198,117,58,0.18);
   --task-shadow: var(--shadow-xs);
-  --cal-weekday-bg: rgba(0,0,0,0.02);
-  --cal-weekend-bg: rgba(0,0,0,0.055);
-  --cal-task-pill-bg: rgba(0,0,0,0.10);
-  --cal-task-pill-border: rgba(0,0,0,0.22);
-  --cal-selection-bg: rgba(59,130,246,0.18);
-  --cal-selection-border: rgba(37,99,235,0.42);
-  --cal-selection-text: #246fe0;
-  --cal-current-time: var(--c-danger);
-  --cal-event-shadow: var(--shadow-xs);
-  --cal-event-title-text: rgba(255,255,255,0.95);
-  --cal-event-time-text: rgba(255,255,255,0.72);
-  --cal-toggle-on-bg: #246fe0;
-  --cal-google-toggle-on-bg: #4285F4;
   --cal-toggle-off-bg: rgba(0,0,0,0.16);
   --cal-toggle-border: var(--c-field-border);
   --cal-toggle-knob: #fff;
-  --cal-today-text: #fff;
-  --cal-accent-text: #fff;
-  --cal-danger-bg: rgba(220,38,38,0.08);
-  --cal-danger-border: rgba(220,38,38,0.24);
-  --cal-danger-text: #b91c1c;
-  --cal-danger-hover: var(--c-danger);
   --dot-color: rgba(0,0,0,0.08);
   --c-scrim: rgba(10,20,14,0.42);
   --scrollbar-thumb: rgba(0,0,0,0.08);
@@ -736,7 +402,6 @@
 
 [data-theme="warm"] {
   --page-bg: #211a15;
-  --sidebar-bg: #17110d;
   --c-text-1: #e8ddd0;
   --c-text-2: #c5b4a2;
   --c-text-3: #b09d8a;
@@ -755,11 +420,9 @@
   --c-accent-strong: #8c6a2e;
   --c-on-accent: #ffffff;
   --c-success: #84c995;
-  --c-warning: #e3b66e;
   --c-info: #91b3eb;
   --c-focus: #8db3f4;
   --hue-ink: 40%;
-  --hue-fill: 12%;
   --priority-high: #eb8909;
   --priority-low: #8e8479;
   --event-fill: 28%;
@@ -774,79 +437,15 @@
   /* Market ribbon. Deliberately louder than --c-success/--c-danger:
      those are tuned for body text, and at ribbon size they read as
      washed out rather than as an exchange board. */
-  --ticker-up: #3fe08a;
-  --ticker-down: #ff5c52;
   /* Investments charts: the account and its benchmark. Checked as a pair
      against this theme's surface (lightness, chroma, colour-blind distance). */
-  --chart-account: #bd8430;
-  --chart-benchmark: #7a86e8;
-  --ticker-board-bg: #291f18;
-  --ticker-board-dot: rgba(255,220,180,0.075);
-  --ticker-board-line: rgba(255,220,180,0.10);
-  --c-grid-line: rgba(255,220,180,0.06);
-  --nav-bg: #18130f;
-  --nav-bg-glass: rgba(24,20,16,0.45);
-  --nav-border: rgba(255,220,180,0.10);
-  --nav-text: rgba(232,221,208,0.55);
-  --nav-text-active: #e8ddd0;
-  --nav-active-bg: rgba(255,220,180,0.10);
-  --nav-active-border: rgba(255,220,180,0.13);
-  --nav-shadow: 0 8px 32px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,220,180,0.06);
-  --nav-divider: rgba(255,220,180,0.10);
-  --nav-gear: rgba(232,221,208,0.35);
-  --nav-gear-hover: rgba(232,221,208,0.65);
-  --nav-home-bg: rgba(216,166,87,0.12);
-  --nav-home-border: rgba(216,166,87,0.24);
-  --nav-home-text: #ecd3a4;
-  --nav-pill-bg: rgba(255,220,180,0.04);
-  --nav-pill-border: rgba(255,220,180,0.06);
-  --nav-pill-hover: rgba(255,220,180,0.07);
   /* A shade warmer than Midnight's, to sit with the amber palette. 5.4:1. */
-  --nav-celebrate-bg: #1B7A47;
-  --nav-celebrate-text: #ffffff;
-  --nav-celebrate-glow: rgba(27,122,71,0.40);
   --dashboard-card-bg: var(--c-card-bg);
   --dashboard-card-border: rgba(255,220,180,0.11);
-  --dashboard-card-shadow: var(--shadow-soft);
-  --dashboard-card-hover-shadow: var(--shadow-raised);
-  --dashboard-item-bg: rgba(255,220,180,0.05);
-  --dashboard-item-hover-bg: rgba(255,220,180,0.08);
-  --dashboard-item-border: rgba(255,220,180,0.08);
-  --clock-pill-night-bg: rgba(126,138,184,0.18);
-  --clock-pill-night-text: #b8c4e8;
-  --clock-pill-night-border: rgba(126,138,184,0.28);
-  --clock-pill-morning-bg: rgba(103,176,214,0.16);
-  --clock-pill-morning-text: #a9d9f0;
-  --clock-pill-morning-border: rgba(103,176,214,0.26);
-  --clock-pill-afternoon-bg: rgba(213,173,88,0.18);
-  --clock-pill-afternoon-text: #f0d390;
-  --clock-pill-afternoon-border: rgba(213,173,88,0.28);
-  --clock-pill-evening-bg: rgba(221,134,80,0.20);
-  --clock-pill-evening-text: #f5bb8f;
-  --clock-pill-evening-border: rgba(221,134,80,0.30);
   --task-shadow: var(--shadow-xs);
-  --cal-weekday-bg: rgba(255,220,180,0.02);
-  --cal-weekend-bg: rgba(0,0,0,0.18);
-  --cal-task-pill-bg: rgba(255,220,180,0.13);
-  --cal-task-pill-border: rgba(255,220,180,0.20);
-  --cal-selection-bg: rgba(216, 166, 87, 0.22);
-  --cal-selection-border: rgba(216, 166, 87, 0.58);
-  --cal-selection-text: #f0cf94;
-  --cal-current-time: var(--c-danger);
-  --cal-event-shadow: var(--shadow-xs);
-  --cal-event-title-text: rgba(255,255,255,0.92);
-  --cal-event-time-text: rgba(255,255,255,0.65);
-  --cal-toggle-on-bg: #3b82f6;
-  --cal-google-toggle-on-bg: #4285F4;
   --cal-toggle-off-bg: rgba(120,120,120,0.30);
   --cal-toggle-border: var(--c-field-border);
   --cal-toggle-knob: #fff;
-  --cal-today-text: #fff;
-  --cal-accent-text: #fff;
-  --cal-danger-bg: rgba(239,68,68,0.09);
-  --cal-danger-border: rgba(239,68,68,0.28);
-  --cal-danger-text: #fca5a5;
-  --cal-danger-hover: var(--c-danger);
   --dot-color: rgba(255,220,180,0.07);
   --c-scrim: rgba(12,8,4,0.62);
   --scrollbar-thumb: rgba(255,220,180,0.08);
@@ -855,7 +454,6 @@
 
 [data-theme="nature"] {
   --page-bg: #132015;
-  --sidebar-bg: #0d170f;
   --c-text-1: #d4e8d0;
   --c-text-2: #b5ceb0;
   --c-text-3: #a1ba9c;
@@ -872,11 +470,9 @@
   --c-accent-strong: #416f50;
   --c-on-accent: #ffffff;
   --c-success: #81c995;
-  --c-warning: #dfb46a;
   --c-info: #91b5ec;
   --c-focus: #8db3f4;
   --hue-ink: 35%;
-  --hue-fill: 12%;
   --priority-high: #eb8909;
   --priority-low: #808a81;
   --event-fill: 28%;
@@ -891,79 +487,15 @@
   /* Market ribbon. Deliberately louder than --c-success/--c-danger:
      those are tuned for body text, and at ribbon size they read as
      washed out rather than as an exchange board. */
-  --ticker-up: #2fe07a;
-  --ticker-down: #ff5e54;
   /* Investments charts: the account and its benchmark. Checked as a pair
      against this theme's surface (lightness, chroma, colour-blind distance). */
-  --chart-account: #34a360;
-  --chart-benchmark: #7a86e8;
-  --ticker-board-bg: #18291a;
-  --ticker-board-dot: rgba(200,255,200,0.070);
-  --ticker-board-line: rgba(144,200,130,0.12);
-  --c-grid-line: rgba(144,200,130,0.06);
-  --nav-bg: #101a12;
-  --nav-bg-glass: rgba(16,24,16,0.45);
-  --nav-border: rgba(144,200,130,0.10);
-  --nav-text: rgba(212,232,208,0.55);
-  --nav-text-active: #d4e8d0;
-  --nav-active-bg: rgba(144,200,130,0.10);
-  --nav-active-border: rgba(144,200,130,0.13);
-  --nav-shadow: 0 8px 32px rgba(0,0,0,0.55), inset 0 1px 0 rgba(144,200,130,0.06);
-  --nav-divider: rgba(144,200,130,0.10);
-  --nav-gear: rgba(212,232,208,0.35);
-  --nav-gear-hover: rgba(212,232,208,0.65);
-  --nav-home-bg: rgba(145,197,160,0.12);
-  --nav-home-border: rgba(145,197,160,0.22);
-  --nav-home-text: #bce0c5;
-  --nav-pill-bg: rgba(144,200,130,0.04);
-  --nav-pill-border: rgba(144,200,130,0.06);
-  --nav-pill-hover: rgba(144,200,130,0.07);
   /* Mossy rather than emerald, so it reads as this theme's green. 5.4:1. */
-  --nav-celebrate-bg: #197A44;
-  --nav-celebrate-text: #ffffff;
-  --nav-celebrate-glow: rgba(25,122,68,0.40);
   --dashboard-card-bg: var(--c-card-bg);
   --dashboard-card-border: rgba(144,200,130,0.11);
-  --dashboard-card-shadow: var(--shadow-soft);
-  --dashboard-card-hover-shadow: var(--shadow-raised);
-  --dashboard-item-bg: rgba(144,200,130,0.05);
-  --dashboard-item-hover-bg: rgba(144,200,130,0.08);
-  --dashboard-item-border: rgba(144,200,130,0.08);
-  --clock-pill-night-bg: rgba(92,120,156,0.18);
-  --clock-pill-night-text: #a8c2df;
-  --clock-pill-night-border: rgba(92,120,156,0.28);
-  --clock-pill-morning-bg: rgba(88,164,156,0.16);
-  --clock-pill-morning-text: #99d7cf;
-  --clock-pill-morning-border: rgba(88,164,156,0.26);
-  --clock-pill-afternoon-bg: rgba(176,162,84,0.18);
-  --clock-pill-afternoon-text: #ddd38f;
-  --clock-pill-afternoon-border: rgba(176,162,84,0.28);
-  --clock-pill-evening-bg: rgba(198,124,76,0.20);
-  --clock-pill-evening-text: #efb38c;
-  --clock-pill-evening-border: rgba(198,124,76,0.30);
   --task-shadow: var(--shadow-xs);
-  --cal-weekday-bg: rgba(144,200,130,0.02);
-  --cal-weekend-bg: rgba(0,0,0,0.18);
-  --cal-task-pill-bg: rgba(144,200,130,0.13);
-  --cal-task-pill-border: rgba(144,200,130,0.20);
-  --cal-selection-bg: rgba(145, 197, 160, 0.22);
-  --cal-selection-border: rgba(145, 197, 160, 0.58);
-  --cal-selection-text: #b4e0c0;
-  --cal-current-time: var(--c-danger);
-  --cal-event-shadow: var(--shadow-xs);
-  --cal-event-title-text: rgba(255,255,255,0.92);
-  --cal-event-time-text: rgba(255,255,255,0.65);
-  --cal-toggle-on-bg: #3b82f6;
-  --cal-google-toggle-on-bg: #4285F4;
   --cal-toggle-off-bg: rgba(120,120,120,0.30);
   --cal-toggle-border: var(--c-field-border);
   --cal-toggle-knob: #fff;
-  --cal-today-text: #fff;
-  --cal-accent-text: #fff;
-  --cal-danger-bg: rgba(239,68,68,0.09);
-  --cal-danger-border: rgba(239,68,68,0.28);
-  --cal-danger-text: #fca5a5;
-  --cal-danger-hover: var(--c-danger);
   --dot-color: rgba(144,200,130,0.07);
   --c-scrim: rgba(4,12,4,0.62);
   --scrollbar-thumb: rgba(144,200,130,0.08);
@@ -979,7 +511,6 @@
  */
 [data-theme="onyx"] {
   --page-bg: #000000;
-  --sidebar-bg: #000000;
   --c-text-1: #e3e3e3;
   --c-text-2: #b9b9b9;
   --c-text-3: #9f9f9f;
@@ -996,11 +527,9 @@
   --c-accent-strong: #e8e8e8;
   --c-on-accent: #000000;
   --c-success: #34c486;
-  --c-warning: #f2a036;
   --c-info: #6f9df2;
   --c-focus: #62bff8;
   --hue-ink: 44%;
-  --hue-fill: 13%;
   --priority-high: #f2a036;
   --priority-low: #6f7275;
   --event-fill: 32%;
@@ -1011,84 +540,19 @@
   --c-danger-wash: color-mix(in srgb, var(--c-danger) 12%, #050505);
   --c-danger-line: color-mix(in srgb, var(--c-danger) 40%, #050505);
   --c-danger: #ea5c64;
-  --ticker-up: #35d390;
-  --ticker-down: #f2525e;
-  --chart-account: #e3e3e3;
-  --chart-benchmark: #9693e6;
-  --ticker-board-bg: #000000;
-  --ticker-board-dot: rgba(255,255,255,0.07);
-  --ticker-board-line: rgba(255,255,255,0.07);
-  --c-grid-line: rgba(255,255,255,0.07);
-  --nav-bg: #000000;
-  --nav-bg-glass: rgba(0,0,0,0.55);
-  --nav-border: rgba(255,255,255,0.12);
-  --nav-text: rgba(227,227,227,0.62);
-  --nav-text-active: #e3e3e3;
-  --nav-active-bg: rgba(255,255,255,0.1);
-  --nav-active-border: rgba(255,255,255,0.12);
-  --nav-shadow: 0 8px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.07);
-  --nav-divider: rgba(255,255,255,0.1);
-  --nav-gear: rgba(227,227,227,0.42);
-  --nav-gear-hover: rgba(227,227,227,0.72);
-  --nav-home-bg: rgba(227,227,227,0.12);
-  --nav-home-border: rgba(227,227,227,0.22);
-  --nav-home-text: #e3e3e3;
-  --nav-pill-bg: rgba(255,255,255,0.04);
-  --nav-pill-border: rgba(255,255,255,0.06);
-  --nav-pill-hover: rgba(255,255,255,0.07);
-  --nav-celebrate-bg: #0e6c43;
-  --nav-celebrate-text: #ffffff;
-  --nav-celebrate-glow: rgba(14,108,67,0.4);
   --dashboard-card-bg: var(--c-card-bg);
   --dashboard-card-border: rgba(255,255,255,0.12);
-  --dashboard-card-shadow: var(--shadow-soft);
-  --dashboard-card-hover-shadow: var(--shadow-raised);
-  --dashboard-item-bg: rgba(255,255,255,0.05);
-  --dashboard-item-hover-bg: rgba(255,255,255,0.08);
-  --dashboard-item-border: rgba(255,255,255,0.08);
   --task-shadow: none;
-  --cal-weekday-bg: rgba(255,255,255,0.02);
-  --cal-weekend-bg: rgba(0,0,0,0.2);
-  --cal-task-pill-bg: rgba(255,255,255,0.13);
-  --cal-task-pill-border: rgba(255,255,255,0.2);
-  --cal-selection-bg: rgba(255,255,255,0.22);
-  --cal-selection-border: rgba(255,255,255,0.58);
-  --cal-selection-text: #e3e3e3;
-  --cal-current-time: var(--c-danger);
-  --cal-event-shadow: none;
-  --cal-event-title-text: rgba(255,255,255,0.92);
-  --cal-event-time-text: rgba(255,255,255,0.65);
-  --cal-toggle-on-bg: #e8e8e8;
-  --cal-google-toggle-on-bg: #467be1;
   --cal-toggle-off-bg: rgba(255,255,255,0.32);
   --cal-toggle-border: var(--c-field-border);
   --cal-toggle-knob: #000000;
-  --cal-today-text: #000000;
-  --cal-accent-text: #000000;
-  --cal-danger-bg: rgba(220,61,77,0.09);
-  --cal-danger-border: rgba(220,61,77,0.32);
-  --cal-danger-text: #fb8c8d;
-  --cal-danger-hover: var(--c-danger);
   --dot-color: rgba(255,255,255,0.055);
   --c-scrim: rgba(0,0,0,0.66);
   --scrollbar-thumb: rgba(255,255,255,0.08);
   --scrollbar-thumb-hover: rgba(255,255,255,0.15);
   --shadow-xs: 0 1px 2px rgba(0,0,0,0.22);
   --shadow-soft: 0 1px 2px rgba(0,0,0,0.18), 0 6px 16px -6px rgba(0,0,0,0.3);
-  --shadow-raised: 0 2px 4px rgba(0,0,0,0.2), 0 10px 24px -8px rgba(0,0,0,0.36);
   --shadow-pop: 0 6px 16px -4px rgba(0,0,0,0.34), 0 18px 44px -12px rgba(0,0,0,0.48);
-  --clock-pill-night-bg: rgba(138,112,221,0.07);
-  --clock-pill-night-text: #bcb6eb;
-  --clock-pill-night-border: rgba(138,112,221,0.42);
-  --clock-pill-morning-bg: rgba(102,207,225,0.07);
-  --clock-pill-morning-text: #97dbe8;
-  --clock-pill-morning-border: rgba(102,207,225,0.42);
-  --clock-pill-afternoon-bg: rgba(240,198,48,0.07);
-  --clock-pill-afternoon-text: #ecce83;
-  --clock-pill-afternoon-border: rgba(240,198,48,0.42);
-  --clock-pill-evening-bg: rgba(235,101,40,0.07);
-  --clock-pill-evening-text: #f3aa85;
-  --clock-pill-evening-border: rgba(235,101,40,0.42);
 }
 
 /*
@@ -1100,7 +564,6 @@
  */
 [data-theme="indigo"] {
   --page-bg: #161b2b;
-  --sidebar-bg: #121624;
   --c-text-1: #dcd7ba;
   --c-text-2: #c8c3a7;
   --c-text-3: #b2ae96;
@@ -1117,11 +580,9 @@
   --c-accent-strong: #84b8ab;
   --c-on-accent: #161b2b;
   --c-success: #98bb6c;
-  --c-warning: #e6c384;
   --c-info: #7e9cd8;
   --c-focus: #7fb4ca;
   --hue-ink: 40%;
-  --hue-fill: 12%;
   --priority-high: #ff9e3b;
   --priority-low: #938aa9;
   --event-fill: 38%;
@@ -1132,83 +593,18 @@
   --c-danger-wash: color-mix(in srgb, var(--c-danger) 12%, #1e1b23);
   --c-danger-line: color-mix(in srgb, var(--c-danger) 34%, #1e1b23);
   --c-danger: #e46876;
-  --ticker-up: #a6d07a;
-  --ticker-down: #ff6b70;
-  --chart-account: #84b8ab;
-  --chart-benchmark: #e6c384;
-  --ticker-board-bg: #11151f;
-  --ticker-board-dot: rgba(127,180,202,0.1);
-  --ticker-board-line: rgba(127,180,202,0.13);
-  --c-grid-line: rgba(127,180,202,0.08);
-  --nav-bg: #121624;
-  --nav-bg-glass: rgba(18,22,36,0.5);
-  --nav-border: rgba(127,180,202,0.15);
-  --nav-text: rgba(220,215,186,0.62);
-  --nav-text-active: #dcd7ba;
-  --nav-active-bg: rgba(220,215,186,0.1);
-  --nav-active-border: rgba(220,215,186,0.13);
-  --nav-shadow: 0 8px 32px rgba(6,8,16,0.605), inset 0 1px 0 rgba(127,180,202,0.08);
-  --nav-divider: rgba(127,180,202,0.12);
-  --nav-gear: rgba(220,215,186,0.42);
-  --nav-gear-hover: rgba(220,215,186,0.72);
-  --nav-home-bg: rgba(132,184,171,0.12);
-  --nav-home-border: rgba(132,184,171,0.22);
-  --nav-home-text: #84b8ab;
-  --nav-pill-bg: rgba(220,215,186,0.04);
-  --nav-pill-border: rgba(220,215,186,0.06);
-  --nav-pill-hover: rgba(220,215,186,0.07);
-  --nav-celebrate-bg: #2f6b5f;
-  --nav-celebrate-text: #ffffff;
-  --nav-celebrate-glow: rgba(47,107,95,0.4);
   --dashboard-card-bg: var(--c-card-bg);
   --dashboard-card-border: rgba(127,180,202,0.13);
-  --dashboard-card-shadow: var(--shadow-soft);
-  --dashboard-card-hover-shadow: var(--shadow-raised);
-  --dashboard-item-bg: rgba(220,215,186,0.05);
-  --dashboard-item-hover-bg: rgba(220,215,186,0.08);
-  --dashboard-item-border: rgba(127,180,202,0.08);
-  --clock-pill-night-bg: rgba(149,127,184,0.2);
-  --clock-pill-night-text: #b8b4d0;
-  --clock-pill-night-border: rgba(149,127,184,0.32);
-  --clock-pill-morning-bg: rgba(127,180,202,0.16);
-  --clock-pill-morning-text: #a3d4d5;
-  --clock-pill-morning-border: rgba(127,180,202,0.26);
-  --clock-pill-afternoon-bg: rgba(230,195,132,0.17);
-  --clock-pill-afternoon-text: #e6c384;
-  --clock-pill-afternoon-border: rgba(230,195,132,0.28);
-  --clock-pill-evening-bg: rgba(255,160,102,0.18);
-  --clock-pill-evening-text: #ffa066;
-  --clock-pill-evening-border: rgba(255,160,102,0.3);
   --task-shadow: var(--shadow-xs);
-  --cal-weekday-bg: rgba(220,215,186,0.02);
-  --cal-weekend-bg: rgba(6,8,16,0.2);
-  --cal-task-pill-bg: rgba(220,215,186,0.13);
-  --cal-task-pill-border: rgba(220,215,186,0.2);
-  --cal-selection-bg: rgba(132,184,171,0.22);
-  --cal-selection-border: rgba(132,184,171,0.58);
-  --cal-selection-text: #a9d1c7;
-  --cal-current-time: var(--c-danger);
-  --cal-event-shadow: var(--shadow-xs);
-  --cal-event-title-text: rgba(255,255,255,0.92);
-  --cal-event-time-text: rgba(255,255,255,0.65);
-  --cal-toggle-on-bg: #84b8ab;
-  --cal-google-toggle-on-bg: #4285F4;
   --cal-toggle-off-bg: rgba(220,215,186,0.4);
   --cal-toggle-border: var(--c-field-border);
   --cal-toggle-knob: #161b2b;
-  --cal-today-text: #161b2b;
-  --cal-accent-text: #161b2b;
-  --cal-danger-bg: rgba(228,104,118,0.09);
-  --cal-danger-border: rgba(228,104,118,0.3);
-  --cal-danger-text: #f093a0;
-  --cal-danger-hover: var(--c-danger);
   --dot-color: rgba(127,180,202,0.08);
   --c-scrim: rgba(6,8,16,0.62);
   --scrollbar-thumb: rgba(220,215,186,0.08);
   --scrollbar-thumb-hover: rgba(220,215,186,0.15);
   --shadow-xs: 0 1px 2px rgba(6,8,16,0.242);
   --shadow-soft: 0 1px 2px rgba(6,8,16,0.198), 0 6px 16px -6px rgba(6,8,16,0.33);
-  --shadow-raised: 0 2px 4px rgba(6,8,16,0.22), 0 10px 24px -8px rgba(6,8,16,0.396);
   --shadow-pop: 0 6px 16px -4px rgba(6,8,16,0.374), 0 18px 44px -12px rgba(6,8,16,0.528);
 }
 
@@ -1221,7 +617,6 @@
  */
 [data-theme="dusk"] {
   --page-bg: #232136;
-  --sidebar-bg: #1d1b2e;
   --c-text-1: #e0def4;
   --c-text-2: #c6c3df;
   --c-text-3: #b8b4d3;
@@ -1238,11 +633,9 @@
   --c-accent-strong: #ea9a97;
   --c-on-accent: #232136;
   --c-success: #8fd4a1;
-  --c-warning: #f6c177;
   --c-info: #78c5d7;
   --c-focus: #c4a7e7;
   --hue-ink: 40%;
-  --hue-fill: 13%;
   --priority-high: #ebae42;
   --priority-low: #908caa;
   --event-fill: 38%;
@@ -1253,83 +646,18 @@
   --c-danger-wash: color-mix(in srgb, var(--c-danger) 13%, #241e26);
   --c-danger-line: color-mix(in srgb, var(--c-danger) 34%, #241e26);
   --c-danger: #eb6f92;
-  --ticker-up: #8fd4a1;
-  --ticker-down: #ff7aa0;
-  --chart-account: #ea9a97;
-  --chart-benchmark: #9ccfd8;
-  --ticker-board-bg: #1f1d31;
-  --ticker-board-dot: rgba(196,167,231,0.09);
-  --ticker-board-line: rgba(196,167,231,0.12);
-  --c-grid-line: rgba(196,167,231,0.08);
-  --nav-bg: #1d1b2e;
-  --nav-bg-glass: rgba(29,27,46,0.45);
-  --nav-border: rgba(196,167,231,0.14);
-  --nav-text: rgba(224,222,244,0.62);
-  --nav-text-active: #e0def4;
-  --nav-active-bg: rgba(224,222,244,0.1);
-  --nav-active-border: rgba(224,222,244,0.13);
-  --nav-shadow: 0 8px 32px rgba(12,10,22,0.578), inset 0 1px 0 rgba(234,154,151,0.08);
-  --nav-divider: rgba(196,167,231,0.12);
-  --nav-gear: rgba(224,222,244,0.42);
-  --nav-gear-hover: rgba(224,222,244,0.72);
-  --nav-home-bg: rgba(234,154,151,0.12);
-  --nav-home-border: rgba(234,154,151,0.22);
-  --nav-home-text: #ea9a97;
-  --nav-pill-bg: rgba(224,222,244,0.04);
-  --nav-pill-border: rgba(224,222,244,0.06);
-  --nav-pill-hover: rgba(224,222,244,0.07);
-  --nav-celebrate-bg: #286983;
-  --nav-celebrate-text: #ffffff;
-  --nav-celebrate-glow: rgba(40,105,131,0.4);
   --dashboard-card-bg: var(--c-card-bg);
   --dashboard-card-border: rgba(196,167,231,0.13);
-  --dashboard-card-shadow: var(--shadow-soft);
-  --dashboard-card-hover-shadow: var(--shadow-raised);
-  --dashboard-item-bg: rgba(224,222,244,0.05);
-  --dashboard-item-hover-bg: rgba(224,222,244,0.08);
-  --dashboard-item-border: rgba(196,167,231,0.09);
-  --clock-pill-night-bg: rgba(196,167,231,0.18);
-  --clock-pill-night-text: #c4a7e7;
-  --clock-pill-night-border: rgba(196,167,231,0.28);
-  --clock-pill-morning-bg: rgba(156,207,216,0.16);
-  --clock-pill-morning-text: #9ccfd8;
-  --clock-pill-morning-border: rgba(156,207,216,0.26);
-  --clock-pill-afternoon-bg: rgba(246,193,119,0.18);
-  --clock-pill-afternoon-text: #f6c177;
-  --clock-pill-afternoon-border: rgba(246,193,119,0.28);
-  --clock-pill-evening-bg: rgba(234,154,151,0.2);
-  --clock-pill-evening-text: #ea9a97;
-  --clock-pill-evening-border: rgba(234,154,151,0.3);
   --task-shadow: var(--shadow-xs);
-  --cal-weekday-bg: rgba(224,222,244,0.02);
-  --cal-weekend-bg: rgba(12,10,22,0.2);
-  --cal-task-pill-bg: rgba(224,222,244,0.13);
-  --cal-task-pill-border: rgba(224,222,244,0.2);
-  --cal-selection-bg: rgba(234,154,151,0.22);
-  --cal-selection-border: rgba(234,154,151,0.58);
-  --cal-selection-text: #f2bbb8;
-  --cal-current-time: var(--c-danger);
-  --cal-event-shadow: var(--shadow-xs);
-  --cal-event-title-text: rgba(255,255,255,0.92);
-  --cal-event-time-text: rgba(255,255,255,0.65);
-  --cal-toggle-on-bg: #ea9a97;
-  --cal-google-toggle-on-bg: #4285F4;
   --cal-toggle-off-bg: rgba(224,222,244,0.37);
   --cal-toggle-border: var(--c-field-border);
   --cal-toggle-knob: #232136;
-  --cal-today-text: #232136;
-  --cal-accent-text: #232136;
-  --cal-danger-bg: rgba(235,111,146,0.09);
-  --cal-danger-border: rgba(235,111,146,0.3);
-  --cal-danger-text: #f4a0b8;
-  --cal-danger-hover: var(--c-danger);
   --dot-color: rgba(196,167,231,0.09);
   --c-scrim: rgba(12,10,22,0.62);
   --scrollbar-thumb: rgba(224,222,244,0.08);
   --scrollbar-thumb-hover: rgba(224,222,244,0.15);
   --shadow-xs: 0 1px 2px rgba(12,10,22,0.231);
   --shadow-soft: inset 0 1px 0 rgba(234,154,151,0.05), 0 1px 2px rgba(12,10,22,0.189), 0 6px 16px -6px rgba(12,10,22,0.315);
-  --shadow-raised: 0 2px 4px rgba(12,10,22,0.21), 0 10px 24px -8px rgba(12,10,22,0.378);
   --shadow-pop: 0 6px 16px -4px rgba(12,10,22,0.357), 0 18px 44px -12px rgba(12,10,22,0.504);
 }
 
@@ -1341,7 +669,6 @@
  */
 [data-theme="oxblood"] {
   --page-bg: #280b11;
-  --sidebar-bg: #1c060b;
   --c-text-1: #f1e7d2;
   --c-text-2: #dbcdba;
   --c-text-3: #c8b7a9;
@@ -1358,11 +685,9 @@
   --c-accent-strong: #ddc886;
   --c-on-accent: #280b11;
   --c-success: #79d4a1;
-  --c-warning: #f6b663;
   --c-info: #92c0e8;
   --c-focus: #9bc6ec;
   --hue-ink: 38%;
-  --hue-fill: 16%;
   --priority-high: #f6994b;
   --priority-low: #9b9084;
   --event-fill: 48%;
@@ -1373,83 +698,18 @@
   --c-danger-wash: color-mix(in srgb, var(--c-danger) 13%, #1e1311);
   --c-danger-line: color-mix(in srgb, var(--c-danger) 34%, #1e1311);
   --c-danger: #fe6a56;
-  --ticker-up: #6adfa1;
-  --ticker-down: #ff705c;
-  --chart-account: #ddc886;
-  --chart-benchmark: #92c0e8;
-  --ticker-board-bg: #1e060b;
-  --ticker-board-dot: rgba(241,231,210,0.075);
-  --ticker-board-line: rgba(221,200,134,0.16);
-  --c-grid-line: rgba(241,231,210,0.06);
-  --nav-bg: #1a0609;
-  --nav-bg-glass: rgba(26,6,9,0.55);
-  --nav-border: rgba(221,200,134,0.18);
-  --nav-text: rgba(241,231,210,0.62);
-  --nav-text-active: #f1e7d2;
-  --nav-active-bg: rgba(221,200,134,0.1);
-  --nav-active-border: rgba(221,200,134,0.16);
-  --nav-shadow: 0 8px 32px rgba(10,1,2,0.55), inset 0 1px 0 rgba(221,200,134,0.1);
-  --nav-divider: rgba(241,231,210,0.1);
-  --nav-gear: rgba(241,231,210,0.42);
-  --nav-gear-hover: rgba(241,231,210,0.72);
-  --nav-home-bg: rgba(221,200,134,0.12);
-  --nav-home-border: rgba(221,200,134,0.22);
-  --nav-home-text: #ddc886;
-  --nav-pill-bg: rgba(241,231,210,0.04);
-  --nav-pill-border: rgba(241,231,210,0.06);
-  --nav-pill-hover: rgba(241,231,210,0.07);
-  --nav-celebrate-bg: #056641;
-  --nav-celebrate-text: #ffffff;
-  --nav-celebrate-glow: rgba(5,102,65,0.4);
   --dashboard-card-bg: var(--c-card-bg);
   --dashboard-card-border: rgba(221,200,134,0.17);
-  --dashboard-card-shadow: var(--shadow-soft);
-  --dashboard-card-hover-shadow: var(--shadow-raised);
-  --dashboard-item-bg: rgba(241,231,210,0.05);
-  --dashboard-item-hover-bg: rgba(241,231,210,0.08);
-  --dashboard-item-border: rgba(241,231,210,0.08);
-  --clock-pill-night-bg: rgba(128,98,176,0.22);
-  --clock-pill-night-text: #d7c8f6;
-  --clock-pill-night-border: rgba(128,98,176,0.34);
-  --clock-pill-morning-bg: rgba(63,154,111,0.2);
-  --clock-pill-morning-text: #ade3c5;
-  --clock-pill-morning-border: rgba(63,154,111,0.32);
-  --clock-pill-afternoon-bg: rgba(213,188,112,0.2);
-  --clock-pill-afternoon-text: #f0dda5;
-  --clock-pill-afternoon-border: rgba(213,188,112,0.32);
-  --clock-pill-evening-bg: rgba(220,123,64,0.22);
-  --clock-pill-evening-text: #fbc8ac;
-  --clock-pill-evening-border: rgba(220,123,64,0.34);
   --task-shadow: var(--shadow-xs);
-  --cal-weekday-bg: rgba(241,231,210,0.02);
-  --cal-weekend-bg: rgba(10,1,2,0.2);
-  --cal-task-pill-bg: rgba(241,231,210,0.13);
-  --cal-task-pill-border: rgba(241,231,210,0.2);
-  --cal-selection-bg: rgba(221,200,134,0.22);
-  --cal-selection-border: rgba(221,200,134,0.58);
-  --cal-selection-text: #ddc886;
-  --cal-current-time: var(--c-danger);
-  --cal-event-shadow: var(--shadow-xs);
-  --cal-event-title-text: rgba(255,255,255,0.92);
-  --cal-event-time-text: rgba(255,255,255,0.65);
-  --cal-toggle-on-bg: #ddc886;
-  --cal-google-toggle-on-bg: #4285F4;
   --cal-toggle-off-bg: rgba(241,231,210,0.36);
   --cal-toggle-border: var(--c-field-border);
   --cal-toggle-knob: #280b11;
-  --cal-today-text: #280b11;
-  --cal-accent-text: #280b11;
-  --cal-danger-bg: rgba(254,106,86,0.09);
-  --cal-danger-border: rgba(254,106,86,0.3);
-  --cal-danger-text: #fe6a56;
-  --cal-danger-hover: var(--c-danger);
   --dot-color: rgba(241,231,210,0.07);
   --c-scrim: rgba(10,1,2,0.62);
   --scrollbar-thumb: rgba(241,231,210,0.08);
   --scrollbar-thumb-hover: rgba(241,231,210,0.15);
   --shadow-xs: 0 1px 2px rgba(10,1,2,0.22);
   --shadow-soft: 0 1px 2px rgba(10,1,2,0.18), 0 6px 16px -6px rgba(10,1,2,0.3);
-  --shadow-raised: 0 2px 4px rgba(10,1,2,0.2), 0 10px 24px -8px rgba(10,1,2,0.36);
   --shadow-pop: 0 6px 16px -4px rgba(10,1,2,0.34), 0 18px 44px -12px rgba(10,1,2,0.48);
 }
 
@@ -1464,7 +724,6 @@
 [data-theme="paper"] {
   color-scheme: light;
   --page-bg: #efe4cc;
-  --sidebar-bg: #e8dcc2;
   --c-text-1: #2a1e13;
   --c-text-2: #4f3c2a;
   --c-text-3: #634f3b;
@@ -1481,11 +740,9 @@
   --c-accent-strong: #264f7a;
   --c-on-accent: #ffffff;
   --c-success: #3a6d36;
-  --c-warning: #835410;
   --c-info: #2e5592;
   --c-focus: #2f62b0;
   --hue-ink: 40%;
-  --hue-fill: 12%;
   --priority-high: #a9531d;
   --priority-low: #7b6750;
   --event-fill: 34%;
@@ -1496,80 +753,15 @@
   --c-danger-wash: color-mix(in srgb, var(--c-danger) 11%, var(--c-surface));
   --c-danger-line: color-mix(in srgb, var(--c-danger) 34%, var(--c-surface));
   --c-danger: #a3262c;
-  --ticker-up: #26703c;
-  --ticker-down: #b02a24;
-  --chart-account: #2c5d8f;
-  --chart-benchmark: #a9531d;
-  --ticker-board-bg: #f9f0dc;
-  --ticker-board-dot: rgba(92,64,28,0.09);
-  --ticker-board-line: rgba(92,64,28,0.15);
-  --c-grid-line: rgba(92,64,28,0.1);
-  --nav-bg: #f9f0dc;
-  --nav-bg-glass: rgba(249,240,220,0.86);
-  --nav-border: rgba(92,64,28,0.17);
-  --nav-text: rgba(42,30,19,0.72);
-  --nav-text-active: #2a1e13;
-  --nav-active-bg: rgba(44,93,143,0.11);
-  --nav-active-border: rgba(44,93,143,0.24);
-  --nav-shadow: 0 8px 28px rgba(84,56,20,0.15), inset 0 1px 0 rgba(255,251,240,0.85);
-  --nav-divider: rgba(92,64,28,0.15);
-  --nav-gear: rgba(42,30,19,0.6);
-  --nav-gear-hover: rgba(42,30,19,0.8);
-  --nav-home-bg: var(--nav-active-bg);
-  --nav-home-border: var(--nav-active-border);
-  --nav-home-text: var(--c-accent);
-  --nav-pill-bg: rgba(92,64,28,0.04);
-  --nav-pill-border: rgba(92,64,28,0.08);
-  --nav-pill-hover: rgba(92,64,28,0.07);
-  --nav-celebrate-bg: #2f6a35;
-  --nav-celebrate-text: #ffffff;
-  --nav-celebrate-glow: rgba(47,106,53,0.3);
   --dashboard-card-bg: var(--c-card-bg);
   --dashboard-card-border: rgba(92,64,28,0.17);
   --shadow-xs: 0 1px 2px rgba(84,56,20,0.07);
   --shadow-soft: 0 1px 1px rgba(84,56,20,0.05), 0 8px 18px -10px rgba(84,56,20,0.22);
-  --shadow-raised: 0 2px 4px rgba(84,56,20,0.07), 0 12px 26px -10px rgba(84,56,20,0.24);
   --shadow-pop: 0 6px 16px -4px rgba(84,56,20,0.11), 0 18px 44px -12px rgba(84,56,20,0.22);
-  --dashboard-card-shadow: var(--shadow-soft);
-  --dashboard-card-hover-shadow: var(--shadow-raised);
-  --dashboard-item-bg: rgba(92,64,28,0.04);
-  --dashboard-item-hover-bg: rgba(92,64,28,0.065);
-  --dashboard-item-border: rgba(92,64,28,0.08);
-  --clock-pill-night-bg: color-mix(in srgb, #3a4aa0 15%, #f9f0dc);
-  --clock-pill-night-text: #2c3980;
-  --clock-pill-night-border: rgba(58,74,160,0.3);
-  --clock-pill-morning-bg: color-mix(in srgb, #2f8479 14%, #f9f0dc);
-  --clock-pill-morning-text: #235f57;
-  --clock-pill-morning-border: rgba(47,132,121,0.3);
-  --clock-pill-afternoon-bg: color-mix(in srgb, #b98322 18%, #f9f0dc);
-  --clock-pill-afternoon-text: #6e4c0c;
-  --clock-pill-afternoon-border: rgba(185,131,34,0.36);
-  --clock-pill-evening-bg: color-mix(in srgb, #a9531d 15%, #f9f0dc);
-  --clock-pill-evening-text: #82401a;
-  --clock-pill-evening-border: rgba(169,83,29,0.3);
   --task-shadow: var(--shadow-xs);
-  --cal-weekday-bg: rgba(92,64,28,0.02);
-  --cal-weekend-bg: rgba(92,64,28,0.055);
-  --cal-task-pill-bg: rgba(92,64,28,0.1);
-  --cal-task-pill-border: rgba(92,64,28,0.22);
-  --cal-selection-bg: rgba(44,93,143,0.16);
-  --cal-selection-border: rgba(44,93,143,0.42);
-  --cal-selection-text: #2c5d8f;
-  --cal-current-time: var(--c-danger);
-  --cal-event-shadow: var(--shadow-xs);
-  --cal-event-title-text: rgba(255,255,255,0.95);
-  --cal-event-time-text: rgba(255,255,255,0.72);
-  --cal-toggle-on-bg: #264f7a;
-  --cal-google-toggle-on-bg: #4285F4;
   --cal-toggle-off-bg: rgba(92,64,28,0.16);
   --cal-toggle-border: var(--c-field-border);
   --cal-toggle-knob: #fff;
-  --cal-today-text: #fff;
-  --cal-accent-text: #fff;
-  --cal-danger-bg: rgba(163,38,44,0.08);
-  --cal-danger-border: rgba(163,38,44,0.24);
-  --cal-danger-text: #a3262c;
-  --cal-danger-hover: var(--c-danger);
   --dot-color: rgba(92,64,28,0.08);
   --c-scrim: rgba(60,40,15,0.42);
   --scrollbar-thumb: rgba(92,64,28,0.1);
@@ -1621,15 +813,6 @@
    * so the very first frame is already the right colour rather than being
    * corrected once React hydrates.
    */
-  .auth-splash {
-    background: var(--public-bg);
-    color: var(--public-ink);
-  }
-
-  [data-app-session] .auth-splash {
-    background: var(--page-bg);
-    color: var(--c-text-1);
-  }
 
   body {
     background: var(--page-bg);
@@ -1692,55 +875,12 @@
    * -webkit-text-fill-color paints over. Both colours come from the public
    * palette, so they follow the light/dark toggle like everything else.
    */
-  input[data-auth-input="true"]:-webkit-autofill,
-  input[data-auth-input="true"]:-webkit-autofill:hover,
-  input[data-auth-input="true"]:-webkit-autofill:focus,
-  input[data-auth-input="true"]:-webkit-autofill:active {
-    -webkit-text-fill-color: var(--public-ink);
-    caret-color: var(--public-accent);
-    /*
-     * Cancel the inset from the generic rule above, explicitly.
-     *
-     * That rule fills with var(--page-bg) — the *app's* near-black — and these
-     * fields live on the public palette, which is light by default. It still
-     * matches these inputs, and leaving box-shadow out here only means the
-     * black is inherited: an autofilled username or PIN got a black bar
-     * painted across it on a white page. Setting it to none is the fix; the
-     * clip below is what then keeps the browser's own wash off the field.
-     */
-    box-shadow: none !important;
-    /*
-     * !important because these inputs carry an inline `background:
-     * transparent`, and the shorthand resets background-clip to border-box.
-     * An inline declaration beats a stylesheet one, so without this the clip
-     * silently never applied and the autofill wash covered the whole field.
-     * Clipped to the text, it is only drawn inside the glyphs — which
-     * -webkit-text-fill-color then paints over, leaving the glass untouched.
-     */
-    -webkit-background-clip: text !important;
-    background-clip: text !important;
-    /* Chrome repaints its own background whenever the field changes state.
-       A transition it will never reach keeps that repaint off-screen. */
-    transition: background-color 99999s ease-in-out 0s;
-  }
 
   /*
    * Firefox does not implement :-webkit-autofill, and an unknown selector in
    * a comma list invalidates the whole rule, so its equivalent has to stand
    * on its own.
    */
-  input[data-auth-input="true"]:autofill {
-    -webkit-text-fill-color: var(--public-ink);
-    caret-color: var(--public-accent);
-    box-shadow: none !important;
-    -webkit-background-clip: text !important;
-    background-clip: text !important;
-  }
-
-  input[data-auth-input="true"]::placeholder {
-    color: #97a29a;
-    opacity: 1;
-  }
 
   /* One interaction treatment across disabled native controls. Individual
      components can still choose context-specific disabled colours. */
@@ -1793,9 +933,6 @@
    * page did this for itself; the index pages, articles and the reading
    * list share this class and were left with the app's ring.
    */
-  .vitae-public-surface :where(a, button, input, select, textarea, summary, [role="button"], [tabindex]:not([tabindex="-1"])):focus-visible {
-    outline-color: var(--public-ink);
-  }
 
   /*
    * A row of cards: a grid on a desktop, a swipeable rail on a phone.
@@ -1806,43 +943,6 @@
    * card. Resources keeps its vertical grid — those are one-line rows, not
    * cards, and there is nothing to swipe through.
    */
-  .vitae-public-card-rail {
-    display: grid;
-    gap: 18px;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  }
-
-  @media (max-width: 720px) {
-    .vitae-public-card-rail {
-      display: flex;
-      grid-template-columns: none;
-      overflow-x: auto;
-      overscroll-behavior-x: contain;
-      scroll-snap-type: x mandatory;
-      -webkit-overflow-scrolling: touch;
-      /*
-       * No bleed out to the gutters. Pulling the rail out with a negative
-       * margin and padding it back in put the first card flush against the
-       * screen while the section heading stayed on the text margin: with
-       * scroll-snap-align: start the card snaps to the scrollport edge, which
-       * does not account for the padding meant to hold it in. Sitting inside
-       * the container instead means the first card's left edge is the
-       * heading's left edge, by construction.
-       */
-      scrollbar-width: none;
-    }
-
-    .vitae-public-card-rail::-webkit-scrollbar {
-      display: none;
-    }
-
-    .vitae-public-card-rail > * {
-      /* Short of full width on purpose: the sliver of the next card is what
-         says the row continues. */
-      flex: 0 0 79%;
-      scroll-snap-align: start;
-    }
-  }
 
   /* ── Public site: resource rows, card cues, section links ────────────────
      Shared by the landing page and the /articles, /projects and /resources
@@ -1866,71 +966,13 @@
    * and the rows tinted their border but never their background — a rule that
    * matched, was read, and changed nothing.
    */
-  .vitae-public-card,
-  .vitae-public-resource {
-    background-color: var(--public-panel);
-    border: 1px solid var(--public-line);
-    /* The frost is the one thing still set inline; see PUBLIC_FROST. */
-    transition:
-      background-color var(--motion-base) var(--ease-out),
-      border-color var(--motion-base) var(--ease-out);
-  }
-
-  a:is(:hover, :focus-visible) .vitae-public-card,
-  .vitae-public-resource:is(:hover, :focus-visible) {
-    background-color: var(--public-dim);
-    border-color: var(--public-line-hover);
-  }
-
-  .vitae-public-resource {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 14px;
-    min-height: 64px;
-    padding: 0 16px;
-    border-radius: var(--public-radius);
-    text-decoration: none;
-  }
 
   /* A section-level link: quiet until pointed at, like the card cues. */
-  .vitae-public-section-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    flex-shrink: 0;
-    color: var(--public-muted);
-    font-size: var(--ui-type-body);
-    font-weight: 600;
-    text-decoration: none;
-    transition: color var(--motion-base) var(--ease-out);
-  }
-
-  .vitae-public-section-link:is(:hover, :focus-visible) {
-    color: var(--public-ink);
-    text-decoration: underline;
-    text-underline-offset: 3px;
-  }
 
   /* Muted at rest, accent and a nudge on hover. Faded rather than hidden, so
      the card reads as something you can open before you point at it.
      Named for the card, not the article: a project card carries the labelled
      version of the same cue, below. */
-  .vitae-public-card-cue {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding-top: 2px;
-    color: var(--public-muted);
-    opacity: 0.55;
-    transition: color var(--motion-base) var(--ease-out), opacity var(--motion-base) var(--ease-out), transform var(--motion-base) var(--ease-out);
-  }
-
-  a:is(:hover, :focus-visible) .vitae-public-card .vitae-public-card-cue {
-    color: var(--public-accent);
-    opacity: 1;
-    transform: translate(2px, -2px);
-  }
 
   /*
    * The labelled cue: "Open ↗" at the foot of a project card.
@@ -1941,116 +983,13 @@
    * card says nothing, and quietening it here would be a change to how the
    * page looks standing still, which is not what was wrong with it.
    */
-  .vitae-public-card-action {
-    /* Its resting colour too, not just the hover one: set inline it could not
-       be changed from here at all. See ACTION_TYPE in ProjectCard. */
-    color: var(--public-ink);
-    transition: color var(--motion-base) var(--ease-out);
-  }
-
-  .vitae-public-card-action svg {
-    transition: transform var(--motion-base) var(--ease-out);
-  }
-
-  a:is(:hover, :focus-visible) .vitae-public-card .vitae-public-card-action {
-    color: var(--public-accent);
-  }
-
-  a:is(:hover, :focus-visible) .vitae-public-card .vitae-public-card-action svg {
-    transform: translate(2px, -2px);
-  }
 
   /* Icon and label as one group, so the arrow keeps the far right and the
      gap between mark and title never stretches with the card. */
-  .vitae-public-resource-lead {
-    display: flex;
-    align-items: center;
-    gap: 13px;
-    min-width: 0;
-  }
 
   /* The mark alone, no tile. A duotone glyph in the accent green sitting
      directly on the card — the lit box around it read as a second card
      inside the card. */
-  .vitae-public-resource-icon {
-    flex: 0 0 auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--public-accent);
-    transition: color var(--motion-base) var(--ease-out);
-  }
-
-  .vitae-public-resource:is(:hover, :focus-visible) .vitae-public-resource-icon {
-    color: var(--public-ink);
-  }
-
-  .vitae-public-resource-arrow {
-    flex: 0 0 auto;
-    color: var(--public-muted);
-    transition: color var(--motion-base) var(--ease-out), transform var(--motion-base) var(--ease-out);
-  }
-
-  .vitae-public-resource.is-linked {
-    cursor: pointer;
-  }
-
-  .vitae-public-resource:is(:hover, :focus-visible) {
-    /* background-color, not the shorthand: `background` would reset the
-       background-image the glass sets and take the frost's companion with it. */
-    background-color: var(--public-dim);
-    border-color: var(--public-line-hover);
-  }
-
-  .vitae-public-resource:is(:hover, :focus-visible) .vitae-public-resource-arrow {
-    color: var(--public-accent);
-    transform: translate(2px, -2px);
-  }
-
-  .app-nav-link {
-    background: transparent;
-    border: 1px solid transparent;
-    color: var(--nav-text);
-    font-weight: 450;
-  }
-
-  .app-nav-link svg {
-    color: currentColor;
-    opacity: 0.62;
-    transition: color var(--motion-base) var(--ease-out), opacity var(--motion-base) var(--ease-out);
-  }
-
-  .app-nav-link:hover,
-  .app-nav-link:focus-visible {
-    background: var(--nav-pill-hover);
-    border-color: var(--nav-pill-border);
-    color: var(--nav-text-active);
-  }
-
-  .app-nav-link[aria-current="page"] {
-    background: var(--nav-active-bg);
-    border-color: var(--nav-active-border);
-    color: var(--c-accent);
-    font-weight: 650;
-  }
-
-  .app-nav-link:is(:hover, :focus-visible) svg,
-  .app-nav-link[aria-current="page"] svg {
-    opacity: 1;
-  }
-
-  .app-nav-settings {
-    background: transparent;
-    border: 1px solid transparent;
-    color: var(--nav-gear);
-  }
-
-  .app-nav-settings:is(:hover, :focus-visible),
-  .app-nav-settings[aria-expanded="true"] {
-    background: var(--nav-pill-hover);
-    border-color: var(--nav-pill-border);
-    color: var(--nav-gear-hover);
-  }
 
   /*
    * A field with no box of its own, showing focus as its own underline.
@@ -2084,26 +1023,6 @@
    * keys do, so a CSS :hover would light a second row. This is only the part
    * the keyboard cannot reach.
    */
-  .ui-search-row:focus-visible {
-    outline: none;
-  }
-
-  .ui-field-underline:focus-visible {
-    outline: none;
-    /* A bar under the field's own rule. Recolouring that rule is not an
-       option from here — it is set inline, which outranks any layer. */
-    box-shadow: 0 2px 0 0 var(--c-accent);
-  }
-
-  .ui-hover-surface {
-    background: var(--c-surface);
-    color: var(--c-text-2);
-  }
-
-  .ui-hover-surface:not(:disabled):is(:hover, :focus-visible) {
-    background: var(--c-hover);
-    color: var(--c-text-1);
-  }
 
   .ui-hover-control {
     background: transparent;
@@ -2116,20 +1035,9 @@
     border-color: var(--c-border);
   }
 
-  .ui-icon-danger {
-    color: var(--c-text-4);
-  }
-
-  .ui-icon-danger:not(:disabled):is(:hover, :focus-visible) {
-    color: var(--c-danger);
-  }
-
   /* Shared pointer and keyboard interaction states. These use !important so
      they can safely override the layout-first inline styles used throughout
      the app without mutating DOM styles behind React. */
-  .ui-hover-text:not(:disabled):not([aria-disabled="true"]):is(:hover, :focus-visible) {
-    color: var(--c-text-1) !important;
-  }
 
   .ui-hover-fill:not(:disabled):not([aria-disabled="true"]):is(:hover, :focus-visible) {
     background: var(--c-hover) !important;
@@ -2137,23 +1045,6 @@
 
   .ui-hover-tag:not(:disabled):not([aria-disabled="true"]):is(:hover, :focus-visible) {
     background: var(--c-tag-bg) !important;
-  }
-
-  .ui-hover-border-fill:not(:disabled):not([aria-disabled="true"]):is(:hover, :focus-visible) {
-    background: var(--c-border) !important;
-  }
-
-  .ui-hover-danger:not(:disabled):not([aria-disabled="true"]):is(:hover, :focus-visible) {
-    color: var(--c-danger) !important;
-  }
-
-  .ui-hover-calendar-danger:not(:disabled):not([aria-disabled="true"]):is(:hover, :focus-visible) {
-    color: var(--cal-danger-hover) !important;
-  }
-
-  .ui-hover-danger-fill:not(:disabled):not([aria-disabled="true"]):is(:hover, :focus-visible) {
-    filter: brightness(1.08);
-    box-shadow: var(--shadow-xs) !important;
   }
 
   /*
@@ -2168,17 +1059,6 @@
    * color-mix, which would put red text on a solid red button. Colour and
    * border alone are already unmistakably reddish, so that is the floor.
    */
-  .ui-hover-danger-soft:not(:disabled):not([aria-disabled="true"]):is(:hover, :focus-visible) {
-    color: var(--c-danger) !important;
-    border-color: var(--c-danger) !important;
-  }
-
-  @supports (background: color-mix(in srgb, red 10%, transparent)) {
-    .ui-hover-danger-soft:not(:disabled):not([aria-disabled="true"]):is(:hover, :focus-visible) {
-      border-color: color-mix(in srgb, var(--c-danger) 45%, transparent) !important;
-      background: color-mix(in srgb, var(--c-danger) 10%, transparent) !important;
-    }
-  }
 
   /*
    * Shimmering placeholder, used by the per-page loading skeletons.
@@ -2188,15 +1068,6 @@
    * it parked off-screen, which is exactly the right fallback — a plain block.
    */
   /* Footer legal links: present, not advertised. */
-  .vitae-public-legal-link {
-    color: var(--public-muted);
-    text-decoration: none;
-    transition: color var(--motion-base) var(--ease-out);
-  }
-
-  .vitae-public-legal-link:is(:hover, :focus-visible) {
-    color: var(--public-ink);
-  }
 
   .vitae-skeleton {
     display: block;
@@ -2215,11 +1086,6 @@
     animation: vitae-skeleton-sweep 1.3s ease-in-out infinite;
   }
 
-  .ui-hover-accent-option:is(:hover, :focus-visible):not(:disabled) {
-    background: var(--c-hover) !important;
-    border-color: var(--c-accent) !important;
-  }
-
   /*
    * The Habits heading row: title, category filters, Insights.
    *
@@ -2232,42 +1098,6 @@
   /* The page header row. Values mirror PAGE_HEADER_ROW in lib/styles.ts;
      it lives in CSS because the narrow-screen rules below reorder its
      children, which an inline style cannot do. */
-  .vitae-habit-header {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    min-height: 32px;
-    flex-wrap: wrap;
-  }
-
-  .vitae-habit-filters {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-    min-width: 0;
-  }
-
-  @media (max-width: 619px) {
-    .vitae-habit-header > .vitae-habit-filters {
-      /* Its own full-width line, after the button rather than before it. */
-      order: 3;
-      flex: 1 0 100%;
-      flex-wrap: nowrap;
-      overflow-x: auto;
-      overscroll-behavior-x: contain;
-      scrollbar-width: none;
-    }
-
-    .vitae-habit-header > .vitae-habit-filters::-webkit-scrollbar {
-      display: none;
-    }
-
-    /* Nothing to separate once the filters are on their own line. */
-    .vitae-habit-header > .vitae-habit-rule {
-      display: none;
-    }
-  }
 
   /*
    * The Finance filter line: one long search field with the account picker
@@ -2283,12 +1113,6 @@
    * there are no groups left to separate, so the rule that hid them below
    * 920px went with them.
    */
-  .vitae-finance-filters {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-height: 32px;
-  }
 
   /*
    * The category rail under the Transactions heading: one line, scrolled.
@@ -2297,15 +1121,6 @@
    * between the heading and the first transaction. Scrolling keeps it to one
    * line at any width.
    */
-  .vitae-finance-catrail {
-    display: flex;
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 12px;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-  }
 
   /*
    * The fade that stands in for the hidden scrollbar.
@@ -2320,65 +1135,11 @@
    * targets, and writing the pair in this file is the Lightning CSS merge
    * trap in CLAUDE.md.
    */
-  .vitae-finance-catrail[data-fade="right"] {
-    mask-image: linear-gradient(to right, #000 calc(100% - 56px), transparent 100%);
-  }
-
-  .vitae-finance-catrail[data-fade="left"] {
-    mask-image: linear-gradient(to right, transparent 0, #000 56px);
-  }
-
-  .vitae-finance-catrail[data-fade="both"] {
-    mask-image: linear-gradient(to right, transparent 0, #000 56px, #000 calc(100% - 56px), transparent 100%);
-  }
 
   .ui-choice:not([aria-pressed="true"]):not([aria-selected="true"]):is(:hover, :focus-visible):not(:disabled) {
     background: var(--c-hover) !important;
     border-color: var(--c-border) !important;
     color: var(--c-text-1) !important;
-  }
-
-  .ui-hover-opacity:not(:disabled):not([aria-disabled="true"]):is(:hover, :focus-visible) {
-    opacity: 0.8 !important;
-  }
-
-  .ui-hover-opacity-soft:not(:disabled):not([aria-disabled="true"]):is(:hover, :focus-visible) {
-    opacity: 0.85 !important;
-  }
-
-  .ui-hover-shadow:not(:disabled):not([aria-disabled="true"]):is(:hover, :focus-visible) {
-    box-shadow: var(--shadow-soft) !important;
-  }
-
-  .ui-hover-scale-up:not(:disabled):not([aria-disabled="true"]):is(:hover, :focus-visible) {
-    transform: scale(1.2) !important;
-  }
-
-  .ui-hover-scale-down:not(:disabled):not([aria-disabled="true"]):is(:hover, :focus-visible) {
-    transform: scale(0.88) !important;
-  }
-
-  .ui-hover-custom-fill:not(:disabled):not([aria-disabled="true"]):is(:hover, :focus-visible) {
-    background: var(--ui-hover-background) !important;
-  }
-
-  .hub-tool-card:is(:hover, :focus-visible) {
-    border-color: var(--hub-accent) !important;
-    box-shadow: var(--dashboard-card-hover-shadow) !important;
-  }
-
-  .hub-tool-card:is(:hover, :focus-visible) .hub-tool-card-icon {
-    background: color-mix(in srgb, var(--hub-accent) 16%, transparent) !important;
-  }
-
-  .script-preview-card:not(.is-active):is(:hover, :focus-visible) {
-    border-color: var(--c-border) !important;
-    box-shadow: var(--shadow-soft) !important;
-  }
-
-  .token-visual:is(:hover, :focus-visible) {
-    background: var(--token-hover-bg) !important;
-    border-color: var(--token-hover-border) !important;
   }
 
   /*
@@ -2391,38 +1152,7 @@
     color: color-mix(in srgb, var(--hue) var(--hue-ink, 40%), var(--c-text-1));
   }
 
-  /* The same, on a tint of itself: a category chip, an account badge, a tag. */
-  .ui-hue-chip {
-    background-color: color-mix(in srgb, var(--hue) var(--hue-fill, 12%), transparent);
-    color: color-mix(in srgb, var(--hue) var(--hue-ink, 40%), var(--c-text-1));
-  }
-
-  /* CSS chooses the headline grid before hydration, so the account figures
-     do not switch rows when the viewport hook first runs. */
-  .investments-headline {
-    --headline-columns: minmax(210px, 1.65fr) repeat(4, minmax(0, 1fr));
-    --headline-gap: 22px;
-    --headline-first-span: auto;
-  }
-
-  @media (max-width: 1079px) {
-    .investments-headline {
-      --headline-columns: repeat(2, minmax(0, 1fr));
-      --headline-gap: 16px 20px;
-      --headline-first-span: 1 / -1;
-    }
-  }
-
-  @media (max-width: 619px) {
-    .investments-headline {
-      --headline-gap: 12px 14px;
-    }
-  }
-
 }
-
-.hide-scrollbar::-webkit-scrollbar { display: none; }
-.hide-scrollbar { scrollbar-width: none; }
 
 /* Dotted grid background for non-home pages */
 .dot-grid-bg {
@@ -2487,21 +1217,6 @@
   }
 }
 
-@keyframes slideUp {
-  from { opacity: 0; transform: translateX(-50%) translateY(12px); }
-  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
-}
-
-@keyframes dotPulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 4px 2px rgba(255,255,255,0.5); }
-  50%      { opacity: 0.5; box-shadow: 0 0 8px 4px rgba(255,255,255,0.25); }
-}
-
-@keyframes dotPulseLight {
-  0%, 100% { opacity: 1; box-shadow: 0 0 4px 2px rgba(0,0,0,0.35); }
-  50%      { opacity: 0.5; box-shadow: 0 0 8px 4px rgba(0,0,0,0.15); }
-}
-
 /*
  * The nav pill announcing a completed task.
  *
@@ -2512,56 +1227,12 @@
  * settled glow until the state flips back, at which point the inline shadow
  * takes over through its own transition.
  */
-@keyframes vitae-celebrate-glow {
-  0%   { box-shadow: 0 0 0 0 var(--nav-celebrate-glow); }
-  55%  { box-shadow: 0 0 26px 6px var(--nav-celebrate-glow); }
-  100% { box-shadow: 0 0 18px 2px var(--nav-celebrate-glow); }
-}
-
-@keyframes vitae-celebrate-label {
-  from { opacity: 0; transform: translateY(5px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-[data-theme="light"] .dot-pulse-current,
-[data-theme="paper"] .dot-pulse-current {
-  animation: dotPulseLight 1.8s ease-in-out infinite !important;
-}
-
-[data-theme="nature"] .dot-pulse-current {
-  animation: dotPulse 1.8s ease-in-out infinite !important;
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fade-in-up {
-  animation: fadeInUp 0.3s ease-out both;
-}
 
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
-.animate-spin {
-  animation: spin 1s linear infinite;
-}
-
 /* Honour the OS reduced-motion setting: several animations here loop forever. */
-@keyframes vitae-nav-menu-in {
-  from {
-    opacity: 0;
-    transform: translateY(-8px) scaleY(0.96);
-  }
-}
 
 /* ── Resource mark motion ────────────────────────────────────────────────────
    What each gesture named in `ResourceIcon.tsx` actually means. Here rather
@@ -2594,56 +1265,14 @@
 
    The reduced-motion block below collapses all of it. */
 
-.vitae-resource-mark [data-mark] {
-  /* So `transform-origin: 128px 148px` means that point on the 256 grid — a
-     page hinged on the spine — rather than a share of the element's own box. */
-  transform-box: view-box;
-}
-
 /* pathLength="1" in the component normalises every length, so this one value
    covers a 40-unit tick and a 300-unit polyline. Harmless at rest: a dash as
    long as the path, at offset 0, is a solid stroke. */
-.vitae-resource-mark [data-mark="draw"] {
-  stroke-dasharray: 1;
-}
-
-@keyframes vitae-mark-draw   { from { stroke-dashoffset: 1; } }
-@keyframes vitae-mark-unfold { from { transform: scaleX(0.04); } }
-@keyframes vitae-mark-sprout { from { transform: scaleY(0.06); } }
-@keyframes vitae-mark-slide  { from { transform: translateX(var(--mark-from, 0)); opacity: 0; } }
-@keyframes vitae-mark-set    { from { transform: scale(0.4); opacity: 0; } }
 
 /* The nib, travelling the line and lifting off the end of the word. */
-@keyframes vitae-mark-write {
-  from { transform: translate(-58px, 16px); }
-  62% { transform: translate(6px, 1px); }
-  80% { transform: translate(8px, -12px); }
-}
-
-.vitae-public-resource:is(:hover, :focus-visible) .vitae-resource-mark [data-mark] {
-  animation-duration: var(--mark-duration, 380ms);
-  animation-delay: var(--mark-delay, 0ms);
-  animation-timing-function: var(--mark-ease, var(--ease-out));
-  animation-fill-mode: both;
-}
-
-.vitae-resource-mark [data-mark="unfold"] { --mark-duration: 320ms; }
-.vitae-resource-mark [data-mark="sprout"] { --mark-duration: 300ms; }
-.vitae-resource-mark [data-mark="write"] { --mark-duration: 640ms; }
 
 /* The two that land rather than arrive: a plate hitting the collar and a
    quote mark being set both overshoot slightly and settle. */
-.vitae-resource-mark [data-mark="slide"],
-.vitae-resource-mark [data-mark="set"] {
-  --mark-ease: cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.vitae-public-resource:is(:hover, :focus-visible) [data-mark="draw"] { animation-name: vitae-mark-draw; }
-.vitae-public-resource:is(:hover, :focus-visible) [data-mark="unfold"] { animation-name: vitae-mark-unfold; }
-.vitae-public-resource:is(:hover, :focus-visible) [data-mark="sprout"] { animation-name: vitae-mark-sprout; }
-.vitae-public-resource:is(:hover, :focus-visible) [data-mark="slide"] { animation-name: vitae-mark-slide; }
-.vitae-public-resource:is(:hover, :focus-visible) [data-mark="set"] { animation-name: vitae-mark-set; }
-.vitae-public-resource:is(:hover, :focus-visible) [data-mark="write"] { animation-name: vitae-mark-write; }
 
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -2654,120 +1283,4 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-}
-
-/* ── Market ticker ribbon ───────────────────────────────────────────────────
-   Keyframes sit out here with the rest, outside @layer: @keyframes is not
-   subject to layer ordering. */
-
-/*
- * Digits only. Ticker symbols, company names and every label stay in the app's
- * own face; this is for the figures an exchange board lights up — prices,
- * percentages, P&L. ROND 100 makes each dot circular rather than the squarer
- * default, which is what reads as LEDs instead of as a pixel font.
- */
-.vitae-ticker-face {
-  font-family: var(--font-board), ui-monospace, SFMono-Regular, monospace;
-  font-variation-settings: "ROND" 100;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.01em;
-}
-
-/*
- * The unlit half of the panel.
- *
- * On a real board every cell exists; the characters are the ones that light
- * up. So this grid is not a decorative texture — it is locked to the same
- * matrix the digits are drawn on.
- *
- * Measured rather than guessed: Doto lays every glyph out on a square grid
- * whose pitch is exactly one tenth of the font size, five dots wide and seven
- * tall per digit. Figures here are --ui-type-body, so the glyph pitch is
- * 1.4px and twice that — every other node of the same matrix — is 2.8px.
- *
- * 3px, though, not 2.8px, and the reason matters. A cell has to tile on whole
- * *device* pixels or it cannot repeat cleanly: at the 2x of a laptop display
- * 2.8px is 5.6 device pixels, so every fifth cell lands half a pixel off and
- * the error accumulates across a few hundred of them. That is what made the
- * first attempt look scattered — not the pitch being wrong, the pitch being
- * fractional. 3px is 6 device pixels at 2x, 3 at 1x, 9 at 3x: always whole.
- *
- * The 0.2px it gives up against the exact harmonic is about seven percent of
- * one cell and invisible. Irregular dots are not.
- */
-.vitae-ticker-board {
-  background-color: var(--ticker-board-bg);
-  /* A 1px lens in a 3px cell: lit dots are the glyphs, these are the rest. */
-  background-image: radial-gradient(
-    circle at center,
-    var(--ticker-board-dot) 0 0.5px,
-    transparent 0.9px
-  );
-  background-size: 3px 3px;
-  /* Anchored to the band, so rows stay put while the rail scrolls past. */
-  background-position: 0 0;
-}
-
-/*
- * Auto-scroll is driven by writing scrollLeft from requestAnimationFrame, not
- * by a transform. That is what lets the same rail be dragged and wheeled by
- * hand: a transform marquee cannot be scrolled, because the overflow it
- * creates is not a scrollable overflow. scroll-behavior has to stay auto —
- * smooth would fight every frame the animation writes.
- */
-.vitae-ticker-rail {
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-behavior: auto;
-  scrollbar-width: none;
-  overscroll-behavior-x: contain;
-  cursor: grab;
-}
-
-.vitae-ticker-rail:active {
-  cursor: grabbing;
-}
-
-.vitae-ticker-rail::-webkit-scrollbar {
-  display: none;
-}
-
-/* The market-open dot. Says "these numbers are moving" without a label. */
-@keyframes vitae-ticker-pulse {
-  50% { opacity: 0.35; }
-}
-
-/* A changed price lights its cell and settles — the cue that says live, not
-   screenshot. Under reduced motion the blanket rule above collapses this to
-   its end state, fully transparent, which is the right outcome and needs no
-   override.
-
-   It tinted the price span alone, which put a coloured rectangle around four
-   characters in the middle of a chip and read as a rendering fault rather
-   than as news. The cell lights now, which is what a board does.
-
-   An overlay rather than the chip's own background: the chip sets background
-   inline for its selected state, and an animation on the same property wins
-   while it runs and then hands back, which flickers the selection. This
-   cannot collide with anything. `inset: 0` resolves to the padding box, so
-   the 1px divider between cells stays its own colour. */
-@keyframes vitae-ticker-flash {
-  from { opacity: 0.3; }
-  to   { opacity: 0; }
-}
-
-.vitae-ticker-chip[data-flash]::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  animation: vitae-ticker-flash 900ms var(--ease-out) both;
-}
-
-.vitae-ticker-chip[data-flash="up"]::after {
-  background: var(--ticker-up);
-}
-
-.vitae-ticker-chip[data-flash="down"]::after {
-  background: var(--ticker-down);
 }
