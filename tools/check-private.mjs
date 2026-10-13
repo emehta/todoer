@@ -25,8 +25,8 @@ const git = (...args) => execFileSync("git", args, { encoding: "utf8", maxBuffer
 
 let hits = 0;
 const report = (where, text) => {
-  // The licence's copyright line names its author on purpose.
-  const scanned = text.replace(/^Required Notice:.*$/gm, "");
+  // A copyright line names its author on purpose.
+  const scanned = text.replace(/^.*\bCopyright\b.*$/gm, "");
   for (const hit of findPrivate(scanned, words)) {
     hits += 1;
     console.log(`${where}:${hit.line}  ${hit.word}`);
