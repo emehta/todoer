@@ -34,7 +34,7 @@ const report = (where, text) => {
 };
 
 if (process.argv.includes("--history")) {
-  report("history", git("log", "-p", "--all", "--format=%an %ae%n%s%n%b"));
+  report("history", git("log", "-p", "--all", "--format=%s%n%b"));
 } else {
   const files = git("ls-files", "--cached", "--others", "--exclude-standard").split("\n").filter(Boolean);
   for (const file of files) {
