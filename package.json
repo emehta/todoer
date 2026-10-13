@@ -14,7 +14,10 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "node scripts/run-tests.mjs",
-    "extract": "node tools/extract.mjs"
+    "extract": "node tools/extract.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "check:private": "node tools/check-private.mjs",
+    "trim:css": "node tools/trim-css.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "6.3.1",
