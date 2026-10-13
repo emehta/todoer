@@ -35,6 +35,13 @@ export async function resolve(specifier, context, next) {
     }
   }
 
+  /*
+   * Next's entry points ("next/server") have no exports map, so Node's ESM
+   * loader wants the file's own name. The proxy imports "next/server" the
+   * way the bundler allows; a test loads it the way Node does.
+   */
+  if (/^next\/[a-z-]+$/.test(specifier)) return next(`${specifier}.js`, context);
+
   if (!specifier.startsWith("@/")) return next(specifier, context);
 
   let path = join(SRC, specifier.slice(2));
