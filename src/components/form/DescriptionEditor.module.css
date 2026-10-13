@@ -1,0 +1,89 @@
+/*
+ * The description, being written (DescriptionEditor) and being read
+ * (DescriptionText): lists drawn as Notes draws them, a bullet or a number
+ * hanging to the left of its text, so a long item wraps in under itself
+ * rather than back under its bullet. A level down is a white bullet, the one
+ * below a square.
+ *
+ * Its own module rather than globals.css, so it always ships with the
+ * component that uses it.
+ */
+
+.lists :is(ul, ol) {
+  margin: 0;
+  padding-left: 1.45em;
+}
+
+.lists ul {
+  list-style: disc;
+}
+
+.lists ul ul {
+  list-style: circle;
+}
+
+.lists ul ul ul {
+  list-style: square;
+}
+
+.lists ol {
+  list-style: decimal;
+}
+
+.lists li > p {
+  margin: 0;
+}
+
+.lists li + li {
+  margin-top: 2px;
+}
+
+.lists li::marker {
+  color: var(--c-text-3, #9a9a9a);
+}
+
+/* The field: the text box's place in the card, its size and its scrolling. */
+.wrap {
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
+  height: 100%;
+  min-height: 100px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  cursor: text;
+}
+
+.editor {
+  min-height: 100%;
+  outline: none;
+  color: var(--c-text-1, #ececec);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.editor > p,
+.editor li > p {
+  margin: 0;
+}
+
+.editor :global(p.is-editor-empty:first-child)::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--c-text-4, #6f6f6f);
+  pointer-events: none;
+}
+
+/* The description as the card reads it. */
+.text {
+  color: var(--c-text-2, #cfcfcf);
+  font-size: var(--ui-type-body-sm, 13px);
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.text > p {
+  margin: 0;
+}

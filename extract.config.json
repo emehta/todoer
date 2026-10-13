@@ -1,0 +1,28 @@
+{
+  "commit": "732ff429f12f9a0d453fde320f0a0a4ce268365c",
+  "entries": [
+    "src/app/tasks/page.tsx",
+    "src/app/globals.css",
+    "src/components/CelebrationLayer.tsx",
+    "src/components/ThemePicker.tsx",
+    "src/lib/theme.ts",
+    "src/lib/first-paint.ts",
+    "scripts/alias-loader.mjs",
+    "scripts/run-tests.mjs",
+    "scripts/task-order.test.mjs",
+    "scripts/task-changes.test.mjs",
+    "scripts/task-share.test.mjs",
+    "scripts/description-lists.test.mjs",
+    "scripts/day-gaps.test.mjs",
+    "scripts/text-match.test.mjs",
+    "scripts/time-input.test.mjs",
+    "scripts/time-format.test.mjs",
+    "scripts/authed-fetch.test.mjs",
+    "scripts/touch-gestures.test.mjs",
+    "scripts/readable-on.test.mjs"
+  ],
+  "cuts": {
+    "src/components/tasks/RambleButton.tsx": "Ramble ships in 1.1, with the user's own Groq key or publik API."
+  },
+  "ignorePackages": []
+}

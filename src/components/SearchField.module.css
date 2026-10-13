@@ -1,0 +1,198 @@
+/*
+ * The app's one search field, at the filter row's size or at the large size
+ * where a page leads with search.
+ *
+ * It is a field like every other, so it takes the edit cards' field look
+ * (components/form): the surface, the field-weight border, square corners,
+ * a border that firms on hover and goes to the theme's ink on focus. Before
+ * this there were five search fields at 32, 36, 38 and 44px, two focus styles
+ * (an accent border on three, a 2px accent ring on two) and four icon sizes.
+ *
+ * Here and not in globals.css, so the field ships with the component
+ * (CLAUDE.md, Known Pitfalls: a stale globals.css chunk in production).
+ */
+
+.field {
+  --search-border: var(--c-field-border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: var(--search-height, 32px);
+  padding: 0 5px 0 10px;
+  border: 1px solid var(--search-border);
+  border-radius: var(--ui-radius-md, 0);
+  background: var(--c-surface);
+  cursor: text;
+  transition: border-color var(--motion-fast, 120ms) var(--ease-out, ease-out);
+}
+
+/* A filter row's field: the height of the pickers beside it. A thumb's on a phone. */
+.field[data-size="md"] {
+  --search-height: 32px;
+}
+
+.field[data-size="md"][data-phone="true"] {
+  --search-height: 40px;
+}
+
+/* The page's own search, where it is the main control: Home. */
+.field[data-size="lg"] {
+  --search-height: 44px;
+  gap: 10px;
+  padding: 0 8px 0 14px;
+}
+
+@media (hover: hover) {
+  .field:hover {
+    --search-border: color-mix(in srgb, var(--c-text-3) 45%, var(--c-field-border));
+  }
+}
+
+/* Open holds the focus look while a panel hangs off the field (Home's results). */
+.field:focus-within,
+.field[data-open="true"] {
+  --search-border: var(--c-text-3);
+}
+
+/* A control inside the field, before the glass, ruled off from it. */
+.leading {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: -4px;
+}
+
+.rule {
+  flex-shrink: 0;
+  width: 1px;
+  height: 16px;
+  background: var(--c-border);
+}
+
+.glass {
+  flex-shrink: 0;
+  color: var(--c-text-4);
+  transition: color var(--motion-fast, 120ms) var(--ease-out, ease-out);
+}
+
+.field:focus-within .glass {
+  color: var(--c-text-2);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--c-text-1);
+  font: inherit;
+  font-size: var(--ui-type-body-sm);
+  text-overflow: ellipsis;
+  appearance: none;
+}
+
+.field[data-size="lg"] .input {
+  font-size: var(--ui-type-body);
+}
+
+.input::placeholder {
+  color: var(--c-text-4);
+  opacity: 1;
+}
+
+/* The field's border is the indicator, so the input draws no ring of its own. */
+.input:is(:focus, :focus-visible) {
+  outline: none;
+}
+
+/*
+ * Safari and Chrome draw their own clear button and magnifier on
+ * `type="search"`, a second ✕ at a different size beside this one. The
+ * prefixed property, because the pseudo-elements are the prefixed ones.
+ */
+.input::-webkit-search-decoration,
+.input::-webkit-search-cancel-button,
+.input::-webkit-search-results-button,
+.input::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+}
+
+.clear {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: var(--ui-radius-sm, 0);
+  background: transparent;
+  color: var(--c-text-4);
+  cursor: pointer;
+  transition:
+    color var(--motion-fast, 120ms) var(--ease-out, ease-out),
+    background var(--motion-fast, 120ms) var(--ease-out, ease-out);
+}
+
+.clear:is(:hover, :focus-visible) {
+  color: var(--c-text-1);
+  background: var(--c-hover);
+}
+
+/* A finger needs more than 22px; the drawn button stays its size. */
+@media (pointer: coarse) {
+  .clear::after {
+    content: "";
+    position: absolute;
+    inset: -9px;
+  }
+}
+
+.field[data-size="lg"] .clear {
+  width: 26px;
+  height: 26px;
+}
+
+/*
+ * The "/" that says the key reaches this field. Only where there is a
+ * keyboard to press it on, and gone the moment the field is in use.
+ */
+.hint {
+  display: none;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  margin-right: 2px;
+  padding: 0 5px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--ui-radius-sm, 0);
+  color: var(--c-text-4);
+  font-family: inherit;
+  font-size: var(--ui-type-micro, 10px);
+  font-weight: 600;
+  line-height: 1;
+  user-select: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hint {
+    display: inline-flex;
+  }
+}
+
+.field:focus-within .hint {
+  display: none;
+}
+
+.field[data-size="lg"] .hint {
+  min-width: 20px;
+  height: 20px;
+  margin-right: 4px;
+}

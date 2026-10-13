@@ -1,0 +1,624 @@
+.tab,
+.iconButton,
+.action,
+.rangeButton,
+.swatch {
+  transition:
+    color var(--motion-fast) var(--ease-out),
+    background var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out),
+    opacity var(--motion-fast) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out),
+    filter var(--motion-fast) var(--ease-out);
+}
+
+.iconButton:is(:hover, :focus-visible),
+.action:is(:hover, :focus-visible) {
+  color: var(--c-text-1) !important;
+  background: var(--c-hover) !important;
+  border-color: var(--c-border) !important;
+}
+
+.tab:not(.active):is(:hover, :focus-visible),
+.rangeButton:not(.active):is(:hover, :focus-visible) {
+  color: var(--c-text-1) !important;
+  background: var(--c-hover) !important;
+  border-color: var(--c-border) !important;
+}
+
+.active:is(:hover, :focus-visible) {
+  filter: brightness(1.08);
+}
+
+.swatch:is(:hover, :focus-visible) {
+  transform: scale(1.14);
+}
+
+.danger:is(:hover, :focus-visible) {
+  color: var(--c-danger) !important;
+  background: color-mix(in srgb, var(--c-danger) 10%, transparent) !important;
+}
+
+.primary:is(:hover, :focus-visible):not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.accentAction:is(:hover, :focus-visible) {
+  background: color-mix(in srgb, var(--c-accent) 15%, transparent) !important;
+}
+
+.primary:disabled {
+  cursor: not-allowed;
+}
+
+/*
+ * How much of its priority's hue a row takes is PriorityWash.module.css,
+ * which the row carries beside this class: the calendar's task pills read the
+ * same values, so a Critical is one red on both pages.
+ */
+
+/* Stronger in the row's own hue: a neutral border here would strip the
+   priority colour off the edge of the row under the cursor. */
+.taskCard:is(:hover, :focus-visible) {
+  border-color: color-mix(in srgb, var(--task-hue, var(--c-border)) 55%, var(--c-border)) !important;
+  box-shadow: var(--shadow-soft) !important;
+}
+
+/*
+ * The fill brightens in its own hue under the cursor. The variable is swapped
+ * rather than `background` set, because the row actions' fade reads it too;
+ * !important because TaskItem sets the resting value inline. Only where
+ * there is a real hover: a tap on a phone leaves :hover stuck on the row.
+ */
+@media (hover: hover) {
+  .taskCard:hover {
+    --task-row-bg: var(--task-row-bg-hover) !important;
+  }
+}
+
+/*
+ * The tick the circle would get, previewed in the priority's colour: faint
+ * while the row is under the cursor, firmer on the circle itself, and shown
+ * for keyboard focus on the circle too.
+ */
+.hoverTick {
+  opacity: 0;
+  transition: opacity var(--motion-fast) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .taskCard:hover .hoverTick {
+    opacity: 0.4;
+  }
+
+  .checkButton:hover .hoverTick {
+    opacity: 0.85;
+  }
+}
+
+.checkButton:focus-visible .hoverTick {
+  opacity: 0.85;
+}
+
+/*
+ * Ticking a task off, in three beats over about half a second:
+ *
+ * 1. The circle fills and pops: up to 1.3 times its size and back through a
+ *    slight undershoot, with a ring in the task's priority colour spreading
+ *    out from it and fading (--pop-color, set on the circle).
+ * 2. The tick draws itself across the filled circle.
+ * 3. The row fades and settles, and TaskItem then saves it, which is when
+ *    the list lets it go (COMPLETE_MS there is the length of all this).
+ *
+ * Here and not in globals.css, so it ships with the row. The reduced-motion
+ * block in globals.css flattens all three, and TaskItem shortens the wait.
+ */
+.checkPop {
+  animation:
+    taskCheckPop 360ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    taskCheckRing 460ms var(--ease-out);
+}
+
+@keyframes taskCheckPop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.3); }
+  70% { transform: scale(0.92); }
+  100% { transform: scale(1); }
+}
+
+@keyframes taskCheckRing {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--pop-color, var(--c-accent)) 55%, transparent); }
+  100% { box-shadow: 0 0 0 9px color-mix(in srgb, var(--pop-color, var(--c-accent)) 0%, transparent); }
+}
+
+.tickDraw {
+  stroke-dasharray: 12;
+  stroke-dashoffset: 12;
+  animation: taskTickDraw 240ms var(--ease-out) 90ms forwards;
+}
+
+@keyframes taskTickDraw {
+  to { stroke-dashoffset: 0; }
+}
+
+/* With motion reduced the tick is there at once, never invisible while the row waits to save. */
+@media (prefers-reduced-motion: reduce) {
+  .tickDraw { stroke-dashoffset: 0; animation: none; }
+}
+
+.completingOut {
+  animation: taskCompleteOut 520ms var(--ease-out) forwards;
+  pointer-events: none;
+}
+
+@keyframes taskCompleteOut {
+  0%, 60% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: scale(0.985); }
+}
+
+.emptyDayAction:is(:hover, :focus-visible):not(:disabled) {
+  background: var(--c-hover) !important;
+  border-color: var(--c-border) !important;
+  color: var(--c-text-1) !important;
+}
+
+/*
+ * A missing required field nudges the whole card rather than printing a
+ * message under it.
+ *
+ * Animating `translate` and not `transform`: Modal already puts the dialog's
+ * vertical offset in `transform`, and a transform keyframe would wipe it for
+ * the length of the animation — the card would jump to the top of the screen
+ * and back. The individual transform properties compose with it instead.
+ *
+ * The prefers-reduced-motion block in globals.css flattens this to 0.01ms
+ * along with everything else, which is why the field's red edge carries the
+ * message on its own.
+ */
+@keyframes taskCardNudge {
+  0%, 100% { translate: 0; }
+  15% { translate: -7px; }
+  35% { translate: 6px; }
+  55% { translate: -4px; }
+  75% { translate: 3px; }
+  90% { translate: -1px; }
+}
+
+.nudge {
+  animation: taskCardNudge 320ms var(--ease-out);
+}
+
+/*
+ * The filter line under the page title: search on the left, the three pickers
+ * on the right.
+ *
+ * Wraps rather than overflows. On a phone the field's 200px floor plus three
+ * pills is more than the column has, and the alternatives are both worse than
+ * two lines — squeezing the field until a task title cannot be read in it, or
+ * a hidden-scrollbar row that ends somewhere off screen. When it does wrap the
+ * pickers keep the left edge rather than staying pushed right, because right
+ * alignment reads as "attached to the field" only while they are beside it.
+ */
+.filterLine {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.filterLine > :first-child {
+  /* Takes the slack, down to a floor wide enough to read a task title in. */
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+/*
+ * The three pickers. One line beside the field on a desktop; below it on a
+ * phone, where they scroll.
+ *
+ * They need 356px and a 375px phone's column is 343 — each picker is as wide
+ * as its own longest option, which is what stops it resizing when you use it,
+ * and that costs width. Scrolling rather than wrapping or squeezing: a fourth
+ * line of one stranded pill is the ragged stack this row was pulled out of the
+ * title row to avoid, and a squeezed picker truncates a label that is the
+ * entire content of the control. It is also what the category row directly
+ * below already does, so the page has one answer for a row of controls wider
+ * than the screen. Fits whole from 390px up.
+ */
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.filterGroup::-webkit-scrollbar {
+  display: none;
+}
+
+.filterGroup > * {
+  flex-shrink: 0;
+}
+
+/*
+ * The list's two smallest gaps: under each task card, and between a day's
+ * heading and its first card. A little wider on a phone, where the list
+ * read as cramped (the owner, 8 Oct 2026). Variables, so what is drawn to
+ * line up with them (the Overdue box's foot, a run of empty days) follows.
+ */
+.list {
+  --task-card-gap: 6px;
+  --day-heading-gap: 10px;
+}
+
+@media (max-width: 619px) {
+  .list {
+    --task-card-gap: 8px;
+    --day-heading-gap: 14px;
+  }
+}
+
+/*
+ * On a phone the pickers are a line of their own under the search field,
+ * and run exactly as wide as it: they share the line equally, never
+ * narrower than their own longest option, and still scroll where even that
+ * does not fit (a 375px phone). Each was as wide as its own label, so the
+ * line ended short of the field above it (the owner, 8 Oct 2026: the two
+ * should be one unit, one width). 619 is APP_PHONE_BREAKPOINT less one.
+ */
+@media (max-width: 619px) {
+  .filterGroup {
+    flex: 1 1 100%;
+  }
+
+  .filterGroup > * {
+    flex: 1 0 0;
+  }
+}
+
+/*
+ * The category row: one line, always.
+ *
+ * It used to wrap. On a 375px phone the five starter categories became
+ * *three* stacked rows 102px tall — 661px of pills folded into a 343px box —
+ * and the touch gutter that keeps the manage button visible on a device with
+ * no hover (see the `hover: none` block below) makes each pill 18px wider
+ * there than on a desktop, so the phone is exactly where it folded worst.
+ *
+ * A row of filters is a single axis of choice and should read as one. It
+ * scrolls sideways now instead of stacking, at every width: a row that wraps
+ * on a laptop and scrolls on a phone is two different objects wearing the
+ * same paint.
+ *
+ * The `+` button is deliberately *outside* this scroller. It is not one of
+ * the choices, it should not scroll away from you, and its create form is an
+ * absolutely-positioned popover that an `overflow` ancestor would clip.
+ */
+.categoryBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.categoryScroller {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  /*
+   * Deliberately no scroll snapping. It is the obvious thing to reach for on
+   * a row of pills, and this app has already been bitten by it: `x proximity`
+   * on the calendar's week strip pulled the view from nearly half a column
+   * away, about a second after the last wheel event and unanimated, and read
+   * as the page moving on its own. The pills are 44-121px wide, so free
+   * scrolling lands somewhere sensible without being dragged there.
+   */
+}
+
+.categoryScroller::-webkit-scrollbar {
+  display: none;
+}
+
+/*
+ * The row is 30px of 30px-tall pills, so this never scrolls vertically — but
+ * `overflow-x: auto` computes `overflow-y` from `visible` to `auto` whatever
+ * is written here, so the block axis is a scroll container either way. It is
+ * inert because there is nothing to scroll, and a gesture down the page
+ * chains straight past it.
+ */
+.categoryScroller > * {
+  flex-shrink: 0;
+}
+
+/*
+ * The only thing saying there is more row than you can see.
+ *
+ * Worn by both rows on this page that are one line at a desktop width and too
+ * wide for a phone: the categories, and the filter group above them. The
+ * scrollbar is hidden on each — a permanent grey bar under a 343px strip of
+ * pills is worse than the problem — so the edge that has more behind it fades
+ * out instead. Driven by a measured scroll position (`lib/use-scroll-edge`),
+ * not left on permanently: a fade at an end you have already reached is a
+ * promise of content that is not there, which is the same lie as clipping
+ * silently.
+ *
+ * The `#000` stops are alpha, not colour — a mask reads its source's alpha
+ * channel, so opaque means "show this" and `transparent` means "hide it".
+ * Nothing here is themed, and nothing here needs to be: the same two stops
+ * fade the row into Midnight, Warm, Nature and Light alike.
+ *
+ * Unprefixed only. Lightning CSS merges a `-webkit-` pair into the prefixed
+ * form alone and current Chrome has dropped that alias, which is the trap
+ * recorded against `backdrop-filter` in globals.css.
+ */
+.edgeFade[data-edge="end"] {
+  mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+}
+
+.edgeFade[data-edge="start"] {
+  mask-image: linear-gradient(to right, transparent, #000 32px);
+}
+
+.edgeFade[data-edge="both"] {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 32px,
+    #000 calc(100% - 32px),
+    transparent
+  );
+}
+
+.categoryPlus {
+  position: relative;
+  flex-shrink: 0;
+}
+
+/*
+ * A category pill and its manage button.
+ *
+ * The button used to appear whenever the pill was the active one, which put a
+ * permanent second box next to it. It belongs to whichever pill is under the
+ * cursor instead, absolutely placed inside the pill's own right padding, with
+ * :focus-within keeping it reachable by keyboard.
+ *
+ * That padding used to be reserved permanently, showing or not, so that
+ * revealing the button could not reflow the row. It traded a reflow nobody
+ * notices for a gap everybody does: every pill rested with 18px of empty
+ * space inside its right edge and read as a pill missing its label rather
+ * than one holding a hidden control. The gutter opens on hover instead, so a
+ * resting pill is padded evenly — 6px/14px, the same as the All pill beside
+ * it — and the row only moves while you are pointing at it.
+ */
+.categoryChip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+/*
+ * The pill's padding lives here, not inline on the element, because it is what
+ * animates and an inline declaration would beat this rule.
+ *
+ * Longhands, and restating .tab's whole property list rather than adding to
+ * it: `transition` is a shorthand, so a second declaration of it at equal
+ * specificity replaces .tab's outright depending only on which rule comes
+ * later in the file. The descendant selector also puts this at 0,2,0 so it
+ * beats .tab regardless of order.
+ */
+.categoryChip .categoryChipLabel {
+  padding: 6px 14px;
+  transition:
+    color var(--motion-fast) var(--ease-out),
+    background var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out),
+    opacity var(--motion-fast) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out),
+    filter var(--motion-fast) var(--ease-out),
+    /* Closing waits for the dots to finish fading — see the sequencing note
+       on .categoryChipMenu. Opening cancels this delay. */
+    padding-right var(--motion-fast) var(--ease-out) calc(var(--motion-fast) / 2);
+}
+
+/*
+ * Opens the gutter the menu button sits in. 32px clears the 22px button at
+ * right: 5px with 5px to spare, so the name never runs under the dots.
+ */
+.categoryChip:is(:hover, :focus-within) .categoryChipLabel {
+  padding-right: 32px;
+  transition-delay: 0s;
+}
+
+.categoryChipMenu {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0;
+  pointer-events: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  /*
+   * The gutter and the dots are sequenced, not simultaneous.
+   *
+   * Run together and they overlap: the gutter needs to reach 27px before it
+   * clears the button, and on this easing that is two thirds of the way
+   * through — by which point the dots are at 0.66 opacity and sitting over
+   * the last letter of the name. Sampled every 8ms, that was a visible 25ms
+   * of dots-on-top in both directions.
+   *
+   * So the dots fade over half the duration and wait for the gutter on the
+   * way in, and on the way out they go first and the gutter waits for them.
+   * Either way the two never occupy the same pixels.
+   */
+  transition:
+    opacity calc(var(--motion-fast) / 2) var(--ease-out) 0s,
+    background var(--motion-fast) var(--ease-out) 0s,
+    color var(--motion-fast) var(--ease-out) 0s;
+}
+
+.categoryChip:is(:hover, :focus-within) .categoryChipMenu {
+  opacity: 1;
+  pointer-events: auto;
+  transition:
+    opacity calc(var(--motion-fast) / 2) var(--ease-out) calc(var(--motion-fast) / 2),
+    background var(--motion-fast) var(--ease-out) 0s,
+    color var(--motion-fast) var(--ease-out) 0s;
+}
+
+/* Its own hover, so the dots read as a button rather than as decoration on
+   the pill — the pill under it already has a hover fill of its own. */
+.categoryChipMenu:is(:hover, :focus-visible) {
+  color: var(--c-text-1) !important;
+  background: var(--c-hover);
+}
+
+/*
+ * No hover on a touch screen, so the gutter stays open and the dots stay
+ * visible — the same choice .rowActions makes below, for the same reason.
+ */
+@media (hover: none) {
+  .categoryChip .categoryChipLabel {
+    padding-right: 32px;
+  }
+
+  .categoryChipMenu {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/*
+ * The global reduce block zeroes transition-duration but not
+ * transition-delay, so without this the sequencing above survives as two
+ * instant steps 60ms apart — a stutter, which is the one thing that block
+ * exists to remove.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .categoryChip .categoryChipLabel,
+  .categoryChip .categoryChipMenu,
+  .categoryChip:is(:hover, :focus-within) .categoryChipLabel,
+  .categoryChip:is(:hover, :focus-within) .categoryChipMenu {
+    transition-delay: 0s;
+  }
+}
+
+/*
+ * The hover cluster on a task row.
+ *
+ * Absolutely placed over the row's right side rather than taking space in it,
+ * because reserving eighty pixels on every row to hold three buttons that are
+ * usually invisible would cost every title that width permanently. It carries
+ * the row's own fill with a short gradient on its left edge, so a long title
+ * fades out beneath it instead of being cut off mid-word.
+ *
+ * data-open holds it visible while one of its popovers is showing. Those are
+ * portalled to the body, so :focus-within on the row cannot see them and the
+ * cluster would otherwise fade out from under the menu it just opened.
+ */
+.rowActions {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion-fast) var(--ease-out);
+}
+
+.taskCard:is(:hover, :focus-within) .rowActions,
+.rowActions[data-open="true"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* No hover on a touch screen, so the cluster is simply always there. */
+@media (hover: none) {
+  .rowActions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/*
+ * Copy, at the end of each day's heading: the day's open tasks onto the
+ * clipboard as a list, its completed ones under them, for answering "what do
+ * you have on today?" in a message. A surface button, the same family as the
+ * filter line's.
+ *
+ * 84px when the heading leaves room, so "Copy" and "Copied" are one size and
+ * the word changing never moves anything. A long heading on a narrow phone
+ * ("28 Sep · Tomorrow · Wednesday" is 263px at 18px, and a 390px phone leaves
+ * it 262) takes the room it needs and the button gives way down to its icon,
+ * rather than the day wrapping onto two lines. The button is its own
+ * container, so the label goes whole at any width short of 84, never cut,
+ * and "Copied" (60px of the 64 inside) always fits when it shows.
+ *
+ * Its pull (negative block margin) keeps a day with the button the same
+ * height as an empty day without one, so the list does not step.
+ */
+.copyDay {
+  container-type: inline-size;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 0 1 84px;
+  min-width: 32px;
+  height: 28px;
+  margin: -3px 0 -3px auto;
+  padding: 0 9px;
+  overflow: hidden;
+  border: 1px solid var(--c-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--c-surface);
+  color: var(--c-text-2);
+  font-size: var(--ui-type-label, 12px);
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color var(--motion-fast) var(--ease-out),
+    background var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out);
+}
+
+.copyDay > svg {
+  flex-shrink: 0;
+}
+
+/* The container is the button's inside: 84 less 2px of border and 18 of padding is 64. */
+@container (max-width: 63px) {
+  .copyDayLabel {
+    display: none;
+  }
+}
+
+.copyDay:is(:hover, :focus-visible) {
+  color: var(--c-text-1);
+  background: var(--c-hover);
+}
+
+.copyDay[data-copied="true"] {
+  color: var(--c-accent);
+}
+
+/* A finger needs more than 28px; the drawn button stays the same size. */
+@media (pointer: coarse) {
+  .copyDay {
+    position: relative;
+    overflow: visible;
+  }
+
+  .copyDay::after {
+    content: "";
+    position: absolute;
+    inset: -8px -6px;
+  }
+}
