@@ -277,13 +277,16 @@ export function CreateAccountScreen({ onTheWeb, onCreated }: { onTheWeb: boolean
   );
 }
 
-export function SignInScreen() {
+export function SignInScreen({ projectRefValue, onTheWeb }: { projectRefValue: string | null; onTheWeb: boolean }) {
+  const [mode, setMode] = useState<"sign-in" | "reset">("sign-in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [proof, setProof] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const links = projectRefValue ? dashboardLinks(projectRefValue) : null;
 
-  async function submit(event: FormEvent) {
+  async function signIn(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
     setError(null);
@@ -294,9 +297,67 @@ export function SignInScreen() {
     }
   }
 
+  async function reset(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/selfhost/password", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(onTheWeb ? { setupCode: proof, password } : { secretKey: proof, password }),
+      });
+      const answer = (await response.json().catch(() => ({}))) as { error?: string; email?: string };
+      if (!response.ok || !answer.email) throw new Error(answer.error ?? `The request failed (${response.status}).`);
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email: answer.email, password });
+      if (signInError) throw new Error(`The password was changed, but signing in failed: ${signInError.message}`);
+    } catch (failure) {
+      setError(getErrorMessage(failure, "That did not work. Try again."));
+      setBusy(false);
+    }
+  }
+
+  if (mode === "reset") {
+    return (
+      <Frame
+        title="Choose a new password"
+        intro={
+          onTheWeb ? (
+            <p>Enter the setup code you chose when you deployed, and a new password.</p>
+          ) : (
+            <p>
+              To show it&apos;s you, paste your project&apos;s secret key from Supabase{links ? ": " : "."}
+              {links && <ExternalLink href={links.apiKeys}>Open your API Keys page</ExternalLink>}
+            </p>
+          )
+        }
+      >
+        <form onSubmit={reset}>
+          <FieldStack>
+            <FieldGroup label={onTheWeb ? "Setup code" : "Secret key"} htmlFor="reset-proof">
+              <TextField id="reset-proof" type="password" value={proof} onChange={(e) => setProof(e.target.value)} autoComplete="off" placeholder={onTheWeb ? "" : "sb_secret_…"} spellCheck={false} />
+            </FieldGroup>
+            <FieldGroup label="New password" htmlFor="reset-password">
+              <TextField id="reset-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" placeholder="8 characters or more" />
+            </FieldGroup>
+            {error && <StatusBanner message={error} />}
+            <Actions>
+              <DialogButton type="submit" variant="primary" busy={busy} disabled={busy}>
+                {busy ? "Saving…" : "Save and sign in"}
+              </DialogButton>
+              <DialogButton variant="ghost" onClick={() => { setMode("sign-in"); setError(null); setPassword(""); }} disabled={busy}>
+                Back to sign in
+              </DialogButton>
+            </Actions>
+          </FieldStack>
+        </form>
+      </Frame>
+    );
+  }
+
   return (
     <Frame title={`Sign in to ${APP_NAME}`} intro={<p>Use the account you made when you set it up.</p>}>
-      <form onSubmit={submit}>
+      <form onSubmit={signIn}>
         <FieldStack>
           <FieldGroup label="Email" htmlFor="signin-email">
             <TextField id="signin-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
@@ -308,6 +369,9 @@ export function SignInScreen() {
           <Actions>
             <DialogButton type="submit" variant="primary" busy={busy} disabled={busy}>
               {busy ? "Signing in…" : "Sign in"}
+            </DialogButton>
+            <DialogButton variant="ghost" onClick={() => { setMode("reset"); setError(null); setPassword(""); }} disabled={busy}>
+              Forgot password?
             </DialogButton>
           </Actions>
         </FieldStack>

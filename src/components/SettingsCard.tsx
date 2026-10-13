@@ -5,6 +5,8 @@ import { CalendarBlank, Clock, type Icon } from "@phosphor-icons/react";
 import StatusBanner from "@/components/StatusBanner";
 import ThemePicker from "@/components/ThemePicker";
 import { DialogButton, DialogCard, DialogFooter } from "@/components/form/Dialog";
+import { downloadMyData } from "@/lib/export-data";
+import { getErrorMessage } from "@/lib/error-utils";
 import { supabase } from "@/lib/supabase";
 import { readStoredTheme, setTheme as persistTheme, type ThemeValue } from "@/lib/theme";
 import { useTimeFormat } from "@/lib/time-format";
@@ -107,6 +109,8 @@ export default function SettingsCard({
   const weekStart = useWeekStart();
   const timeFormat = useTimeFormat();
   const [email, setEmail] = useState("");
+  const [exporting, setExporting] = useState(false);
+  const [exportNote, setExportNote] = useState<{ tone: "success" | "error"; message: string } | null>(null);
   const links = projectRefValue ? dashboardLinks(projectRefValue) : null;
 
   useEffect(() => {
@@ -119,6 +123,19 @@ export default function SettingsCard({
       active = false;
     };
   }, []);
+
+  async function handleExport() {
+    setExporting(true);
+    setExportNote(null);
+    try {
+      const { goals, tasks } = await downloadMyData();
+      setExportNote({ tone: "success", message: `Saved ${tasks} task${tasks === 1 ? "" : "s"} and ${goals} goal${goals === 1 ? "" : "s"} to your downloads.` });
+    } catch (error) {
+      setExportNote({ tone: "error", message: getErrorMessage(error, "Could not read your data. Try again.") });
+    } finally {
+      setExporting(false);
+    }
+  }
 
   function handleTimeFormat(value: string) {
     if (value !== "12h" && value !== "24h") return;
@@ -171,6 +188,15 @@ export default function SettingsCard({
       <Divider />
       <SectionHeader label="Account" />
       <p style={{ color: "var(--c-text-2)", padding: "4px 0 8px" }}>{email ? `Signed in as ${email}` : "Signed in"}</p>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "4px 0 10px" }}>
+        <span style={{ color: "var(--c-text-3)", fontSize: "var(--ui-type-label)", lineHeight: 1.5 }}>
+          Every goal and task as a file. Supabase&apos;s free plan keeps no backups, so keep your own.
+        </span>
+        <DialogButton variant="secondary" onClick={() => { void handleExport(); }} busy={exporting} disabled={exporting}>
+          {exporting ? "Saving…" : "Download my data"}
+        </DialogButton>
+      </div>
+      {exportNote && <StatusBanner tone={exportNote.tone} message={exportNote.message} style={{ marginBottom: 10 }} />}
       {signupsOpen && (
         <StatusBanner
           tone="info"

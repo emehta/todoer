@@ -6,7 +6,7 @@ import { CaretDown, CaretRight, Lightbulb, Plus, X } from "@phosphor-icons/react
 import { supabase } from "@/lib/supabase";
 import { Task, NewTask, Priority } from "@/types/task";
 import type { TaskDraft } from "@/components/tasks/TaskEditModal";
-import { Category } from "@/types/category";
+import { Category, DEFAULT_GOAL_COLOR, GOAL_COLORS } from "@/types/category";
 import CategoryTabs from "@/components/tasks/CategoryTabs";
 import TaskList, { type TaskMoveRequest } from "@/components/tasks/TaskList";
 import {
@@ -895,6 +895,7 @@ function TasksPageInner() {
         throw error;
       }
       if (data) setCategories((prev) => [...prev, data]);
+      return data as Category;
     },
     [categories],
   );
@@ -1239,12 +1240,19 @@ function TasksPageInner() {
 
   /* The goal form's values, for the tab row's + and ⋯ Edit goal and for the
      goal's own Edit icon: one shape everywhere a goal is created or edited. */
-  const createGoal = (values: GoalFormValues) =>
-    handleCreateCategory(values.name, values.color, {
+  const createGoal = async (values: GoalFormValues) => {
+    await handleCreateCategory(values.name, values.color, {
       description: values.description,
       deadline: values.deadline,
       goal_type: values.goal_type,
     });
+  };
+  /* The task card's New goal: a name only, in the first colour no goal has yet. */
+  const createGoalNamed = (name: string) => {
+    const taken = new Set(categories.map((c) => c.color.toLowerCase()));
+    const color = GOAL_COLORS.find((option) => !taken.has(option.value.toLowerCase()))?.value ?? DEFAULT_GOAL_COLOR;
+    return handleCreateCategory(name, color);
+  };
   const editGoal = (id: string, values: GoalFormValues) =>
     handleEditCategory(id, values.name, values.color, values.description, values.deadline, values.goal_type);
 
@@ -1506,6 +1514,7 @@ function TasksPageInner() {
           categories={categories}
           onSave={handleEditSave}
           onDelete={handleDelete}
+          onCreateGoal={createGoalNamed}
           startInEdit={editingStartsInEdit}
           onClose={() => setEditingTask(null)}
         />
@@ -1517,6 +1526,7 @@ function TasksPageInner() {
           categories={categories}
           initialCategoryId={activeCategoryId}
           onCreate={handleAdd}
+          onCreateGoal={createGoalNamed}
           onClose={() => {
             setCreateModalOpen(false);
             setCreateInitialDueDate(null);
@@ -1533,6 +1543,7 @@ function TasksPageInner() {
           categories={categories}
           onCreate={handleAdd}
           onSave={handleEditSave}
+          onCreateGoal={createGoalNamed}
           onDelete={failedOnScreen.kind === "edit" ? handleDelete : undefined}
           startInEdit
           draft={failedOnScreen.draft}

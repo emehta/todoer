@@ -98,7 +98,7 @@ export default function SetupGate({ children }: { children: ReactNode }) {
     case "create-account":
       return <CreateAccountScreen onTheWeb={status?.onTheWeb ?? false} onCreated={refresh} />;
     case "sign-in":
-      return <SignInScreen />;
+      return <SignInScreen projectRefValue={ref} onTheWeb={status?.onTheWeb ?? false} />;
     case "not-owner":
       return <ProblemScreen kind="not-owner" projectRefValue={ref} onRetry={() => { void refresh(); }} />;
     case "app":

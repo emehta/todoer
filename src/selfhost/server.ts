@@ -118,6 +118,19 @@ async function seedGoals(client: SupabaseClient, userId: string): Promise<void> 
   if (insertError) throw new SetupError(`Could not add the first goals: ${insertError.message}`, 502);
 }
 
+/** Sets the owner's password, for a forgotten one: the caller has proved who it is first. */
+export async function resetOwnerPassword(config: AppConfig, password: string): Promise<string> {
+  const client = adminClient(config);
+  const { data, error } = await client.from("app_owner").select("user_id").maybeSingle();
+  if (error) throw new SetupError(`Could not read the database: ${error.message}`, 502);
+  if (!data?.user_id) throw new SetupError("This project has no account yet. Make one instead.", 409);
+  const { data: updated, error: updateError } = await client.auth.admin.updateUserById(data.user_id, { password });
+  if (updateError || !updated.user?.email) {
+    throw new SetupError(`Supabase did not change the password: ${updateError?.message ?? "no reason given"}`, 502);
+  }
+  return updated.user.email;
+}
+
 /** Makes the project's one account, already confirmed, with Personal and Work. */
 export async function createOwner(config: AppConfig, email: string, password: string): Promise<void> {
   const client = adminClient(config);

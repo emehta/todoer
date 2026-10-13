@@ -68,7 +68,15 @@ interface Props {
   draft?: TaskDraft;
   /** Why that save failed, shown in the dialog it came back to. */
   initialError?: string;
+  /**
+   * Makes a goal from the picker's New goal, so a task is never stuck for
+   * want of one: a new account's first task, or a goal not made yet.
+   */
+  onCreateGoal?: (name: string) => Promise<Category>;
 }
+
+/** The picker's last option, which turns the field into a name box. */
+const NEW_GOAL = "__new_goal__";
 
 /** What counts as "a control has focus" for the Enter-saves rule below. */
 const INTERACTIVE = "button, a, input, textarea, select, [role='option'], [role='menuitem'], [contenteditable='true']";
@@ -81,7 +89,7 @@ function dueDateColor(date: string | null): string {
   return "var(--c-text-2)";
 }
 
-export default function TaskEditModal({ task, categories, onSave, onCreate, onDelete, onClose, startInEdit, initialDueDate, initialCategoryId, draft, initialError }: Props) {
+export default function TaskEditModal({ task, categories, onSave, onCreate, onDelete, onClose, startInEdit, initialDueDate, initialCategoryId, draft, initialError, onCreateGoal }: Props) {
   const isCreateMode = !task;
   const timeFmt = useTimeFormat();
   const phone = usePhone();
@@ -116,6 +124,9 @@ export default function TaskEditModal({ task, categories, onSave, onCreate, onDe
     priority,
     category_id: categoryId,
   }));
+  const [newGoalName, setNewGoalName] = useState<string | null>(null);
+  const [newGoalBusy, setNewGoalBusy] = useState(false);
+  const [newGoalError, setNewGoalError] = useState("");
   const [saving, setSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
@@ -544,19 +555,70 @@ export default function TaskEditModal({ task, categories, onSave, onCreate, onDe
               />
             </FieldGroup>
             <FieldGroup label="Goal">
-              <SelectField
-                ariaLabel="Goal"
-                icon={activeCat ? undefined : <Tag size={14} />}
-                placeholder={categories.length ? "Goal" : "No goals yet"}
-                value={categoryId}
-                invalid={goalMissing}
-                options={categories.map((c) => ({ value: c.id, label: c.name, color: c.color }))}
-                onChange={(next) => {
-                  setCategoryId(next);
-                  setGoalMissing(false);
-                  refocusTitle();
-                }}
-              />
+              {newGoalName === null ? (
+                <SelectField
+                  ariaLabel="Goal"
+                  icon={activeCat ? undefined : <Tag size={14} />}
+                  placeholder={categories.length ? "Goal" : "No goals yet"}
+                  value={categoryId}
+                  invalid={goalMissing}
+                  options={[
+                    ...categories.map((c) => ({ value: c.id, label: c.name, color: c.color })),
+                    ...(onCreateGoal ? [{ value: NEW_GOAL, label: "New goal" }] : []),
+                  ]}
+                  onChange={(next) => {
+                    if (next === NEW_GOAL) {
+                      setNewGoalName("");
+                      setNewGoalError("");
+                      return;
+                    }
+                    setCategoryId(next);
+                    setGoalMissing(false);
+                    refocusTitle();
+                  }}
+                />
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <TextField
+                    autoFocus
+                    aria-label="New goal's name"
+                    placeholder="Name, then Enter"
+                    value={newGoalName}
+                    invalid={Boolean(newGoalError)}
+                    disabled={newGoalBusy}
+                    onChange={(event) => setNewGoalName(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setNewGoalName(null);
+                        return;
+                      }
+                      if (event.key !== "Enter") return;
+                      event.preventDefault();
+                      event.stopPropagation();
+                      const name = newGoalName.trim();
+                      if (!name || !onCreateGoal) {
+                        setNewGoalName(null);
+                        return;
+                      }
+                      setNewGoalBusy(true);
+                      onCreateGoal(name)
+                        .then((goal) => {
+                          setCategoryId(goal.id);
+                          setGoalMissing(false);
+                          setNewGoalName(null);
+                          refocusTitle();
+                        })
+                        .catch((error) => setNewGoalError(getErrorMessage(error, "Could not make that goal.")))
+                        .finally(() => setNewGoalBusy(false));
+                    }}
+                  />
+                  {newGoalError && (
+                    <span style={{ color: "var(--c-danger)", fontSize: "var(--ui-type-micro)" }}>{newGoalError}</span>
+                  )}
+                </div>
+              )}
             </FieldGroup>
           </div>
         </FieldStack>
