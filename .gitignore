@@ -21,3 +21,6 @@ extract-report.md
 
 # npm run develop's own settings (scripts/dev.mjs)
 .dev-data/
+
+# npm run package (scripts/package.mjs)
+dist/

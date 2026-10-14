@@ -1,6 +1,6 @@
 {
   "name": "todoer",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "description": "A to-do list with goals, priorities and voice capture, on your own database.",
   "license": "PolyForm-Noncommercial-1.0.0",
@@ -8,9 +8,10 @@
     "node": ">=22.18"
   },
   "scripts": {
-    "start": "node scripts/start.mjs",
+    "start": "node scripts/start.mjs --port 3101",
     "develop": "node scripts/dev.mjs",
     "build": "next build",
+    "package": "node scripts/package.mjs",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test": "node scripts/run-tests.mjs",

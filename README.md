@@ -1,157 +1,123 @@
 # Todoer
 
-A to-do list with goals, priorities and drag to plan your days. It runs on your own computer, and your tasks live in your own free Supabase project. Nothing goes to anyone else's server unless you turn on [Ramble](#turn-on-ramble).
+A to-do list with goals, priorities and drag to plan your days. It runs on your computer, and your tasks live in your own free Supabase project. Nothing goes to anyone else's server unless you turn on [Ramble](#ramble).
 
 ![Todoer's task list](docs/screenshot.png)
 
-- **Goals and priorities.** File tasks under goals, and give each one of four priorities. A day's list keeps the most important first.
-- **Plan by dragging.** Move a task within its day or onto another one. Overdue tasks collect in their own box until you move or finish them.
-- **Descriptions with lists**, written the way you would in Notes.
+- **Goals and priorities.** File tasks under goals, each with one of four priorities. Each day lists the most important first.
+- **Plan by dragging** a task within its day or onto another. Overdue tasks wait in their own box.
+- **Descriptions with lists**, as in Notes.
 - **Search** that finds every word you type, in any order.
-- **Insights**: what you add, by goal, over a week up to five years.
+- **Insights**: what you add, by goal, from a week to five years.
 - **Copy a day** as a list for WhatsApp, Notes or email.
-- **Ramble:** say your tasks instead of typing them, and check them before they're added.
-- **Nine themes**, and a layout that works on a phone.
+- **Ramble:** say your tasks, check them, add them.
+- **Nine themes**, and it works on a phone.
 
-Free to use and change for yourself; see [Licence](#licence). To work on the code, see [CONTRIBUTING.md](CONTRIBUTING.md).
+Free to use and change for yourself ([Licence](#licence)). To work on the code, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Before you start
+## Install
 
-You need:
+You need a Mac, Windows or Linux computer, [Node.js](https://nodejs.org) (the LTS version), and a free [Supabase](https://supabase.com) account (no card). It takes about ten minutes, once.
 
-- **A computer**: Mac, Windows or Linux.
-- **About 25 minutes**, once.
-- **A free Supabase account.** You don't need a card.
+On Windows, leave Node's "Automatically install the necessary tools" box unticked: Todoer doesn't need them.
 
-## Install it on your computer
+### With publik
 
-### With Publik
+Open [Todoer on publik](https://publikhq.com/todoer) and follow its steps.
 
-Open Todoer on [publik](https://publikhq.com) and follow its steps. They install Git and Node if you need them, then copy Todoer to your computer and start it. Then go to [Connect Supabase](#connect-supabase).
+### Download
 
-### By hand
+Paste one line into **Terminal** (Mac or Linux) or **Command Prompt** (Windows, not PowerShell). It downloads 6 MB, makes a `todoer` folder where you are, and opens Todoer in your browser a few seconds later.
 
-1. Install [Node.js](https://nodejs.org), the version marked LTS. On Windows, leave the box "Automatically install the necessary tools" unticked.
-2. Install [Git](https://git-scm.com/downloads), if you don't have it.
-3. Open **Terminal** (Mac or Linux) or **Command Prompt** (Windows; not PowerShell, which blocks `npm` until its settings are changed), and run:
+Mac and Linux:
 
-   ```
-   git clone https://github.com/emehta/todoer.git
-   cd todoer
-   npm install
-   npm start
-   ```
+```bash
+curl -fsSL https://github.com/emehta/todoer/releases/latest/download/todoer.zip -o todoer.zip && unzip -q todoer.zip && rm todoer.zip && cd todoer && npm start
+```
 
-The first start builds Todoer, which takes a minute or two. Then it opens in your browser at **http://localhost:3101**.
+Windows:
 
-Keep the window that ran `npm start` open: closing it stops Todoer.
+```bat
+curl -fsSL https://github.com/emehta/todoer/releases/latest/download/todoer.zip -o todoer.zip && tar -xf todoer.zip && del todoer.zip && cd todoer && npm start
+```
+
+### With Git
+
+```bash
+git clone https://github.com/emehta/todoer.git && cd todoer && npm install && npm start
+```
+
+This builds Todoer on your computer first, which takes about a minute.
+
+Either way, Todoer opens at **http://localhost:3101**. Keep the window that started it open: closing it stops Todoer.
 
 ## Connect Supabase
 
-Todoer's first screen, **Set up Todoer**, walks you through this. In short:
+Todoer's first screen, **Set up Todoer**, walks you through it:
 
-1. **Make a project.**
-   - Sign in at [supabase.com](https://supabase.com/dashboard/projects). A new account may first ask you to name an organisation: any name, on the Free plan.
-   - On **Create a new project**, give it a name, a database password (keep it somewhere safe) and the region nearest you.
-   - Press **Create new project**, and wait a minute while it starts.
-2. **Copy the Project URL.** On your project's home page, its address is just under its name, like `https://abcdefghijklmnopqrst.supabase.co`. Press **Copy** beside it, and paste it into Todoer. Todoer then links straight to the right pages of your project.
-3. **Copy the two keys** from **API Keys** (Todoer links to it):
-   - the **Publishable key**, which starts `sb_publishable_`;
-   - the key under **Secret keys**, which starts `sb_secret_`. It is hidden: press the eye beside it to show it, then copy it.
+1. **Make a project.** Sign in at [supabase.com](https://supabase.com/dashboard/projects) (a new account first asks you to name an organisation: any name, Free plan). On **Create a new project**, choose a name, a database password and the region nearest you, then press **Create new project**.
+2. **Copy the Project URL** from the project's home page (**Copy** beside the address under its name) into Todoer.
+3. **Copy both keys** from **API Keys**: the **Publishable key** (`sb_publishable_`) and the one under **Secret keys** (`sb_secret_`; press the eye to show it). Press **Connect**.
+4. **Add the tables.** Press **Copy the setup**, open the **SQL Editor** (if Supabase shows a note about snippets, press **Understood**), paste, press **Run**, then **Check again** in Todoer.
+5. **Make your account.** You start with two goals, Personal and Work.
 
-   Paste both into Todoer and press **Connect**.
-4. **Add the tables.**
-   - In Todoer, press **Copy the setup**.
-   - Open the **SQL Editor** (Todoer links to it). If Supabase shows a note about snippets, press **Understood**.
-   - Paste, and press **Run**.
-   - Back in Todoer, press **Check again**.
-5. **Make your account** with an email and a password. This is the only account. You start with two goals, Personal and Work.
+Then switch off sign-ups, so the project stays yours: in Supabase, **Authentication**, **Sign In / Providers**, switch off **Allow new users to sign up**, then **Save changes**. Strangers could see none of your tasks anyway; Settings reminds you until it's off.
 
-The secret key stays on your computer, in a file only your account can read:
+Leave **Enable Data API** on (**Integrations**, **Data API**): Todoer talks to your project through it.
+
+The secret key is saved only on your computer, in a file only your account can read:
+
 - Mac: `~/Library/Application Support/Todoer`
 - Windows: `%LOCALAPPDATA%\Todoer`
 - Linux: `~/.config/todoer`
 
-It is never sent to the page.
+## Ramble
 
-**Then turn off sign-ups in Supabase.**
-- In your project, open **Authentication**, then **Sign In / Providers**.
-- Under **User Signups**, switch off **Allow new users to sign up**, and press **Save changes**.
+The waves button beside **Add task**: talk, and Todoer writes it as tasks for you to check. Choose what listens in **Settings**, under **Ramble**:
 
-Nobody who signs up could see your tasks anyway, but this keeps your project to you. Todoer's Settings reminds you until it's off.
+- **Groq**: free, with your own key from [console.groq.com](https://console.groq.com/keys). Paste it and press **Save**; Todoer checks it first. The free plan has limits per minute and per day, and no bill.
+- **publik**: no key. Press **Accept and use publik**, then **Sign in with publik** to link this computer for $0.05 of free use. After that it's paid per use; a short ramble costs about a fifth of a cent.
 
-Leave **Enable Data API** on (under **Integrations**, **Data API**), as it is when a project is new: Todoer talks to your project through it.
-
-## Turn on Ramble
-
-Ramble is the waves button beside **Add task**: talk, and it writes what you said as tasks for you to check before they're added. It needs an AI to listen, and you choose which in **Settings**, under **Ramble**:
-
-- **Groq**, with your own free key.
-  1. Sign in at [console.groq.com](https://console.groq.com/keys) and create an API key.
-  2. Paste it into Settings and press **Save**. Todoer checks it with Groq first.
-
-  Groq's free plan has limits per minute and per day, and no bill. The key stays on your computer.
-- **publik**, with no key to paste. Read publik's terms in Settings and press **Accept and use publik**. Its balance starts at $0.00; press **Sign in with publik** to link this computer and get $0.05 of free use, then it's paid per use. Your recording goes through publik's servers to the model.
-
-Either way, the recording is sent to that service to be written down and read. Todoer keeps neither the recording nor the words.
-
-The first time, your browser asks to use the microphone: allow it for `localhost`.
+The recording goes to the one you chose to be written down and read. Todoer keeps neither the recording nor the words. The first time, allow the microphone for `localhost`.
 
 ## Open it again
 
-- **Mac:** double-click **Start Todoer.command** in the todoer folder.
-- **Windows:** double-click **Start Todoer.cmd** in the todoer folder.
+Double-click **Start Todoer.command** (Mac) or **Start Todoer.cmd** (Windows) in the `todoer` folder. It opens Todoer, or the copy already running.
 
-It opens your browser on Todoer, or on the copy already running.
-
-To open it like an app, install it from your browser while it's open: Safari's **File → Add to Dock**, or Chrome's **Install** icon in the address bar.
+To open it like an app: Safari's **File → Add to Dock**, or Chrome's **Install** icon in the address bar.
 
 ## Your data
 
-- **It's in your Supabase project.** No one else hosts it.
-- **Back up:** Settings → **Download my data** saves every goal and task as one file. Supabase's free plan keeps no backups of its own, so do this now and then. The file is your copy to keep: Todoer can't read one back in yet.
-- **A paused project:** Supabase pauses a free project after a week unused. Todoer then says so and links to it: press **Restore project** there, then **Try again**.
-- **Both apps, one project:** CronCal, the calendar (coming soon), can use the same project, and you sign in to both with the same account.
-- **Move to another project:** stop Todoer, delete `config.json` from the folder above (the one that holds the secret key), and start it again. It asks for a project as it did the first time. Your tasks stay in the old project.
+- **Back up** with Settings → **Download my data**: every goal and task in one file. Supabase's free plan keeps no backups, so do it now and then. Todoer can't read the file back in yet.
+- **A paused project:** Supabase pauses a free project after a week unused. Press **Restore project** there, then **Try again** in Todoer.
+- **Another project:** stop Todoer, delete `config.json` from the folder above, and start it again. Your tasks stay in the old project.
 
 ## Update
 
-Stop Todoer (close its window), then run:
+Close Todoer's window first. Your tasks and settings are kept.
 
-```
-cd todoer
-git checkout main
-git pull
-npm install
-npm start
-```
+- **Downloaded:** delete the `todoer` folder (`rm -rf todoer` on Mac or Linux, `rmdir /s /q todoer` on Windows), then run the download line again.
+- **With publik or Git:** in the `todoer` folder, run `git checkout main && git pull && npm install && npm start`.
 
-If an update needs a change to your tables, Todoer asks you to run the setup again. That keeps everything you have.
+If an update changes the tables, Todoer asks you to run the setup again. Nothing is lost.
 
 ## Something not working
 
-- **"Supabase isn't answering":** check you're online. Your project may be paused: see [Your data](#your-data).
-- **"Another program is using port 3101":** start Todoer on another port with `npm start -- --port 3105`.
-- **Forgot your password:** on the sign-in screen press **Forgot password?**, and paste your project's secret key to show it's you.
-- **Windows says npm isn't recognised:** close the window and open a new **Command Prompt** after installing Node.
-- **PowerShell says "running scripts is disabled on this system":** use **Command Prompt** instead, or type `npm.cmd` wherever this page says `npm`.
-- **The microphone is blocked:** allow it for `localhost` in your browser's site settings (the icon at the left of the address bar), then reload.
+- **"Supabase isn't answering":** check you're online, and that the project isn't [paused](#your-data).
+- **"Another program is using port 3101":** start on another port with `npm start -- --port 3105`.
+- **Forgot your password:** press **Forgot password?** on the sign-in screen and paste your project's secret key.
+- **Windows says npm isn't recognised:** open a new Command Prompt after installing Node.
+- **PowerShell says "running scripts is disabled":** use Command Prompt, or type `npm.cmd` for `npm`.
+- **The microphone is blocked:** allow it for `localhost` in the browser's site settings (left of the address bar), then reload.
 
 ## Remove it
 
-1. If you opened it like an app: Safari's lives in the **Applications** folder inside your home folder, so move it to the Trash from there; Chrome's is removed by opening it and choosing **Uninstall Todoer** from its ⋮ menu.
-2. Delete the todoer folder.
-3. Delete Todoer's folder in your computer's app data:
-   - Mac: `~/Library/Application Support/Todoer`
-   - Windows: `%LOCALAPPDATA%\Todoer`
-   - Linux: `~/.config/todoer`
-4. If you're done with Supabase too, delete the project there.
+1. Delete the `todoer` folder, and the settings folder [above](#connect-supabase). If you used publik, also delete its key for Todoer, `publik/apps/todoer.json`, in the same place as that folder (Application Support, `%LOCALAPPDATA%` or `~/.config`).
+2. If you added it like an app: delete Safari's from the **Applications** folder in your home folder, or open Chrome's and choose **Uninstall Todoer** from its ⋮ menu.
+3. If you're done with Supabase, delete the project there.
 
 ## Licence
 
-[PolyForm Noncommercial 1.0.0](LICENSE.md).
-
-- **You may:** use Todoer, change it and share it, for yourself or for any non-commercial purpose.
-- **You may not:** sell it or use it in a business.
+[PolyForm Noncommercial 1.0.0](LICENSE.md): use it, change it and share it for yourself or any non-commercial purpose. Don't sell it or use it in a business.
 
 Copyright Eshaan Mehta.

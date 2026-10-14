@@ -1,6 +1,6 @@
 # Working on Todoer
 
-Thanks for looking. This page is for changing the code. To install and use Todoer, see the [README](README.md).
+This page is for changing the code. To install and use Todoer, see the [README](README.md).
 
 ## Run it
 
@@ -13,7 +13,9 @@ npm run develop
 
 That's Next's development server at **http://localhost:3201**. It keeps its settings in `.dev-data` in this folder, which git ignores, so it never touches the project an installed Todoer on the same computer uses, and both can run at once. The first screen connects it to your test project, as it does for a user.
 
-`npm start` is what users run: it builds when something changed, then serves the build on port 3101.
+`npm start` is what users run from the source: it builds when something changed (without the type check, which CI does), then serves the build on port 3101.
+
+`npm run package` makes the release download, `dist/todoer.zip`: Next's standalone server and the files it reads, about 6 MB, run with `npm start` like the source but with no install or build. It must hold no native module, so one file runs on every system; the script refuses one. `node scripts/smoke.mjs dist/todoer` checks it. Publishing a GitHub release attaches it (`.github/workflows/release.yml`), and the README's download line fetches the latest.
 
 ## The checks
 
@@ -32,7 +34,7 @@ npm run smoke
 
 ## Tests
 
-There is no test framework, on purpose. Each suite is a plain Node script that checks things and exits non-zero when one is wrong, which keeps them fast and readable, with nothing to configure. They cover the places where a mistake leaves nothing on screen: a task that lands in the wrong place in its day, a setup that makes two owners, a session refresh that signs someone out, a schema that drops a table.
+No test framework, on purpose: each suite is a plain Node script that exits non-zero on a failure. They cover the places where a mistake leaves nothing on screen: a task that lands in the wrong place in its day, a setup that makes two owners, a session refresh that signs someone out, a schema that drops a table.
 
 - A new suite is a new `scripts/<name>.test.mjs`. `npm test` finds it by its name.
 - `scripts/alias-loader.mjs` lets a test `import` app code by the `@/` path.

@@ -5,6 +5,9 @@
  * moves 127.0.0.1 to localhost, refuses another site's write, and has no
  * secret in what it sends the browser. Runs in CI on macOS, Windows and
  * Linux (.github/workflows/ci.yml), and here with `node scripts/smoke.mjs`.
+ *
+ *   node scripts/smoke.mjs                  this folder, from the source
+ *   node scripts/smoke.mjs <unzipped todoer> the release download (npm run package)
  */
 
 import { spawn, spawnSync } from "node:child_process";
@@ -14,6 +17,7 @@ import os from "node:os";
 import path from "node:path";
 
 const PORT = 3191;
+const APP = path.resolve(process.argv[2] ?? ".");
 const dataDir = mkdtempSync(path.join(os.tmpdir(), "todoer-smoke-"));
 const failures = [];
 let passed = 0;
@@ -22,8 +26,16 @@ const check = (name, ok, detail = "") => {
   else failures.push(`${name}${detail ? `: ${detail}` : ""}`);
 };
 
-const server = spawn(process.execPath, ["scripts/start.mjs", "--port", String(PORT), "--no-open"], {
-  env: { ...process.env, TODOER_DATA_DIR: dataDir, NEXT_PUBLIC_SUPABASE_URL: "", SUPABASE_SECRET_KEY: "" },
+const server = spawn(process.execPath, [path.join(APP, "scripts", "start.mjs"), "--port", String(PORT), "--no-open"], {
+  // Every name config.ts reads, emptied, so a developer's .env.local can't connect the copy under test.
+  env: {
+    ...process.env,
+    TODOER_DATA_DIR: dataDir,
+    ...Object.fromEntries(
+      ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "SUPABASE_PUBLISHABLE_KEY",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY", "SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY"].map((name) => [name, ""]),
+    ),
+  },
   stdio: ["ignore", "pipe", "pipe"],
 });
 let output = "";
@@ -94,7 +106,7 @@ const walk = (dir) => {
     else if (/\.(js|css|html|json)$/.test(entry) && /sb_secret_[A-Za-z0-9_-]{16,}/.test(readFileSync(full, "utf8"))) leaked = true;
   }
 };
-walk(path.join(".next", "static"));
+walk(path.join(APP, ".next", "static"));
 check("the built browser files carry no secret key", !leaked);
 
 if (failures.length > 0) {

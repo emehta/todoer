@@ -7,10 +7,11 @@
  *   npm start -- --port 3105      another port, if 3101 is taken
  *   npm start -- --no-open        without opening the browser
  *
- * It builds on the first run and after an update (anything in the app's
- * files changed since the last build), and not otherwise, so starting it
- * again each day takes a second. Already running? It opens the browser on
- * the copy that is running and stops there.
+ * From the source it builds on the first run and after an update (anything
+ * in the app's files changed since the last build), and not otherwise, so
+ * starting it again each day takes a second. The release download
+ * (scripts/package.mjs) is built already and only starts. Already running?
+ * It opens the browser on the copy that is running and stops there.
  *
  * Written for a person who has never used a terminal: every way it can stop
  * says what to do next in one sentence, with no stack trace.
@@ -24,7 +25,8 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 
 const args = process.argv.slice(2);
-const portArg = args.indexOf("--port");
+// The last --port wins, so `npm start -- --port 3105` overrides package.json's.
+const portArg = args.lastIndexOf("--port");
 const PORT = portArg >= 0 ? Number(args[portArg + 1]) : 3101;
 const OPEN = !args.includes("--no-open");
 const HOST = "127.0.0.1";
@@ -36,6 +38,9 @@ const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 process.chdir(ROOT);
 const NEXT = path.join(ROOT, "node_modules", "next", "dist", "bin", "next");
 const STAMP = path.join(ROOT, ".next", "todoer-build-stamp");
+/* The release download carries Next's own server in place of the sources. */
+const SERVER = path.join(ROOT, "server.js");
+const PREBUILT = existsSync(SERVER);
 
 function stop(message) {
   console.error(`\n${message}\n`);
@@ -47,7 +52,7 @@ if (major < 22 || (major === 22 && minor < 18)) {
   stop(`Todoer needs Node 22.18 or newer, and this computer has ${process.versions.node}. Install the current LTS from nodejs.org, then run npm start again.`);
 }
 if (!Number.isInteger(PORT) || PORT < 1024 || PORT > 65535) stop("The port must be a number from 1024 to 65535.");
-if (!existsSync(NEXT)) stop("Todoer's packages are not installed yet. Run npm install in this folder, then npm start.");
+if (!PREBUILT && !existsSync(NEXT)) stop("Todoer's packages are not installed yet. Run npm install in this folder, then npm start.");
 
 /** A fingerprint of everything a build depends on: each file's path, size and time. */
 function buildStamp() {
@@ -114,18 +119,22 @@ if (already === "other") {
   stop(`Another program is using port ${PORT}. Close it, or start Todoer on another port: npm start -- --port ${PORT + 4}`);
 }
 
-const stamp = buildStamp();
-const built = existsSync(path.join(ROOT, ".next", "BUILD_ID")) && existsSync(STAMP) && readFileSync(STAMP, "utf8") === stamp;
-if (!built) {
-  console.log("Building Todoer. The first time takes a minute or two.\n");
-  const env = { ...process.env };
-  delete env.PUBLIK_SELF_TEST;
-  const result = spawnSync(process.execPath, [NEXT, "build"], { stdio: "inherit", env });
-  if (result.status !== 0) stop("The build stopped with an error (above). If you changed nothing, run npm install, then npm start.");
-  writeFileSync(STAMP, stamp);
+if (!PREBUILT) {
+  const stamp = buildStamp();
+  const built = existsSync(path.join(ROOT, ".next", "BUILD_ID")) && existsSync(STAMP) && readFileSync(STAMP, "utf8") === stamp;
+  if (!built) {
+    console.log("Building Todoer. The first time takes a minute.\n");
+    const env = { ...process.env, TODOER_SKIP_TYPECHECK: "1" };
+    delete env.PUBLIK_SELF_TEST;
+    const result = spawnSync(process.execPath, [NEXT, "build"], { stdio: "inherit", env });
+    if (result.status !== 0) stop("The build stopped with an error (above). If you changed nothing, run npm install, then npm start.");
+    writeFileSync(STAMP, stamp);
+  }
 }
 
-const server = spawn(process.execPath, [NEXT, "start", "-H", HOST, "-p", String(PORT)], { stdio: ["ignore", "pipe", "inherit"] });
+const server = PREBUILT
+  ? spawn(process.execPath, [SERVER], { stdio: ["ignore", "pipe", "inherit"], env: { ...process.env, HOSTNAME: HOST, PORT: String(PORT) } })
+  : spawn(process.execPath, [NEXT, "start", "-H", HOST, "-p", String(PORT)], { stdio: ["ignore", "pipe", "inherit"] });
 server.stdout.on("data", (chunk) => {
   const text = chunk.toString();
   // Errors, and publik's self-test line (PUBLIK_SELF_TEST=1 npm start), reach the terminal.
@@ -140,15 +149,18 @@ server.on("exit", (code) => {
 });
 for (const signal of ["SIGINT", "SIGTERM"]) process.on(signal, () => server.kill(signal));
 
-for (let tries = 0; tries < 60; tries += 1) {
+/* Until it answers, however long a slow computer takes; the server exiting
+   ends this script through its exit handler above. */
+const startedAt = Date.now();
+let toldSlow = false;
+while (!ready) {
   await new Promise((resolve) => setTimeout(resolve, 500));
   if ((await answering()) === "todoer") {
     ready = true;
     console.log(`\nTodoer is running at ${APP_URL}\nKeep this window open: closing it stops Todoer.\n`);
     openBrowser();
-    break;
+  } else if (!toldSlow && Date.now() - startedAt > 30_000) {
+    toldSlow = true;
+    console.log("\nTodoer is still starting. It opens in your browser when it's ready.\n");
   }
-}
-if (!ready && server.exitCode === null) {
-  console.log(`\nTodoer is still starting. Open ${APP_URL} in a minute. Keep this window open: closing it stops Todoer.\n`);
 }
