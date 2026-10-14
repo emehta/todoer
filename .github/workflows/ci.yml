@@ -3,6 +3,8 @@ name: Checks
 # Every push and pull request, on the three systems people run Todoer on:
 # the types, the lint, every test suite, and the smoke test (npm start on a
 # copy connected to nothing, as a new user's computer first runs it).
+# Node 24 everywhere, and the oldest Node Todoer accepts (package.json's
+# engines) on Linux, so that floor stays true.
 
 on:
   push:
@@ -12,21 +14,27 @@ on:
 permissions:
   contents: read
 
+# A newer push to the same branch or pull request makes an older run moot.
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   checks:
     name: ${{ matrix.os }}, Node ${{ matrix.node }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
-        node: [24]
+        node: ["24"]
         include:
           - os: ubuntu-latest
-            node: 22
+            node: "22.18.0"
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
           cache: npm

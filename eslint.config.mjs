@@ -13,7 +13,7 @@ const eslintConfig = [
   {
     rules: {
       // A leading underscore is how this codebase marks a binding that exists
-      // to satisfy a signature or to drop a key — flagging those is noise.
+      // to satisfy a signature or to drop a key; flagging those is noise.
       "@typescript-eslint/no-unused-vars": [
         "warn",
         {

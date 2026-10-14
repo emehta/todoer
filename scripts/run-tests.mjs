@@ -2,7 +2,7 @@
  * Runs every suite in scripts/: `npm test`.
  *
  * The suites are plain node scripts that assert and exit non-zero (see
- * CLAUDE.md for why there is no framework). This used to be a hand-kept chain
+ * CONTRIBUTING.md for why there is no framework). This used to be a hand-kept chain
  * of `npm run test:x && npm run test:y …` in package.json, so a new suite ran
  * only if someone remembered to add it to the chain, and one that was never
  * added failed in silence forever. Every `*.test.mjs` here runs now.

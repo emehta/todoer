@@ -3,8 +3,8 @@
  * Copies exactly the files this app uses out of the source app, at one pinned
  * commit, by following imports from the entry files.
  *
- *   SOURCE_REPO=/path/to/source npm run extract            write what is missing
- *   SOURCE_REPO=/path/to/source npm run extract -- --dry   report only
+ *   SOURCE_REPO=/path/to/source npm run maint:extract            write what is missing
+ *   SOURCE_REPO=/path/to/source npm run maint:extract -- --dry   report only
  *
  * The source is read with `git show <commit>:<path>`, never from its working
  * tree, so the run is the same every time and the source is never touched.
