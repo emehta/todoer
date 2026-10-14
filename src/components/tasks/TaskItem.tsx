@@ -184,6 +184,8 @@ export default function TaskItem({
         style={{
           color: completed ? "var(--c-text-4)" : "var(--c-text-1)",
           textDecoration: completed ? "line-through" : "none",
+          // A pasted link has no spaces to break at, and would push the row off screen.
+          overflowWrap: "anywhere",
         }}
       >
         <Highlight text={task.title} />

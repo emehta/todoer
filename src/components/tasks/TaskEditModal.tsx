@@ -127,6 +127,52 @@ export default function TaskEditModal({ task, categories, onSave, onCreate, onDe
   const [newGoalName, setNewGoalName] = useState<string | null>(null);
   const [newGoalBusy, setNewGoalBusy] = useState(false);
   const [newGoalError, setNewGoalError] = useState("");
+
+  /* The goal picker's trigger, to hand focus back to when New goal closes:
+     left on <body>, the card's Enter-saves listener would take the next Enter. */
+  const goalFieldId = `task-goal-${task?.id ?? "new"}`;
+  function focusGoalPicker() {
+    requestAnimationFrame(() => document.getElementById(goalFieldId)?.focus({ preventScroll: true }));
+  }
+  function closeNewGoal() {
+    setNewGoalName(null);
+    setNewGoalError("");
+    focusGoalPicker();
+  }
+  /**
+   * The name typed under New goal, as a goal: one already named that is
+   * picked rather than made twice. Answers its id, or null when nothing was
+   * made (no name, or the create failed and says why under the field).
+   */
+  async function confirmNewGoal(): Promise<string | null> {
+    const name = (newGoalName ?? "").trim();
+    if (!name || !onCreateGoal) {
+      closeNewGoal();
+      return null;
+    }
+    const existing = categories.find((goal) => goal.name.trim().toLowerCase() === name.toLowerCase());
+    let id: string;
+    if (existing) {
+      id = existing.id;
+    } else {
+      setNewGoalBusy(true);
+      setNewGoalError("");
+      try {
+        id = (await onCreateGoal(name)).id;
+      } catch (error) {
+        setNewGoalError(getErrorMessage(error, "Could not make that goal."));
+        return null;
+      } finally {
+        setNewGoalBusy(false);
+      }
+    }
+    setCategoryId(id);
+    setGoalMissing(false);
+    setNewGoalName(null);
+    setNewGoalError("");
+    focusGoalPicker();
+    return id;
+  }
   const [saving, setSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
@@ -255,8 +301,16 @@ export default function TaskEditModal({ task, categories, onSave, onCreate, onDe
      * none, and requiring one on edit meant those tasks could not have so much
      * as a typo fixed without being filed somewhere first.
      */
+    /* A name typed under New goal and never confirmed is still the goal the
+       person meant: it is made (or found) first, then the task saved in it. */
+    let goalId = categoryId;
+    if (newGoalName !== null && newGoalName.trim()) {
+      const made = await confirmNewGoal();
+      if (!made) return;
+      goalId = made;
+    }
     const hasTitle = Boolean(title.trim());
-    const hasGoal = Boolean(categoryId) || !isCreateMode;
+    const hasGoal = Boolean(goalId) || !isCreateMode;
     if (!hasTitle || !hasGoal) {
       setTitleMissing(!hasTitle);
       setGoalMissing(!hasGoal);
@@ -269,16 +323,17 @@ export default function TaskEditModal({ task, categories, onSave, onCreate, onDe
     setActionError("");
 
     try {
+      const toSave: TaskDraft = goalId === fields.category_id ? fields : { ...fields, category_id: goalId };
       if (isCreateMode) {
         if (!onCreate) throw new Error("Task creation is unavailable.");
-        await onCreate(fields);
+        await onCreate(toSave);
       } else if (task) {
         if (!onSave) throw new Error("Task editing is unavailable.");
         /* Only what this card changed, so a field changed somewhere else since
            it opened (on the phone, say) is not written back over. With nothing
            changed there is nothing to write. */
-        const changes = taskChanges(task, fields);
-        if (Object.keys(changes).length > 0) await onSave(task, changes, fields);
+        const changes = taskChanges(task, toSave);
+        if (Object.keys(changes).length > 0) await onSave(task, changes, toSave);
       }
       onClose();
     } catch (error) {
@@ -557,6 +612,7 @@ export default function TaskEditModal({ task, categories, onSave, onCreate, onDe
             <FieldGroup label="Goal">
               {newGoalName === null ? (
                 <SelectField
+                  id={goalFieldId}
                   ariaLabel="Goal"
                   icon={activeCat ? undefined : <Tag size={14} />}
                   placeholder={categories.length ? "Goal" : "No goals yet"}
@@ -582,40 +638,38 @@ export default function TaskEditModal({ task, categories, onSave, onCreate, onDe
                   <TextField
                     autoFocus
                     aria-label="New goal's name"
-                    placeholder="Name, then Enter"
+                    aria-describedby={newGoalError ? `${goalFieldId}-error` : undefined}
+                    placeholder="Goal name"
                     value={newGoalName}
-                    invalid={Boolean(newGoalError)}
-                    disabled={newGoalBusy}
-                    onChange={(event) => setNewGoalName(event.target.value)}
+                    invalid={Boolean(newGoalError) || goalMissing}
+                    readOnly={newGoalBusy}
+                    onChange={(event) => {
+                      setNewGoalName(event.target.value);
+                      setNewGoalError("");
+                    }}
                     onKeyDown={(event) => {
                       if (event.key === "Escape") {
                         event.preventDefault();
                         event.stopPropagation();
-                        setNewGoalName(null);
+                        closeNewGoal();
                         return;
                       }
                       if (event.key !== "Enter") return;
                       event.preventDefault();
                       event.stopPropagation();
-                      const name = newGoalName.trim();
-                      if (!name || !onCreateGoal) {
-                        setNewGoalName(null);
-                        return;
-                      }
-                      setNewGoalBusy(true);
-                      onCreateGoal(name)
-                        .then((goal) => {
-                          setCategoryId(goal.id);
-                          setGoalMissing(false);
-                          setNewGoalName(null);
-                          refocusTitle();
-                        })
-                        .catch((error) => setNewGoalError(getErrorMessage(error, "Could not make that goal.")))
-                        .finally(() => setNewGoalBusy(false));
+                      void confirmNewGoal();
                     }}
                   />
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <DialogButton variant="secondary" busy={newGoalBusy} disabled={newGoalBusy || !newGoalName.trim()} onClick={() => { void confirmNewGoal(); }}>
+                      {newGoalBusy ? "Adding…" : "Add"}
+                    </DialogButton>
+                    <DialogButton variant="ghost" disabled={newGoalBusy} onClick={closeNewGoal}>
+                      Cancel
+                    </DialogButton>
+                  </div>
                   {newGoalError && (
-                    <span style={{ color: "var(--c-danger)", fontSize: "var(--ui-type-micro)" }}>{newGoalError}</span>
+                    <span id={`${goalFieldId}-error`} role="alert" style={{ color: "var(--c-danger)", fontSize: "var(--ui-type-micro)" }}>{newGoalError}</span>
                   )}
                 </div>
               )}

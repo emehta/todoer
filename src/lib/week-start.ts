@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { localeFirstDay } from "@/lib/locale-defaults";
 
 export type WeekStartPreference = "sunday" | "monday";
 
@@ -16,15 +17,23 @@ function isWeekStartPreference(value: string | null): value is WeekStartPreferen
   return value === "sunday" || value === "monday";
 }
 
-/** Read the current week-start preference. The existing app default is Sunday. */
+let localeDefault: WeekStartPreference | null = null;
+
+/**
+ * Read the current week-start preference. Until one is chosen in Settings it
+ * is the first day this browser's region uses (lib/locale-defaults); the
+ * server, which knows no region, says Sunday.
+ */
 export function getWeekStart(): WeekStartPreference {
   if (typeof window === "undefined") return "sunday";
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY);
-    return isWeekStartPreference(stored) ? stored : "sunday";
+    if (isWeekStartPreference(stored)) return stored;
   } catch {
-    return "sunday";
+    // Storage blocked: the region's own first day, below.
   }
+  localeDefault ??= localeFirstDay();
+  return localeDefault;
 }
 
 /** Persist the preference and notify every mounted calendar/date consumer. */

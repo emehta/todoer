@@ -4,26 +4,32 @@
  * Reads user preference from localStorage ("vitae_time_format": "12h" | "24h").
  * Provides pure functions and a React hook for reactive updates.
  *
- * 24h is the default. The grid's hour gutter is the most-read clock in the
- * app and "1 AM … 11 PM" costs a suffix on every line to say what "01:00 …
- * 23:00" says on its own. Settings still offers 12h for anyone who wants it.
+ * Until one is chosen in Settings, the clock is the one this browser's
+ * language and region use (lib/locale-defaults). The server, which knows
+ * neither, says 24h.
  */
 
 import { useSyncExternalStore } from "react";
+import { localeClock } from "@/lib/locale-defaults";
 
 export type TimeFormatPref = "12h" | "24h";
 
-/** Read current preference (safe for SSR — defaults to 24h). */
+let localeDefault: TimeFormatPref | null = null;
+
+/** Read current preference (safe for SSR, where it is 24h). */
 export function getTimeFormat(): TimeFormatPref {
   if (typeof window === "undefined") return "24h";
   try {
-    return localStorage.getItem("vitae_time_format") === "12h" ? "12h" : "24h";
+    const stored = localStorage.getItem("vitae_time_format");
+    if (stored === "12h" || stored === "24h") return stored;
   } catch {
-    return "24h";
+    // Storage blocked: the locale's own clock, below.
   }
+  localeDefault ??= localeClock();
+  return localeDefault;
 }
 
-/** React hook — re-renders when the user changes the preference in Settings. */
+/** React hook: re-renders when the user changes the preference in Settings. */
 export function useTimeFormat(): TimeFormatPref {
   return useSyncExternalStore(subscribe, getTimeFormat, getServerSnapshot);
 }

@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Todoer",
     short_name: "Todoer",
-    description: "A to-do list with goals, priorities and drag to plan, on your own database.",
+    description: "A to-do list with goals, priorities and voice capture, on your own database.",
     start_url: "/tasks",
     scope: "/",
     display: "standalone",

@@ -16,6 +16,8 @@ import {
   TextField,
 } from "@/components/form/fields";
 import DateField from "@/components/form/DateField";
+import StatusBanner from "@/components/StatusBanner";
+import { getErrorMessage } from "@/lib/error-utils";
 
 export type GoalFormValues = {
   name: string;
@@ -58,6 +60,7 @@ export default function GoalForm({
   const [formType, setFormType] = useState<"short-term" | "long-term" | null>(asGoalType(category?.goal_type));
   const [nameMissing, setNameMissing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   async function submit() {
     if (busy) return;
@@ -66,6 +69,7 @@ export default function GoalForm({
       return;
     }
     setBusy(true);
+    setSaveError("");
     try {
       await onSubmit({
         name: formName.trim(),
@@ -75,8 +79,9 @@ export default function GoalForm({
         goal_type: formType,
       });
       onClose();
-    } catch {
-      // The tasks page owns and announces the persistence error.
+    } catch (error) {
+      // Said in the card: the page's banner is behind the card's scrim.
+      setSaveError(getErrorMessage(error, category ? "Could not save this goal. Try again." : "Could not add this goal. Try again."));
     } finally {
       setBusy(false);
     }
@@ -108,6 +113,7 @@ export default function GoalForm({
       )}
     >
       <FieldStack grow>
+        {saveError && <StatusBanner message={saveError} />}
         <FieldGroup label="Name" htmlFor="goal-name">
           <TextField
             id="goal-name"
