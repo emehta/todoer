@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Hanken_Grotesk } from "next/font/google";
+import "./fonts/hanken-grotesk.css";
 import "./globals.css";
 import { contentPaletteCss } from "@/lib/content-palette";
 import { DOCUMENT_SCROLL_CSS } from "@/lib/document-scroll-rules";
@@ -20,12 +20,6 @@ export const dynamic = "force-dynamic";
  * is spelled here, and scripts/first-paint.test.mjs holds it to lib/theme.
  */
 const THEME_KEY = "vitae-theme";
-
-const hankenGrotesk = Hanken_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-sans",
-  display: "swap",
-});
 
 /**
  * Runs before first paint, so a reload never flashes the wrong theme: it
@@ -56,14 +50,15 @@ const themeInitializer = `
 
 export const metadata: Metadata = {
   title: APP_NAME,
-  description: "A to-do list with goals, priorities and drag to plan, on your own database.",
+  description: "A to-do list with goals, priorities and voice capture, on your own database.",
   robots: { index: false, follow: false },
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const config = browserHalf(await readAppConfig());
+  // A config that cannot be read is the status route's to explain; the page still draws.
+  const config = browserHalf(await readAppConfig().catch(() => null));
   return (
-    <html lang="en" className={hankenGrotesk.variable} suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script id="todoer-theme-initializer" dangerouslySetInnerHTML={{ __html: themeInitializer }} />
         <style id="todoer-document-scroll" dangerouslySetInnerHTML={{ __html: DOCUMENT_SCROLL_CSS }} />

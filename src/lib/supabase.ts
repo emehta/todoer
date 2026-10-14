@@ -39,6 +39,16 @@ const browserLocalStorage =
         },
       };
 
+/** The project's reference (its first host label), or the whole host for a custom domain. */
+function projectKey(url: string): string {
+  try {
+    const host = new URL(url).hostname;
+    return host.endsWith(".supabase.co") ? host.split(".")[0] : host;
+  } catch {
+    return "project";
+  }
+}
+
 let client: SupabaseClient | null = null;
 let clientKey = "";
 
@@ -54,7 +64,8 @@ export function configureSupabase(config: BrowserConfig | null): void {
       detectSessionInUrl: false,
       flowType: "pkce",
       storage: browserLocalStorage,
-      storageKey: "todoer-auth",
+      // One session per project: an old project's session must never open the app against a new one.
+      storageKey: `todoer-auth-${projectKey(config.url)}`,
     },
   });
 }

@@ -11,11 +11,15 @@ import {
   ConnectScreen,
   CreateAccountScreen,
   DatabaseScreen,
+  EnvironmentScreen,
   LoadingScreen,
   ProblemScreen,
   SignInScreen,
 } from "@/selfhost/SetupScreens";
 import { nextStep, serverState, type SessionState, type StatusResponse } from "@/selfhost/steps";
+import { clearPageCache } from "@/lib/page-cache";
+
+const STATUS_TIMEOUT_MS = 20_000;
 
 function sessionState(session: Session | null): SessionState {
   if (!session) return "none";
@@ -32,11 +36,12 @@ export default function SetupGate({ children }: { children: ReactNode }) {
   const [failed, setFailed] = useState(false);
   const [session, setSession] = useState<SessionState | null>(config ? null : "none");
   const [databaseChecks, setDatabaseChecks] = useState(0);
+  const [switching, setSwitching] = useState(false);
 
   const refresh = useCallback(async () => {
     setFailed(false);
     try {
-      const response = await fetch("/api/selfhost/status", { cache: "no-store" });
+      const response = await fetch("/api/selfhost/status", { cache: "no-store", signal: AbortSignal.timeout(STATUS_TIMEOUT_MS) });
       const body = (await response.json()) as StatusResponse & { error?: string };
       if (!response.ok) throw new Error(body.error ?? `Status ${response.status}`);
       setStatus(body);
@@ -56,7 +61,9 @@ export default function SetupGate({ children }: { children: ReactNode }) {
     void supabase.auth.getSession().then(({ data }) => {
       if (active) setSession(sessionState(data.session));
     });
-    const { data } = supabase.auth.onAuthStateChange((_event, next) => {
+    const { data } = supabase.auth.onAuthStateChange((event, next) => {
+      // Signed out: the list held for a quick first frame belongs to the account that left.
+      if (event === "SIGNED_OUT") clearPageCache();
       if (active) setSession(sessionState(next));
     });
     return () => {
@@ -71,17 +78,31 @@ export default function SetupGate({ children }: { children: ReactNode }) {
   const reload = () => window.location.reload();
   const step = nextStep(serverState(status), session);
   const ref = status?.ref ?? null;
+  const fromEnvironment = status?.fromEnvironment ?? status?.onTheWeb ?? false;
+
+  if (switching && !fromEnvironment) return <ConnectScreen mode="switch" onConnected={reload} onCancel={() => setSwitching(false)} />;
 
   switch (step) {
     case "loading":
       return <LoadingScreen />;
+    case "environment":
+      return <EnvironmentScreen problems={status?.problems ?? []} rejected={false} onRetry={() => { void refresh(); }} />;
     case "connect":
-      return <ConnectScreen again={false} onConnected={reload} />;
+      return <ConnectScreen mode="first" onConnected={reload} />;
     case "rejected":
-      return <ConnectScreen again onConnected={reload} />;
+      return fromEnvironment
+        ? <EnvironmentScreen problems={[]} rejected onRetry={() => { void refresh(); }} />
+        : <ConnectScreen mode="rejected" onConnected={reload} />;
     case "paused":
     case "unreachable":
-      return <ProblemScreen kind={step} projectRefValue={ref} onRetry={() => { void refresh(); }} />;
+      return (
+        <ProblemScreen
+          kind={step}
+          projectRefValue={ref}
+          onRetry={() => { void refresh(); }}
+          onSwitch={fromEnvironment ? undefined : () => setSwitching(true)}
+        />
+      );
     case "database":
     case "update-database":
       return (
@@ -98,7 +119,7 @@ export default function SetupGate({ children }: { children: ReactNode }) {
     case "create-account":
       return <CreateAccountScreen onTheWeb={status?.onTheWeb ?? false} onCreated={refresh} />;
     case "sign-in":
-      return <SignInScreen projectRefValue={ref} onTheWeb={status?.onTheWeb ?? false} />;
+      return <SignInScreen projectRefValue={ref} />;
     case "not-owner":
       return <ProblemScreen kind="not-owner" projectRefValue={ref} onRetry={() => { void refresh(); }} />;
     case "app":

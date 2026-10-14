@@ -7,7 +7,7 @@
  * Linux (.github/workflows/ci.yml), and here with `node scripts/smoke.mjs`.
  */
 
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import http from "node:http";
 import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import os from "node:os";
@@ -31,7 +31,9 @@ server.stdout.on("data", (chunk) => { output += chunk; });
 server.stderr.on("data", (chunk) => { output += chunk; });
 
 function finish(code) {
-  server.kill();
+  // On Windows a kill reaches start.mjs alone; the server it started would outlive the run.
+  if (process.platform === "win32") spawnSync("taskkill", ["/pid", String(server.pid), "/T", "/F"], { stdio: "ignore" });
+  else server.kill();
   rmSync(dataDir, { recursive: true, force: true });
   process.exit(code);
 }
@@ -67,6 +69,13 @@ const write = await fetch(`http://localhost:${PORT}/api/selfhost/connect`, {
   body: "{}",
 }).catch(() => null);
 check("another site's write is refused", write?.status === 403, String(write?.status));
+
+const own = { origin: `http://localhost:${PORT}`, "sec-fetch-site": "same-origin", "content-type": "application/json" };
+const empty = await fetch(`http://localhost:${PORT}/api/selfhost/connect`, { method: "POST", headers: own, body: "{}" }).catch(() => null);
+check("the app's own connect with nothing in it is a plain 400", empty?.status === 400, String(empty?.status));
+const schema = await fetch(`http://localhost:${PORT}/api/selfhost/schema`).catch(() => null);
+const schemaText = schema ? await schema.text() : "";
+check("the setup SQL is served", schema?.status === 200 && schemaText.includes("CREATE TABLE IF NOT EXISTS public.tasks"), String(schema?.status));
 
 // fetch drops a Host header it is given, so this one is sent by hand.
 const foreign = await new Promise((resolve) => {

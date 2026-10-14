@@ -26,19 +26,41 @@ export class SetupError extends Error {
   }
 }
 
+/** Every call to Supabase gives up after this, so a slow project is an error to show, not five minutes of "Loading…". */
+const SUPABASE_TIMEOUT_MS = 10_000;
+
+const timedFetch: typeof fetch = (input, init) => {
+  const timeout = AbortSignal.timeout(SUPABASE_TIMEOUT_MS);
+  const signal = init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
+  return fetch(input, { ...init, signal });
+};
+
+export function serverClient(url: string, key: string): SupabaseClient {
+  return createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    global: { fetch: timedFetch },
+  });
+}
+
 let admin: { key: string; client: SupabaseClient } | null = null;
 
 export function adminClient(config: AppConfig): SupabaseClient {
   const key = `${config.url}|${config.secretKey}`;
-  if (admin?.key !== key) {
-    admin = {
-      key,
-      client: createClient(config.url, config.secretKey, {
-        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-      }),
-    };
-  }
+  if (admin?.key !== key) admin = { key, client: serverClient(config.url, config.secretKey) };
   return admin.client;
+}
+
+/**
+ * Whether `key` is a secret key of this project: the one saved, or any other
+ * the project accepts (a second secret key, or the legacy service_role key
+ * for a project connected with that). The proof a forgotten password asks
+ * for, since only the project's owner can see it in Supabase.
+ */
+export async function isProjectSecretKey(config: AppConfig, key: string): Promise<boolean> {
+  if (!key) return false;
+  if (key === config.secretKey) return true;
+  const { error } = await serverClient(config.url, key).auth.admin.listUsers({ page: 1, perPage: 1 });
+  return !error;
 }
 
 export interface Probe {
@@ -53,11 +75,12 @@ let lastGood: { key: string; at: number; probe: Probe } | null = null;
 /**
  * Whether the project answers, accepts both keys, and still lets anyone sign
  * up. A failure is asked again once, a second later, before it is believed:
- * one dropped request on a load showed "Supabase isn't answering" (13 Oct).
+ * a single dropped request would otherwise show "Supabase isn't answering".
+ * `fresh` skips the kept answer, for Settings after a change in Supabase.
  */
-export async function probeProject(config: AppConfig): Promise<Probe> {
+export async function probeProject(config: AppConfig, { fresh = false }: { fresh?: boolean } = {}): Promise<Probe> {
   const key = `${config.url}|${config.publishableKey}|${config.secretKey}`;
-  if (lastGood?.key === key && Date.now() - lastGood.at < PROBE_FRESH_MS) return lastGood.probe;
+  if (!fresh && lastGood?.key === key && Date.now() - lastGood.at < PROBE_FRESH_MS) return lastGood.probe;
   let probe = await probeOnce(config);
   if (probe.reach === "unreachable") {
     await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -153,7 +176,11 @@ export async function resetOwnerPassword(config: AppConfig, password: string): P
 
 /** Makes the project's one account, already confirmed, with Personal and Work. */
 export async function createOwner(config: AppConfig, email: string, password: string): Promise<void> {
-  const client = adminClient(config);
+  await createOwnerWith(adminClient(config), email, password);
+}
+
+/** createOwner on a given client, so the claim, the races and the clean-up are tested (scripts/owner-claim.test.mjs). */
+export async function createOwnerWith(client: SupabaseClient, email: string, password: string): Promise<void> {
   await claimOwner(client);
   const { data, error } = await client.auth.admin.createUser({
     email,
@@ -169,7 +196,22 @@ export async function createOwner(config: AppConfig, email: string, password: st
       taken ? 409 : 502,
     );
   }
-  const { error: ownerError } = await client.from("app_owner").update({ user_id: data.user.id }).eq("id", true);
-  if (ownerError) throw new SetupError(`The account was made but not recorded: ${ownerError.message}`, 502);
+  /* Recorded only over our own claim (no owner yet), and checked: should it
+     fail, the account just made is taken away again, so a retry never meets
+     an owner-flagged account with no record of it. */
+  const { data: recorded, error: ownerError } = await client
+    .from("app_owner")
+    .update({ user_id: data.user.id })
+    .eq("id", true)
+    .is("user_id", null)
+    .select("user_id");
+  if (ownerError || !recorded?.length) {
+    await client.auth.admin.deleteUser(data.user.id).catch(() => undefined);
+    await releaseClaim(client);
+    throw new SetupError(
+      ownerError ? `The account could not be recorded: ${ownerError.message}. Try again.` : "Another account was made at the same moment. Sign in instead.",
+      ownerError ? 502 : 409,
+    );
+  }
   await seedGoals(client, data.user.id);
 }

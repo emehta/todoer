@@ -12,8 +12,8 @@ function asText(value: unknown): string | null {
 /**
  * Whether an error is a cancelled fetch rather than a real failure.
  *
- * Aborts arrive in more than one shape depending on where they are caught — a
- * DOMException from fetch, a plain Error from Supabase's client — so all of
+ * Aborts arrive in more than one shape depending on where they are caught (a
+ * DOMException from fetch, a plain Error from Supabase's client), so all of
  * them are checked here instead of in each caller.
  */
 export function isAbortError(error: unknown): boolean {
@@ -29,34 +29,42 @@ export function isAbortError(error: unknown): boolean {
   return false;
 }
 
-export function getErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error && error.message.trim()) {
-    return error.message.trim();
-  }
-
+/** Everything an error says, joined: its message, and Supabase's details, hint and code. */
+function errorText(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) return error.message.trim();
   if (error && typeof error === "object") {
     const shaped = error as ErrorShape;
-    const parts = [
+    return [
       asText(shaped.message),
       asText(shaped.details),
       asText(shaped.hint),
       asText(shaped.code) ? `Code: ${String(shaped.code)}` : null,
-    ].filter(Boolean) as string[];
-
-    if (parts.length > 0) {
-      return parts.join(" ");
-    }
+    ].filter(Boolean).join(" ");
   }
+  return "";
+}
 
-  return fallback;
+const NETWORK = /failed to fetch|networkerror|load failed|network request failed/i;
+
+/** What a person is told when the server could not be reached at all. */
+export const OFFLINE_MESSAGE = "Couldn't reach Supabase. Check that you're online, then try again.";
+
+/**
+ * An error in words for a banner. A dropped connection says so plainly:
+ * Supabase's client reports it as "TypeError: Failed to fetch" with a stack
+ * trace in its details, which showed in the banner word for word.
+ */
+export function getErrorMessage(error: unknown, fallback: string): string {
+  const text = errorText(error);
+  if (NETWORK.test(text)) return OFFLINE_MESSAGE;
+  return text || fallback;
 }
 
 /**
  * Whether an error is the browser failing to reach the server at all: a
  * dropped connection, offline, a blocked request. Chrome says "Failed to
- * fetch", Firefox "NetworkError" and Safari "Load failed"; Supabase's client
- * passes the words on with a stack trace attached, which is no use to anyone.
+ * fetch", Firefox "NetworkError" and Safari "Load failed".
  */
 export function isNetworkError(error: unknown): boolean {
-  return /failed to fetch|networkerror|load failed/i.test(getErrorMessage(error, ""));
+  return NETWORK.test(errorText(error));
 }

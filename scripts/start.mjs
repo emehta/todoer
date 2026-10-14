@@ -21,6 +21,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { fileURLToPath } from "node:url";
 
 const args = process.argv.slice(2);
 const portArg = args.indexOf("--port");
@@ -28,9 +29,11 @@ const PORT = portArg >= 0 ? Number(args[portArg + 1]) : 3101;
 const OPEN = !args.includes("--no-open");
 const HOST = "127.0.0.1";
 /* The address a person uses; the server listens on HOST (src/proxy.ts sends 127.0.0.1 here). */
-const URL = `http://localhost:${PORT}`;
+const APP_URL = `http://localhost:${PORT}`;
 const HEALTH = `http://${HOST}:${PORT}/api/health`;
-const ROOT = process.cwd();
+/* The app's own folder, wherever the command was typed from. */
+const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+process.chdir(ROOT);
 const NEXT = path.join(ROOT, "node_modules", "next", "dist", "bin", "next");
 const STAMP = path.join(ROOT, ".next", "todoer-build-stamp");
 
@@ -40,8 +43,8 @@ function stop(message) {
 }
 
 const [major, minor] = process.versions.node.split(".").map(Number);
-if (major < 20 || (major === 20 && minor < 9)) {
-  stop(`Todoer needs Node 20.9 or newer, and this computer has ${process.versions.node}. Install the current LTS from nodejs.org, then run npm start again.`);
+if (major < 22 || (major === 22 && minor < 18)) {
+  stop(`Todoer needs Node 22.18 or newer, and this computer has ${process.versions.node}. Install the current LTS from nodejs.org, then run npm start again.`);
 }
 if (!Number.isInteger(PORT) || PORT < 1024 || PORT > 65535) stop("The port must be a number from 1024 to 65535.");
 if (!existsSync(NEXT)) stop("Todoer's packages are not installed yet. Run npm install in this folder, then npm start.");
@@ -51,6 +54,8 @@ function buildStamp() {
   const hash = createHash("sha256");
   const walk = (dir) => {
     for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      // Finder's folder notes change when a folder is looked at, not when the app does.
+      if (entry.name === ".DS_Store") continue;
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) walk(full);
       else {
@@ -70,28 +75,38 @@ function buildStamp() {
   return hash.digest("hex");
 }
 
+/** Who answers on the port: Todoer, another program, or nobody. */
 async function answering() {
+  let response;
   try {
-    const response = await fetch(HEALTH, { signal: AbortSignal.timeout(1500), redirect: "manual" });
-    const body = await response.json();
-    return body?.app === "todoer" ? "todoer" : "other";
+    response = await fetch(HEALTH, { signal: AbortSignal.timeout(1500), redirect: "manual" });
   } catch {
     return null;
   }
+  const body = await response.json().catch(() => null);
+  return body?.app === "todoer" ? "todoer" : "other";
 }
 
 function openBrowser() {
   if (!OPEN) return;
   const [command, commandArgs] =
-    process.platform === "darwin" ? ["open", [URL]]
-    : process.platform === "win32" ? ["cmd", ["/c", "start", "", URL]]
-    : ["xdg-open", [URL]];
-  spawn(command, commandArgs, { stdio: "ignore", detached: true }).unref();
+    process.platform === "darwin" ? ["open", [APP_URL]]
+    : process.platform === "win32" ? ["cmd", ["/c", "start", "", APP_URL]]
+    : ["xdg-open", [APP_URL]];
+  const opener = spawn(command, commandArgs, { stdio: "ignore", detached: true });
+  // No browser opener (a Linux without xdg-open): the address is printed anyway.
+  opener.on("error", () => console.log(`Open ${APP_URL} in your browser.`));
+  opener.unref();
 }
 
 const already = await answering();
+/* PUBLIK_SELF_TEST=1 npm start is publik's check that the built app reaches
+   publik's AI (src/instrumentation.ts): it needs the port to itself. */
+if (already === "todoer" && process.env.PUBLIK_SELF_TEST) {
+  stop("Todoer is already running. Close its window, then run the self-test again.");
+}
 if (already === "todoer") {
-  console.log(`Todoer is already running at ${URL}.`);
+  console.log(`Todoer is already running at ${APP_URL}.`);
   openBrowser();
   process.exit(0);
 }
@@ -113,16 +128,27 @@ if (!built) {
 const server = spawn(process.execPath, [NEXT, "start", "-H", HOST, "-p", String(PORT)], { stdio: ["ignore", "pipe", "inherit"] });
 server.stdout.on("data", (chunk) => {
   const text = chunk.toString();
-  if (/error/i.test(text)) process.stdout.write(text);
+  // Errors, and publik's self-test line (PUBLIK_SELF_TEST=1 npm start), reach the terminal.
+  if (/error|publik self-test/i.test(text)) process.stdout.write(text);
 });
-server.on("exit", (code) => process.exit(code ?? 0));
+let ready = false;
+server.on("exit", (code) => {
+  if (!ready && code) {
+    stop(`Todoer stopped while starting. If another program is using port ${PORT}, close it, or start Todoer on another port: npm start -- --port ${PORT + 4}`);
+  }
+  process.exit(code ?? 0);
+});
 for (const signal of ["SIGINT", "SIGTERM"]) process.on(signal, () => server.kill(signal));
 
 for (let tries = 0; tries < 60; tries += 1) {
   await new Promise((resolve) => setTimeout(resolve, 500));
   if ((await answering()) === "todoer") {
-    console.log(`\nTodoer is running at ${URL}\nKeep this window open: closing it stops Todoer.\n`);
+    ready = true;
+    console.log(`\nTodoer is running at ${APP_URL}\nKeep this window open: closing it stops Todoer.\n`);
     openBrowser();
     break;
   }
+}
+if (!ready && server.exitCode === null) {
+  console.log(`\nTodoer is still starting. Open ${APP_URL} in a minute. Keep this window open: closing it stops Todoer.\n`);
 }

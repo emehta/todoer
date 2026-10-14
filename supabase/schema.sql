@@ -83,32 +83,35 @@ CREATE INDEX IF NOT EXISTS tasks_user_due_order_idx
 -- Only the owner, and only their own rows. A stranger who signs up through
 -- Supabase's own API is signed in but not the owner, so they see and write
 -- nothing. The owner flag is in app_metadata, which only the server can set.
+-- A later version adds columns with ALTER TABLE ... ADD COLUMN IF NOT EXISTS,
+-- since CREATE TABLE IF NOT EXISTS leaves an existing table as it was.
 
 ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
 
+-- Created when missing, and brought up to date when present (ALTER POLICY,
+-- never DROP), so running a newer schema.sql changes an older project's rule.
 DO $$
 DECLARE
   target TEXT;
+  owner_rule CONSTANT TEXT :=
+    '(SELECT auth.uid()) = user_id AND coalesce(((SELECT auth.jwt()) -> ''app_metadata'' ->> ''self_host_owner'')::boolean, false)';
 BEGIN
   FOREACH target IN ARRAY ARRAY['categories', 'tasks'] LOOP
-    IF NOT EXISTS (
+    IF EXISTS (
       SELECT 1 FROM pg_policies
       WHERE schemaname = 'public' AND tablename = target AND policyname = 'Owner manages own rows'
     ) THEN
-      EXECUTE format(
-        'CREATE POLICY "Owner manages own rows" ON public.%I FOR ALL TO authenticated '
-        'USING ((SELECT auth.uid()) = user_id AND coalesce(((SELECT auth.jwt()) -> ''app_metadata'' ->> ''self_host_owner'')::boolean, false)) '
-        'WITH CHECK ((SELECT auth.uid()) = user_id AND coalesce(((SELECT auth.jwt()) -> ''app_metadata'' ->> ''self_host_owner'')::boolean, false))',
-        target
-      );
+      EXECUTE format('ALTER POLICY "Owner manages own rows" ON public.%I TO authenticated USING (%s) WITH CHECK (%s)', target, owner_rule, owner_rule);
+    ELSE
+      EXECUTE format('CREATE POLICY "Owner manages own rows" ON public.%I FOR ALL TO authenticated USING (%s) WITH CHECK (%s)', target, owner_rule, owner_rule);
     END IF;
   END LOOP;
 END $$;
 
 -- Spelled out both ways. Newer Supabase projects grant nothing on a new
--- table, while older ones (and some new ones, seen 13 Oct 2026) grant every
--- privilege, TRUNCATE included, which row level security does not cover.
+-- table, while others grant every privilege, TRUNCATE included, which row
+-- level security does not cover.
 REVOKE ALL ON public.categories, public.tasks FROM anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.categories, public.tasks TO authenticated;
 GRANT ALL ON public.categories, public.tasks TO service_role;

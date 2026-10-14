@@ -2,7 +2,7 @@
  * The guard in front of a copy on someone's computer (src/proxy.ts).
  *
  * A mistake here is silent until it is a loop or a hole: a redirect between
- * loopback names that Next cut down to a bare path reloaded forever (13 Oct 2026),
+ * loopback names that Next cut down to a bare path reloaded forever,
  * and a guard that let another site's form post through would let any page
  * the user visits write to their Todoer.
  */

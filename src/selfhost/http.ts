@@ -31,7 +31,13 @@ export function secretsMatch(given: string, expected: string): boolean {
 }
 
 export function fromError(error: unknown) {
-  if (error instanceof SetupError) return fail(error.message, error.status);
+  if (error instanceof SetupError) {
+    const code = (error as { code?: unknown }).code;
+    return NextResponse.json(
+      typeof code === "string" ? { error: error.message, code } : { error: error.message },
+      { status: error.status, headers: { "cache-control": "no-store" } },
+    );
+  }
   console.error(error);
   return fail("Something went wrong on this computer's side. Try again.", 500);
 }

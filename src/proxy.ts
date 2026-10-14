@@ -7,12 +7,12 @@ import { NextResponse, type NextRequest } from "next/server";
  *   elsewhere pointing a name of its own at it (DNS rebinding): refused.
  * - The app has one address, http://localhost:PORT, the one Publik's guides
  *   open: a page opened on 127.0.0.1 or [::1] is moved there, so there is one
- *   sign-in, one set of cookies and one Google redirect. Not with an HTTP
- *   redirect: Next reads every loopback name as "localhost", takes a
- *   redirect between them for one to its own origin, and cuts its Location
- *   down to a bare path, which the browser follows back to where it was,
- *   forever (seen 13 Oct 2026, both ways round). A small page that moves the
- *   browser itself is not rewritten.
+ *   sign-in and one saved session (the browser keeps them per address). Not
+ *   with an HTTP redirect: Next reads every loopback name as "localhost",
+ *   takes a redirect between them for one to its own origin, and cuts its
+ *   Location down to a bare path, which the browser follows back to where it
+ *   was, forever, whichever way round. A small page that moves the browser
+ *   itself is not rewritten.
  * - A write must come from the app's own pages: its Origin is the app's,
  *   the browser says it is same-origin, and it is JSON or a form upload. A
  *   page on another site can post to localhost, and this is what stops it.

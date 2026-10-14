@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { ArrowSquareOut, Check, Copy } from "@phosphor-icons/react";
 import StatusBanner from "@/components/StatusBanner";
 import { DialogButton } from "@/components/form/Dialog";
@@ -13,8 +13,8 @@ import { dashboardLinks, projectRef } from "@/selfhost/keys";
 /**
  * The screens between a fresh copy and the task list: connect a Supabase
  * project, give it the tables, make the one account, sign in. Each says what
- * to do in a sentence or two and links to the exact page of the user's own
- * project where it is done.
+ * to do in a line, and links to the exact page of the user's own project
+ * where it is done.
  */
 
 async function postJson(url: string, body: Record<string, unknown>): Promise<void> {
@@ -27,13 +27,19 @@ async function postJson(url: string, body: Record<string, unknown>): Promise<voi
   if (!response.ok) throw new Error(answer.error ?? `The request failed (${response.status}).`);
 }
 
-function Frame({ title, intro, children }: { title: string; intro: ReactNode; children: ReactNode }) {
+function Frame({ title, intro, children }: { title: string; intro?: ReactNode; children: ReactNode }) {
+  /* Each new step takes focus to its heading, so a screen reader reads where
+     setup has got to and the keyboard starts from the top of it. */
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    heading.current?.focus({ preventScroll: true });
+  }, [title]);
   return (
     <div style={{ flex: "1 1 auto", display: "flex", justifyContent: "center", overflowY: "auto" }}>
       <div style={{ width: "100%", maxWidth: 520, padding: "72px 20px 48px", display: "flex", flexDirection: "column", gap: 24 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <h1 className="text-2xl font-bold">{title}</h1>
-          <div style={{ color: "var(--c-text-2)", lineHeight: 1.55, display: "flex", flexDirection: "column", gap: 8 }}>{intro}</div>
+          <h1 ref={heading} tabIndex={-1} className="text-2xl font-bold" style={{ outline: "none" }}>{title}</h1>
+          {intro && <div style={{ color: "var(--c-text-2)", lineHeight: 1.55, display: "flex", flexDirection: "column", gap: 8 }}>{intro}</div>}
         </div>
         {children}
       </div>
@@ -65,13 +71,26 @@ function Actions({ children }: { children: ReactNode }) {
 
 export function LoadingScreen() {
   return (
-    <div style={{ flex: "1 1 auto", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--c-text-3)" }}>
+    <div role="status" aria-live="polite" style={{ flex: "1 1 auto", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--c-text-3)" }}>
       Loading…
     </div>
   );
 }
 
-export function ConnectScreen({ again, onConnected }: { again: boolean; onConnected: () => void }) {
+/**
+ * `first`: a new copy. `rejected`: the saved keys stopped working (reset).
+ * `switch`: the owner chose another project, from a project that no longer
+ * answers; `onCancel` goes back.
+ */
+export function ConnectScreen({
+  mode,
+  onConnected,
+  onCancel,
+}: {
+  mode: "first" | "rejected" | "switch";
+  onConnected: () => void;
+  onCancel?: () => void;
+}) {
   const [url, setUrl] = useState("");
   const [publishableKey, setPublishableKey] = useState("");
   const [secretKey, setSecretKey] = useState("");
@@ -95,15 +114,14 @@ export function ConnectScreen({ again, onConnected }: { again: boolean; onConnec
 
   return (
     <Frame
-      title={again ? "Connect your project again" : `Set up ${APP_NAME}`}
+      title={mode === "rejected" ? "Connect your project again" : mode === "switch" ? "Connect a different project" : `Set up ${APP_NAME}`}
       intro={
-        again ? (
-          <p>Supabase no longer accepts the keys this copy saved, which happens when they are reset. Paste the project&apos;s current keys.</p>
+        mode === "rejected" ? (
+          <p>Supabase no longer accepts the saved keys. Paste your project&apos;s current ones.</p>
+        ) : mode === "switch" ? (
+          <p>Paste the other project&apos;s address and keys. Your tasks stay in the old one.</p>
         ) : (
-          <>
-            <p>{APP_NAME} keeps your tasks in your own free Supabase project. Nothing is sent anywhere else.</p>
-            <p>This takes about five minutes, once.</p>
-          </>
+          <p>Your tasks live in your own free Supabase project. Setup takes about five minutes.</p>
         )
       }
     >
@@ -111,10 +129,10 @@ export function ConnectScreen({ again, onConnected }: { again: boolean; onConnec
         <li>
           Make a free project on Supabase, or use one you have. <ExternalLink href="https://supabase.com/dashboard/projects">Open Supabase</ExternalLink>
         </li>
-        <li>On the project&apos;s home page, press Copy beside its address, and paste it below.</li>
+        <li>Copy its Project URL from the project&apos;s home page.</li>
         <li>
-          Copy its publishable key and its secret key from the API Keys page{links ? ": " : "."}
-          {links && <ExternalLink href={links.apiKeys}>Open your API Keys page</ExternalLink>}
+          Copy both keys from its API Keys page.{" "}
+          {links && <ExternalLink href={links.apiKeys}>Open API Keys</ExternalLink>}
         </li>
       </Steps>
       <form onSubmit={submit}>
@@ -133,10 +151,13 @@ export function ConnectScreen({ again, onConnected }: { again: boolean; onConnec
             <DialogButton type="submit" variant="primary" busy={busy} disabled={busy}>
               {busy ? "Checking…" : "Connect"}
             </DialogButton>
+            {onCancel && (
+              <DialogButton variant="ghost" onClick={onCancel} disabled={busy}>
+                Back
+              </DialogButton>
+            )}
           </Actions>
-          <p style={{ color: "var(--c-text-3)", fontSize: "var(--ui-type-label)", lineHeight: 1.5 }}>
-            The secret key stays on this computer, in a file only your account can read. It is never sent to the page.
-          </p>
+          <p style={{ color: "var(--c-text-3)", fontSize: "var(--ui-type-label)", lineHeight: 1.5 }}>The secret key is saved on this computer only.</p>
         </FieldStack>
       </form>
     </Frame>
@@ -155,23 +176,43 @@ export function DatabaseScreen({
   stillMissing: boolean;
   onCheck: () => Promise<void>;
 }) {
+  const [sql, setSql] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showing, setShowing] = useState(false);
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const links = projectRefValue ? dashboardLinks(projectRefValue) : null;
+  const copyFirst = !copied && !showing && !stillMissing;
 
-  async function copy() {
-    setError(null);
-    try {
-      const sql = await fetch("/api/selfhost/schema", { cache: "no-store" }).then((response) => {
-        if (!response.ok) throw new Error("Could not read the setup.");
-        return response.text();
+  /* Fetched as the screen opens, so Copy writes to the clipboard within the
+     click itself: Safari refuses a clipboard write that waits on a request
+     first, and Safari is a Mac's own browser. */
+  useEffect(() => {
+    let live = true;
+    fetch("/api/selfhost/schema", { cache: "no-store" })
+      .then((response) => (response.ok ? response.text() : Promise.reject(new Error("Could not read the setup."))))
+      .then((text) => {
+        if (live) setSql(text);
+      })
+      .catch((failure) => {
+        if (live) setError(getErrorMessage(failure, "Could not read the setup. Reload the page."));
       });
-      await navigator.clipboard.writeText(sql);
-      setCopied(true);
-    } catch (failure) {
-      setError(getErrorMessage(failure, "That did not work. Try again."));
-    }
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  function copy() {
+    if (!sql) return;
+    setError(null);
+    navigator.clipboard.writeText(sql).then(
+      () => setCopied(true),
+      () => {
+        // The clipboard was refused: the setup is shown to copy by hand instead.
+        setShowing(true);
+        setError("Your browser didn't allow copying. Select the setup below and copy it.");
+      },
+    );
   }
 
   async function check() {
@@ -188,39 +229,66 @@ export function DatabaseScreen({
 
   return (
     <Frame
-      title={update ? "Update your database" : "Give the project its tables"}
+      title={update ? "Update your database" : "Add the tables"}
       intro={
         update ? (
-          <p>This version of {APP_NAME} needs a change to its tables. Running the setup again keeps everything you have.</p>
+          <p>This version changes its tables. Running the setup again keeps all your tasks.</p>
         ) : (
-          <p>Your project is connected. It needs {APP_NAME}&apos;s tables, which one paste in Supabase makes.</p>
+          <p>Connected. One paste in Supabase adds {APP_NAME}&apos;s tables.</p>
         )
       }
     >
       <Steps>
         <li>Copy the setup.</li>
         <li>
-          Open your project&apos;s SQL Editor{links ? ": " : "."}
+          Paste it in your project&apos;s SQL Editor and press Run.{" "}
           {links && <ExternalLink href={links.sqlEditor}>Open the SQL Editor</ExternalLink>}
         </li>
-        <li>Paste it there and press Run.</li>
-        <li>Come back here and press Check again.</li>
+        <li>Come back and press Check again.</li>
       </Steps>
       {error && <StatusBanner message={error} />}
       {!error && stillMissing && !checking && (
-        <StatusBanner tone="info" message="The tables aren't there yet. Check that Run finished without an error, then press Check again." />
+        <StatusBanner tone="info" message="No tables yet. Make sure Run finished without an error." />
       )}
       <Actions>
-        <DialogButton variant="secondary" onClick={() => { void copy(); }}>
+        {/* The step to take next is the filled one: Copy, then Check again once it is copied. */}
+        <DialogButton variant={copyFirst ? "primary" : "secondary"} onClick={copy} disabled={!sql}>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
             {copied ? <Check size={15} weight="bold" aria-hidden="true" /> : <Copy size={15} weight="bold" aria-hidden="true" />}
             {copied ? "Copied" : "Copy the setup"}
           </span>
         </DialogButton>
-        <DialogButton variant="primary" busy={checking} disabled={checking} onClick={() => { void check(); }}>
+        <DialogButton variant={copyFirst ? "secondary" : "primary"} busy={checking} disabled={checking} onClick={() => { void check(); }}>
           {checking ? "Checking…" : "Check again"}
         </DialogButton>
+        {!showing && sql && (
+          <DialogButton variant="ghost" onClick={() => setShowing(true)}>
+            Show the setup
+          </DialogButton>
+        )}
       </Actions>
+      {showing && sql && (
+        <textarea
+          readOnly
+          aria-label="The setup, to copy into the SQL Editor"
+          value={sql}
+          onFocus={(event) => event.currentTarget.select()}
+          rows={12}
+          spellCheck={false}
+          style={{
+            width: "100%",
+            fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+            fontSize: 12,
+            lineHeight: 1.5,
+            padding: 12,
+            color: "var(--c-text-2)",
+            background: "var(--c-surface)",
+            border: "1px solid var(--c-border)",
+            borderRadius: "var(--ui-radius-md)",
+            resize: "vertical",
+          }}
+        />
+      )}
     </Frame>
   );
 }
@@ -250,7 +318,7 @@ export function CreateAccountScreen({ onTheWeb, onCreated }: { onTheWeb: boolean
   return (
     <Frame
       title="Make your account"
-      intro={<p>This is the one account for your project. You sign in with it from now on.</p>}
+      intro={<p>You&apos;ll sign in with this from now on.</p>}
     >
       <form onSubmit={submit}>
         <FieldStack>
@@ -277,7 +345,7 @@ export function CreateAccountScreen({ onTheWeb, onCreated }: { onTheWeb: boolean
   );
 }
 
-export function SignInScreen({ projectRefValue, onTheWeb }: { projectRefValue: string | null; onTheWeb: boolean }) {
+export function SignInScreen({ projectRefValue }: { projectRefValue: string | null }) {
   const [mode, setMode] = useState<"sign-in" | "reset">("sign-in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -305,7 +373,7 @@ export function SignInScreen({ projectRefValue, onTheWeb }: { projectRefValue: s
       const response = await fetch("/api/selfhost/password", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(onTheWeb ? { setupCode: proof, password } : { secretKey: proof, password }),
+        body: JSON.stringify({ secretKey: proof, password }),
       });
       const answer = (await response.json().catch(() => ({}))) as { error?: string; email?: string };
       if (!response.ok || !answer.email) throw new Error(answer.error ?? `The request failed (${response.status}).`);
@@ -322,20 +390,16 @@ export function SignInScreen({ projectRefValue, onTheWeb }: { projectRefValue: s
       <Frame
         title="Choose a new password"
         intro={
-          onTheWeb ? (
-            <p>Enter the setup code you chose when you deployed, and a new password.</p>
-          ) : (
-            <p>
-              To show it&apos;s you, paste your project&apos;s secret key from Supabase{links ? ": " : "."}
-              {links && <ExternalLink href={links.apiKeys}>Open your API Keys page</ExternalLink>}
-            </p>
-          )
+          <p>
+            Paste your project&apos;s secret key to show it&apos;s you.{" "}
+            {links && <ExternalLink href={links.apiKeys}>Open API Keys</ExternalLink>}
+          </p>
         }
       >
         <form onSubmit={reset}>
           <FieldStack>
-            <FieldGroup label={onTheWeb ? "Setup code" : "Secret key"} htmlFor="reset-proof">
-              <TextField id="reset-proof" type="password" value={proof} onChange={(e) => setProof(e.target.value)} autoComplete="off" placeholder={onTheWeb ? "" : "sb_secret_…"} spellCheck={false} />
+            <FieldGroup label="Secret key" htmlFor="reset-proof">
+              <TextField id="reset-proof" type="password" value={proof} onChange={(e) => setProof(e.target.value)} autoComplete="off" placeholder="sb_secret_…" spellCheck={false} />
             </FieldGroup>
             <FieldGroup label="New password" htmlFor="reset-password">
               <TextField id="reset-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" placeholder="8 characters or more" />
@@ -356,7 +420,7 @@ export function SignInScreen({ projectRefValue, onTheWeb }: { projectRefValue: s
   }
 
   return (
-    <Frame title={`Sign in to ${APP_NAME}`} intro={<p>Use the account you made when you set it up.</p>}>
+    <Frame title={`Sign in to ${APP_NAME}`}>
       <form onSubmit={signIn}>
         <FieldStack>
           <FieldGroup label="Email" htmlFor="signin-email">
@@ -384,15 +448,18 @@ export function ProblemScreen({
   kind,
   projectRefValue,
   onRetry,
+  onSwitch,
 }: {
   kind: "paused" | "unreachable" | "not-owner" | "error";
   projectRefValue: string | null;
   onRetry: () => void;
+  /** Offered when the saved project may never answer again (deleted, or paused past restoring). */
+  onSwitch?: () => void;
 }) {
   const links = projectRefValue ? dashboardLinks(projectRefValue) : null;
   if (kind === "not-owner") {
     return (
-      <Frame title="This isn't the owner's account" intro={<p>Only the account made during setup can use this {APP_NAME}.</p>}>
+      <Frame title={`This account can't use ${APP_NAME}`} intro={<p>Sign in with the account made during setup.</p>}>
         <Actions>
           <DialogButton variant="primary" onClick={() => { void supabase.auth.signOut({ scope: "local" }); }}>Sign out</DialogButton>
         </Actions>
@@ -402,24 +469,60 @@ export function ProblemScreen({
   const copy = {
     paused: {
       title: "Your Supabase project is paused",
-      intro: "Free projects pause after a week without use. Open it on Supabase and press Restore project, then come back here.",
+      intro: "Free projects pause after a week unused. Press Restore project on Supabase, then try again.",
     },
     unreachable: {
       title: "Supabase isn't answering",
-      intro: "Check that this computer is online, then try again.",
+      intro: "Check you're online, then try again.",
     },
     error: {
       title: `${APP_NAME} couldn't check its setup`,
-      intro: "Something went wrong on this computer's side. Try again.",
+      intro: "Try again in a moment.",
     },
   }[kind];
+  const restore = kind === "paused" && links ? links.project : null;
   return (
     <Frame title={copy.title} intro={<p>{copy.intro}</p>}>
       <Actions>
-        {kind === "paused" && links && <ExternalLink href={links.project}>Open your project</ExternalLink>}
+        {restore && (
+          <DialogButton variant="primary" onClick={() => window.open(restore, "_blank", "noopener")}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              Open Supabase
+              <ArrowSquareOut size={15} weight="bold" aria-hidden="true" />
+            </span>
+          </DialogButton>
+        )}
+        <DialogButton variant={restore ? "secondary" : "primary"} onClick={onRetry}>Try again</DialogButton>
+        {onSwitch && <DialogButton variant="ghost" onClick={onSwitch}>Use a different project</DialogButton>}
       </Actions>
+    </Frame>
+  );
+}
+
+/**
+ * A copy whose project comes from environment variables (always so on the
+ * web) with one missing or wrong: the Connect form could never work there,
+ * so this names the variable to set instead.
+ */
+export function EnvironmentScreen({ problems, rejected, onRetry }: { problems: string[]; rejected: boolean; onRetry: () => void }) {
+  return (
+    <Frame
+      title={rejected ? "Supabase didn't accept these keys" : `${APP_NAME} needs its project's settings`}
+      intro={
+        rejected ? (
+          <p>Supabase refused the keys in this copy&apos;s environment variables. Set them again from your API Keys page, then restart or redeploy.</p>
+        ) : (
+          <p>Set these environment variables, then restart or redeploy:</p>
+        )
+      }
+    >
+      {!rejected && problems.length > 0 && (
+        <ul style={{ display: "flex", flexDirection: "column", gap: 6, paddingLeft: 20, listStyle: "disc", lineHeight: 1.55 }}>
+          {problems.map((problem) => <li key={problem}>{problem}</li>)}
+        </ul>
+      )}
       <Actions>
-        <DialogButton variant="primary" onClick={onRetry}>Try again</DialogButton>
+        <DialogButton variant="primary" onClick={onRetry}>Check again</DialogButton>
       </Actions>
     </Frame>
   );

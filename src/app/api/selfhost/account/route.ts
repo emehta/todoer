@@ -6,6 +6,10 @@ export const dynamic = "force-dynamic";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD = 8;
+/* Supabase hashes a password with bcrypt, which reads 72 bytes and refuses more. */
+const MAX_PASSWORD_BYTES = 72;
+/* Long enough that guessing it before the owner makes the account is hopeless. */
+const MIN_SETUP_CODE = 12;
 
 /**
  * Makes the project's one account. A copy on this computer is reachable only
@@ -21,7 +25,7 @@ export async function POST(request: Request) {
 
     if (onTheWeb()) {
       const expected = process.env.SETUP_CODE?.trim() ?? "";
-      if (expected.length < 8) return fail("Set SETUP_CODE (8 characters or more) in your hosting's variables, then redeploy.", 403);
+      if (expected.length < MIN_SETUP_CODE) return fail(`Set SETUP_CODE (${MIN_SETUP_CODE} characters or more) in your hosting's variables, then redeploy.`, 403);
       if (!secretsMatch(text(body, "setupCode"), expected)) return fail("That setup code is not the one you chose.", 403);
     }
 
@@ -29,6 +33,7 @@ export async function POST(request: Request) {
     const password = typeof body.password === "string" ? body.password : "";
     if (!EMAIL.test(email)) return fail("Enter an email address.");
     if (password.length < MIN_PASSWORD) return fail(`Choose a password of ${MIN_PASSWORD} characters or more.`);
+    if (new TextEncoder().encode(password).length > MAX_PASSWORD_BYTES) return fail("That password is too long. Keep it to 72 characters.");
 
     await createOwner(config, email, password);
     return ok();
