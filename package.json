@@ -1,6 +1,6 @@
 {
   "name": "todoer",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "A to-do list with goals, priorities and drag to plan, on your own database.",
   "license": "PolyForm-Noncommercial-1.0.0",
