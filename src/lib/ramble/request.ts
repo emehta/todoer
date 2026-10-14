@@ -1,0 +1,51 @@
+/**
+ * The page's call to /api/tasks/ramble. A failure comes back as words for
+ * the card, never as a throw, and with the transcript when Whisper had
+ * already written it, so Try again does not send the audio twice.
+ */
+
+import { authedFetch } from "@/lib/authed-fetch";
+import { getErrorMessage } from "@/lib/error-utils";
+import type { RambleContext } from "./context";
+import type { RambleReplyTask } from "./prompt";
+import { recordingFileName } from "./recording";
+
+/** What a failure can offer besides Try again: Settings, when Ramble is not set up, or publik's one link. */
+export type RambleAction = { kind: "settings" } | { kind: "link"; label: string; href: string };
+
+export type RambleResult =
+  | { ok: true; transcript: string; tasks: RambleReplyTask[] }
+  | { ok: false; message: string; transcript: string | null; action?: RambleAction };
+
+const SETUP_CODES = new Set(["choose", "groq_key", "publik_setup"]);
+
+export async function requestRamble(
+  input: { audio: Blob } | { text: string },
+  context: RambleContext,
+): Promise<RambleResult> {
+  const form = new FormData();
+  form.set("context", JSON.stringify(context));
+  if ("audio" in input) form.set("audio", input.audio, recordingFileName(input.audio.type));
+  else form.set("text", input.text);
+
+  try {
+    const response = await authedFetch("/api/tasks/ramble", { method: "POST", body: form });
+    const body = await response.json().catch(() => null) as
+      | { transcript?: unknown; tasks?: unknown; error?: unknown; code?: unknown; topUpUrl?: unknown }
+      | null;
+    const transcript = typeof body?.transcript === "string" ? body.transcript : null;
+    if (!response.ok || !Array.isArray(body?.tasks) || transcript === null) {
+      const message = typeof body?.error === "string" ? body.error : `Ramble could not read that (${response.status}).`;
+      const action: RambleAction | undefined =
+        typeof body?.code === "string" && SETUP_CODES.has(body.code)
+          ? { kind: "settings" }
+          : typeof body?.topUpUrl === "string" && /^https:\/\//.test(body.topUpUrl)
+            ? { kind: "link", label: "Add credit", href: body.topUpUrl }
+            : undefined;
+      return { ok: false, message, transcript, action };
+    }
+    return { ok: true, transcript, tasks: body.tasks as RambleReplyTask[] };
+  } catch (error) {
+    return { ok: false, message: getErrorMessage(error, "Couldn't reach Todoer. Check it's still running."), transcript: null };
+  }
+}

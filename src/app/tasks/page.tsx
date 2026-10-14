@@ -15,6 +15,7 @@ import {
   type ViewFilter,
 } from "@/components/tasks/FilterRow";
 import GoalActions from "@/components/tasks/GoalActions";
+import RambleButton from "@/components/tasks/RambleButton";
 import type { GoalFormValues } from "@/components/tasks/GoalForm";
 import TaskEditModal from "@/components/tasks/TaskEditModal";
 import StatusBanner from "@/components/StatusBanner";
@@ -36,7 +37,7 @@ import { usePhone } from "@/lib/use-viewport-width";
 import { PAGE_CACHE_KEYS, readPageCache, writePageCache } from "@/lib/page-cache";
 import { fetchAllRows } from "@/lib/supabase-paging";
 import { assertDeleted } from "@/lib/supabase-delete";
-import { DISPLAY_ORDER_STEP, placeByPriority, sortTasksForDisplay } from "@/lib/task-order";
+import { DISPLAY_ORDER_STEP, placeByPriority, placeManyByPriority, sortTasksForDisplay } from "@/lib/task-order";
 import { useUrlTarget } from "@/lib/use-url-target";
 import LoadingState from "@/components/LoadingState";
 import { preloadDescriptionEditor } from "@/components/form/DescriptionField";
@@ -141,6 +142,9 @@ function saveRenumber(
  * Supabase for the list every time.
  */
 const RELOAD_GAP_MS = 5000;
+
+/** Ids per request in Mark all done: 100 uuids is about 3.7 KB of address. */
+const MARK_DONE_BATCH = 100;
 
 /** A save that failed in the background, with what was typed, to retry. */
 type FailedSave =
@@ -514,6 +518,54 @@ function TasksPageInner() {
       })();
     },
     [placeTask],
+  );
+
+  /**
+   * Several new tasks at once, from Ramble's Add: placed together, so each
+   * lands below the ones said before it rather than all on one number
+   * (placeManyByPriority), shown at once, and written in one insert. A
+   * failure takes them off again and brings each back as its own card, as a
+   * failed Add task does.
+   */
+  const handleAddMany = useCallback(
+    (newTasks: NewTask[]) => {
+      if (newTasks.length === 0) return;
+      setPersistenceError("");
+      const createdAt = new Date().toISOString();
+      const withIds = newTasks.map((task) => ({ task, id: crypto.randomUUID() }));
+      const { displayOrders, renumber } = placeManyByPriority(
+        tasks,
+        withIds.map(({ task, id }) => ({ id, dueDate: task.due_date, priority: task.priority })),
+      );
+      saveRenumber(sync, setTasks, setPersistenceError, renumber);
+      const rows: Task[] = withIds.map(({ task, id }) => ({
+        ...task,
+        id,
+        completed: false,
+        created_at: createdAt,
+        display_order: displayOrders.get(id) ?? DISPLAY_ORDER_STEP,
+      }));
+      const ids = new Set(rows.map((row) => row.id));
+
+      setTasks((prev) => [...prev, ...rows]);
+
+      void (async () => {
+        const { data, error } = await tracked(sync, supabase.from("tasks").insert(rows).select());
+        if (error) {
+          setTasks((prev) => prev.filter((t) => !ids.has(t.id)));
+          const message = getErrorMessage(error, "Could not add those tasks.");
+          setFailedSaves((prev) => [
+            ...prev,
+            ...newTasks.map((draft) => ({ id: crypto.randomUUID(), kind: "create" as const, draft, error: message })),
+          ]);
+          return;
+        }
+        /* The server's rows, which carry the columns it filled in. */
+        const saved = new Map(((data ?? []) as Task[]).map((row) => [row.id, row]));
+        setTasks((prev) => prev.map((t) => saved.get(t.id) ?? t));
+      })();
+    },
+    [tasks],
   );
 
   const handleEditSave = useCallback(
@@ -890,10 +942,8 @@ function TasksPageInner() {
         .insert([{ name, color, display_order: nextOrder, ...(details ?? {}) }])
         .select()
         .single());
-      if (error) {
-        setPersistenceError(getErrorMessage(error, "Could not create that goal."));
-        throw error;
-      }
+      // The card that asked shows the error (GoalForm, the task card's New goal), so the page does not repeat it.
+      if (error) throw error;
       if (data) setCategories((prev) => [...prev, data]);
       return data as Category;
     },
@@ -921,10 +971,8 @@ function TasksPageInner() {
         .eq("id", id)
         .select()
         .single());
-      if (error) {
-        setPersistenceError(getErrorMessage(error, "Could not update that goal."));
-        throw error;
-      }
+      // Shown in the goal's own card (GoalForm), not repeated behind it.
+      if (error) throw error;
       if (data) setCategories((prev) => prev.map((c) => (c.id === id ? data : c)));
     },
     [],
@@ -969,22 +1017,33 @@ function TasksPageInner() {
     async (ids: string[]) => {
       if (ids.length === 0) return;
       setPersistenceError("");
-      const { data, error } = await tracked(sync, supabase
-        .from("tasks")
-        .update({ completed: true })
-        .in("id", ids)
-        .eq("completed", false)
-        .select("id"));
-
-      if (error) {
-        setPersistenceError(getErrorMessage(error, "Could not mark those tasks as done."));
-        throw error;
+      /* The ids travel in the request's address, which Supabase's gateway caps
+         at a few kilobytes: a goal with a few hundred open tasks would be
+         refused whole. So a hundred at a time, and whatever was written
+         before a failure still shows as done. */
+      const changed = new Set<string>();
+      let failure: unknown = null;
+      for (let start = 0; start < ids.length; start += MARK_DONE_BATCH) {
+        const { data, error } = await tracked(sync, supabase
+          .from("tasks")
+          .update({ completed: true })
+          .in("id", ids.slice(start, start + MARK_DONE_BATCH))
+          .eq("completed", false)
+          .select("id"));
+        if (error) {
+          failure = error;
+          break;
+        }
+        /* Only the rows the database says it changed, so a write RLS refused
+           does not show as done. */
+        for (const row of (data ?? []) as { id: string }[]) changed.add(row.id);
       }
 
-      /* Only the rows the database says it changed, so a write RLS refused
-         does not show as done. */
-      const changed = new Set((data ?? []).map((row: { id: string }) => row.id));
-      setTasks((prev) => prev.map((t) => (changed.has(t.id) ? { ...t, completed: true } : t)));
+      if (changed.size > 0) setTasks((prev) => prev.map((t) => (changed.has(t.id) ? { ...t, completed: true } : t)));
+      if (failure) {
+        setPersistenceError(getErrorMessage(failure, "Could not mark those tasks as done."));
+        throw failure;
+      }
       if (changed.size < ids.length) {
         setPersistenceError("Some of those tasks could not be marked done. Reload and try again.");
       }
@@ -1359,6 +1418,17 @@ function TasksPageInner() {
             Tasks
           </h1>
 
+          {/* Ramble: the same tasks, said rather than typed. Left of Add
+              task, as an icon, the owner's call (7 Oct 2026). It takes the
+              slack that pushes the header's buttons to the right. */}
+          <RambleButton
+            tasks={tasks}
+            categories={categories}
+            activeCategoryId={activeCategoryId}
+            onAdd={handleAddMany}
+            style={{ marginLeft: "auto" }}
+          />
+
           {/*
             Add task acts on the whole list, so it sits with the page's other
             page-wide action rather than beside the goals. It opens the dialog
@@ -1373,7 +1443,7 @@ function TasksPageInner() {
             }}
             className={`${controls.primary} flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold`}
             style={{
-              marginLeft: "auto",
+              marginLeft: -8,
               flexShrink: 0,
               borderRadius: "var(--ui-radius-item)",
               border: "1px solid transparent",

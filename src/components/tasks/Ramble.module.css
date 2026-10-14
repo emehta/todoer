@@ -1,0 +1,261 @@
+/*
+ * Ramble's button and card. Kept with the components rather than in
+ * globals.css, so a deploy can never serve the component without its styles
+ * (CLAUDE.md, Known Pitfalls), and every var() carries the dark theme's
+ * value as a fallback.
+ */
+
+/* ─── The header button ─── */
+
+/* The mark alone at rest: no border, no tile, no backdrop (the owner, 8 Oct
+   2026: "not every button needs a square around it"). Pointed at, the app's
+   hover fill (ui-hover-fill) with the item corners, as tall as Add task and
+   Insights beside it and still no border (the owner, later that day), and
+   the waves run (RambleIcon). */
+.trigger {
+  /* The waves' gradient: the accent into a lit tint of it. On the light
+     theme the tint would wash out against white, so it runs from the deeper
+     accent instead. */
+  --ink-from: var(--c-accent, #2fa97f);
+  --ink-to: color-mix(in oklch, var(--c-accent, #2fa97f) 50%, #fff);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: var(--ui-radius-item, 4px);
+  background: transparent;
+  cursor: pointer;
+  transition: background-color var(--motion-fast, 120ms) var(--ease-out, ease-out), transform var(--motion-fast, 120ms) var(--ease-out, ease-out);
+}
+
+:global([data-theme="light"]) .trigger,
+:global([data-theme="paper"]) .trigger {
+  --ink-from: var(--c-accent-strong, #365f4e);
+  --ink-to: var(--c-accent, #3e705b);
+}
+
+.trigger:active {
+  transform: scale(0.92);
+}
+
+.triad {
+  display: block;
+  overflow: visible;
+}
+
+/* The breathing scales each wave about the middle of the mark. */
+.breathe {
+  transform-origin: 128px 128px;
+}
+
+/* Record again, in the review's footer: the kit's icon button
+   (form.module.css), so its fill is the height and shape of the ghost
+   buttons beside it. As narrow as before, so the mark stays on the line
+   the fields start on. */
+.again {
+  width: 32px;
+  height: 36px;
+  border-radius: var(--ui-radius-md, 0px);
+}
+
+@media (max-width: 619px) {
+  .again {
+    height: 44px;
+  }
+}
+
+/* ─── Listening ─── */
+
+.stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 4px 0 2px;
+}
+
+/* The waveform takes the mark's ink, so the button and the card are one colour. */
+.wave {
+  --ink-from: var(--c-accent, #2fa97f);
+  --ink-to: color-mix(in oklch, var(--c-accent, #2fa97f) 50%, #fff);
+  position: relative;
+  width: 100%;
+  height: 64px;
+}
+
+:global([data-theme="light"]) .wave,
+:global([data-theme="paper"]) .wave {
+  --ink-from: var(--c-accent-strong, #365f4e);
+  --ink-to: var(--c-accent, #3e705b);
+}
+
+/* The take fades out as it slides away to the left; the newest bars, at the
+   right, stay crisp. */
+.canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 18%, #000 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 18%, #000 100%);
+}
+
+.readout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.timer {
+  font-size: var(--ui-type-display, 32px);
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--c-text-1, #e8e8e8);
+}
+
+/* Paused: the time holds and blinks, as Voice Memos does, rather than
+   greying out as if the card were off. */
+.timerPaused {
+  composes: timer;
+  animation: blink 1.6s ease-in-out infinite;
+}
+
+.timerAsking {
+  composes: timer;
+  color: var(--c-text-4, #5a5a5a);
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 18px;
+  font-size: var(--ui-type-body-sm, 13px);
+  font-weight: 500;
+  color: var(--c-text-3, #a6a6a6);
+}
+
+.question {
+  color: var(--c-text-1, #e8e8e8);
+  font-weight: 600;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--ui-radius-round, 9999px);
+  background: var(--c-danger, #df6b62);
+  animation: dotFade 1.4s ease-in-out infinite;
+}
+
+.dotIdle {
+  composes: dot;
+  background: var(--c-text-4, #5a5a5a);
+  animation: none;
+}
+
+@keyframes dotFade {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* The kit's own buttons (DialogButton), a size up for the small card and
+   the full width of their slot, so the three read as one row. */
+.controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+  margin-top: 2px;
+}
+
+.controlsTwo {
+  composes: controls;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.tall {
+  width: 100%;
+  height: 40px;
+}
+
+.problem {
+  font-size: var(--ui-type-body-sm, 13px);
+  line-height: 1.5;
+  color: var(--c-text-2, #bdbdbd);
+  text-align: center;
+  max-width: 300px;
+}
+
+/* ─── Review ─── */
+
+/* Each task rises into place a moment after the one before it. */
+.row {
+  animation: rise 280ms var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* The title field with its remove X inside it, so the title runs to the
+   same right edge as the fields under it. */
+.titleField {
+  position: relative;
+}
+
+.titleField input {
+  padding-right: 28px;
+}
+
+.titleRemove {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  translate: 0 -50%;
+}
+
+/* A description as tall as its lines. The task card's box fills its card
+   (form.module.css, fieldGrow); in a list of tasks that left two bullets in
+   a tall empty box. */
+.description > div,
+.description > div > div,
+.description textarea {
+  min-height: 0;
+}
+
+/* ─── The transcript ─── */
+
+/* A sentence a line, as the owner reads scripts in Research. */
+.transcript {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 2px 0 8px;
+}
+
+.sentence {
+  font-size: var(--ui-type-body, 14px);
+  line-height: 1.45;
+  color: var(--c-text-2, #bdbdbd);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dot,
+  .timerPaused,
+  .row {
+    animation: none;
+  }
+}

@@ -19,10 +19,9 @@
     "scripts/time-format.test.mjs",
     "scripts/authed-fetch.test.mjs",
     "scripts/touch-gestures.test.mjs",
-    "scripts/readable-on.test.mjs"
+    "scripts/readable-on.test.mjs",
+    "scripts/ramble.test.mjs"
   ],
-  "cuts": {
-    "src/components/tasks/RambleButton.tsx": "Ramble ships in 1.1, with the user's own Groq key or publik API."
-  },
+  "cuts": {},
   "ignorePackages": []
 }

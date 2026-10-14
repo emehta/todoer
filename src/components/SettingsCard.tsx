@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
-import { CalendarBlank, Clock, type Icon } from "@phosphor-icons/react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowSquareOut, CalendarBlank, Clock, DownloadSimple, UserCircle } from "@phosphor-icons/react";
+import { Divider, SectionHeader, SettingsRow, TogglePill, settingsNote } from "@/components/SettingsControls";
 import StatusBanner from "@/components/StatusBanner";
+import RambleSettings from "@/components/RambleSettings";
 import ThemePicker from "@/components/ThemePicker";
 import { DialogButton, DialogCard, DialogFooter } from "@/components/form/Dialog";
 import { downloadMyData } from "@/lib/export-data";
@@ -13,94 +15,65 @@ import { useTimeFormat } from "@/lib/time-format";
 import { setWeekStart, useWeekStart } from "@/lib/week-start";
 import { usePhone } from "@/lib/use-viewport-width";
 import { dashboardLinks } from "@/selfhost/keys";
+import type { SettingsSection } from "@/lib/open-settings";
 
-const TOGGLE_SEGMENT_WIDTH = 56;
+const signupBox = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 12,
+  padding: "10px 12px",
+  border: "1px solid var(--c-border-sub)",
+  borderRadius: "var(--ui-radius-item)",
+} as const;
 
-function SectionHeader({ label }: { label: string }) {
-  return (
-    <p
-      style={{
-        fontSize: "var(--ui-type-label)",
-        fontWeight: 650,
-        color: "var(--c-text-4)",
-        textTransform: "uppercase",
-        letterSpacing: "var(--tracking-label)",
-        marginBottom: 6,
-        marginTop: 4,
-      }}
-    >
-      {label}
-    </p>
-  );
+/**
+ * Whether sign-ups are still open, asked again when Settings opens and each
+ * time the tab comes back into view: the warning sends the user to Supabase
+ * to turn them off, and should be gone when they return.
+ */
+function useSignupsOpen(initial: boolean | null): boolean | null {
+  const [open, setOpen] = useState(initial);
+  useEffect(() => {
+    let active = true;
+    let controller: AbortController | null = null;
+    const check = () => {
+      if (document.visibilityState !== "visible") return;
+      controller?.abort();
+      controller = new AbortController();
+      void fetch("/api/selfhost/status?fresh=1", { cache: "no-store", signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15_000)]) })
+        .then((response) => (response.ok ? response.json() : null))
+        .then((body: { reach?: string; signupsOpen?: boolean | null } | null) => {
+          if (active && body?.reach === "ok" && typeof body.signupsOpen === "boolean") setOpen(body.signupsOpen);
+        })
+        .catch(() => {
+          // The answer the page already had stands.
+        });
+    };
+    check();
+    document.addEventListener("visibilitychange", check);
+    window.addEventListener("focus", check);
+    return () => {
+      active = false;
+      controller?.abort();
+      document.removeEventListener("visibilitychange", check);
+      window.removeEventListener("focus", check);
+    };
+  }, []);
+  return open;
 }
 
-function SettingsRow({ icon: RowIcon, label, children }: { icon: Icon; label: string; children: ReactNode }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <RowIcon size={18} weight="duotone" style={{ color: "var(--c-text-3)", flexShrink: 0 }} />
-        <span style={{ fontSize: "var(--ui-type-body)", color: "var(--c-text-2)", fontWeight: 500 }}>{label}</span>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-/** Two or three fixed-width segments, so the rows' right edges line up and a tap never resizes them. */
-function TogglePill({
-  options,
-  value,
-  onChange,
-  ariaLabel,
-}: {
-  options: { value: string; label: string }[];
-  value: string;
-  onChange: (value: string) => void;
-  ariaLabel: string;
-}) {
-  return (
-    <div role="group" aria-label={ariaLabel} style={{ display: "inline-flex", borderRadius: "var(--ui-radius-md)", border: "1px solid var(--c-border)", overflow: "hidden" }}>
-      {options.map((option) => {
-        const active = value === option.value;
-        return (
-          <button
-            type="button"
-            key={option.value}
-            onClick={() => onChange(option.value)}
-            aria-pressed={active}
-            style={{
-              minWidth: TOGGLE_SEGMENT_WIDTH,
-              padding: "6px 4px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "var(--ui-type-body-sm)",
-              fontWeight: active ? 600 : 400,
-              fontVariantNumeric: "tabular-nums",
-              color: active ? "var(--c-accent)" : "var(--c-text-3)",
-              background: active ? "color-mix(in srgb, var(--c-accent) 10%, transparent)" : "transparent",
-              border: "none",
-              cursor: "pointer",
-              transition: "var(--transition-ui)",
-            }}
-          >
-            {option.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-const Divider = () => <div style={{ height: 1, background: "var(--c-border-sub)", margin: "8px 0" }} />;
 
 export default function SettingsCard({
   onClose,
-  signupsOpen,
+  signupsOpen: initialSignupsOpen,
   projectRefValue,
+  section,
 }: {
   onClose: () => void;
-  /** Whether the user's Supabase project still lets anyone sign up. */
+  /** Opened from elsewhere at one section, which is scrolled into view. */
+  section?: SettingsSection;
+  /** Whether the user's Supabase project still lets anyone sign up, as the page last heard. */
   signupsOpen: boolean | null;
   projectRefValue: string | null;
 }) {
@@ -112,6 +85,12 @@ export default function SettingsCard({
   const [exporting, setExporting] = useState(false);
   const [exportNote, setExportNote] = useState<{ tone: "success" | "error"; message: string } | null>(null);
   const links = projectRefValue ? dashboardLinks(projectRefValue) : null;
+  const rambleRef = useRef<HTMLDivElement>(null);
+  const signupsOpen = useSignupsOpen(initialSignupsOpen);
+
+  useEffect(() => {
+    if (section === "ramble") rambleRef.current?.scrollIntoView({ block: "start" });
+  }, [section]);
 
   useEffect(() => {
     let active = true;
@@ -154,13 +133,7 @@ export default function SettingsCard({
       onClose={onClose}
       fit
       footer={
-        <DialogFooter
-          start={
-            <DialogButton variant="ghost" onClick={() => { void supabase.auth.signOut({ scope: "local" }); }}>
-              Sign out
-            </DialogButton>
-          }
-        >
+        <DialogFooter>
           <DialogButton variant="primary" onClick={onClose}>Done</DialogButton>
         </DialogFooter>
       }
@@ -186,29 +159,33 @@ export default function SettingsCard({
         />
       </SettingsRow>
       <Divider />
+      <div ref={rambleRef}>
+        <SectionHeader label="Ramble" />
+        <RambleSettings />
+      </div>
+      <Divider />
       <SectionHeader label="Account" />
-      <p style={{ color: "var(--c-text-2)", padding: "4px 0 8px" }}>{email ? `Signed in as ${email}` : "Signed in"}</p>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "4px 0 10px" }}>
-        <span style={{ color: "var(--c-text-3)", fontSize: "var(--ui-type-label)", lineHeight: 1.5 }}>
-          Every goal and task as a file. Supabase&apos;s free plan keeps no backups, so keep your own.
-        </span>
+      <SettingsRow icon={UserCircle} label={email || "Signed in"}>
+        <DialogButton variant="ghost" onClick={() => { void supabase.auth.signOut({ scope: "local" }); }}>
+          Sign out
+        </DialogButton>
+      </SettingsRow>
+      <SettingsRow icon={DownloadSimple} label="Back up">
         <DialogButton variant="secondary" onClick={() => { void handleExport(); }} busy={exporting} disabled={exporting}>
           {exporting ? "Saving…" : "Download my data"}
         </DialogButton>
-      </div>
+      </SettingsRow>
       {exportNote && <StatusBanner tone={exportNote.tone} message={exportNote.message} style={{ marginBottom: 10 }} />}
       {signupsOpen && (
-        <StatusBanner
-          tone="info"
-          message={`Your Supabase project still lets anyone sign up. They would see nothing of yours, but turn it off: in Supabase, Authentication, Sign In / Providers, switch off "Allow new users to sign up".${links ? " Your project's page is linked below." : ""}`}
-        />
-      )}
-      {signupsOpen && links && (
-        <p style={{ paddingTop: 8 }}>
-          <a href={links.authProviders} target="_blank" rel="noreferrer" style={{ color: "var(--c-accent)", fontWeight: 600 }}>
-            Open Sign In / Providers
-          </a>
-        </p>
+        <div style={{ ...signupBox, marginTop: 4 }}>
+          <span style={settingsNote}>Anyone can still sign up to your Supabase project. They&apos;d see nothing, but switch off &ldquo;Allow new users to sign up&rdquo;.</span>
+          {links && (
+            <a href={links.authProviders} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, color: "var(--c-accent)", fontWeight: 600, fontSize: "var(--ui-type-label)", whiteSpace: "nowrap" }}>
+              Open Supabase
+              <ArrowSquareOut size={13} weight="bold" aria-hidden="true" />
+            </a>
+          )}
+        </div>
       )}
     </DialogCard>
   );

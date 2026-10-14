@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { GearSix } from "@phosphor-icons/react";
 import CelebrationLayer from "@/components/CelebrationLayer";
 import SettingsCard from "@/components/SettingsCard";
@@ -8,11 +8,11 @@ import Tooltip from "@/components/Tooltip";
 import { APP_GUTTER, APP_GUTTER_PHONE, DOCK_ROOM, HEADER_ROOM } from "@/lib/styles";
 import { usePhone } from "@/lib/use-viewport-width";
 import { APP_NAME } from "@/selfhost/constants";
+import { OPEN_SETTINGS_EVENT, type SettingsSection } from "@/lib/open-settings";
 
 /**
  * The frame around the task list: a bar across the top with the name and
- * Settings, floating over the page the way the source app's header does, so
- * the list scrolls up under it. There is no dock, so the room kept for one
+ * Settings, floating over the page, so the list scrolls up under it. There is no dock, so the room kept for one
  * at the foot of the page is a plain margin.
  */
 
@@ -30,6 +30,17 @@ export default function AppShell({
   const phone = usePhone();
   const barRef = useRef<HTMLElement>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsSection, setSettingsSection] = useState<SettingsSection | undefined>(undefined);
+
+  // Anything can ask for Settings at a section (lib/open-settings): Ramble's card does.
+  useEffect(() => {
+    const open = (event: Event) => {
+      setSettingsSection((event as CustomEvent<{ section?: SettingsSection }>).detail?.section);
+      setSettingsOpen(true);
+    };
+    window.addEventListener(OPEN_SETTINGS_EVENT, open);
+    return () => window.removeEventListener(OPEN_SETTINGS_EVENT, open);
+  }, []);
 
   // The page pads itself by the bar's height (HEADER_ROOM), so the bar writes it.
   useLayoutEffect(() => {
@@ -67,7 +78,8 @@ export default function AppShell({
             top: 0,
             left: 0,
             right: 0,
-            zIndex: 30,
+            // Above a task being dragged (TaskList, 30) and below cards (Modal, 50).
+            zIndex: 41,
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -85,7 +97,10 @@ export default function AppShell({
             <button
               type="button"
               aria-label="Settings"
-              onClick={() => setSettingsOpen(true)}
+              onClick={() => {
+                setSettingsSection(undefined);
+                setSettingsOpen(true);
+              }}
               className="ui-hover-fill"
               style={{
                 width: 36,
@@ -122,7 +137,7 @@ export default function AppShell({
         </main>
       </div>
       {settingsOpen && (
-        <SettingsCard onClose={() => setSettingsOpen(false)} signupsOpen={signupsOpen} projectRefValue={projectRefValue} />
+        <SettingsCard onClose={() => setSettingsOpen(false)} signupsOpen={signupsOpen} projectRefValue={projectRefValue} section={settingsSection} />
       )}
       <CelebrationLayer />
     </>
