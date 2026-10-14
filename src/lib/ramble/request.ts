@@ -19,6 +19,24 @@ export type RambleResult =
 
 const SETUP_CODES = new Set(["choose", "groq_key", "publik_setup"]);
 
+type ReplyBody = { transcript?: unknown; tasks?: unknown; error?: unknown; code?: unknown; topUpUrl?: unknown } | null;
+
+/** The route's answer as the card's result: the tasks, or words and the one thing to do about them. */
+export function readRambleReply(status: number, ok: boolean, body: ReplyBody): RambleResult {
+  const transcript = typeof body?.transcript === "string" ? body.transcript : null;
+  if (ok && Array.isArray(body?.tasks) && transcript !== null) {
+    return { ok: true, transcript, tasks: body.tasks as RambleReplyTask[] };
+  }
+  const message = typeof body?.error === "string" ? body.error : `Ramble could not read that (${status}).`;
+  const action: RambleAction | undefined =
+    typeof body?.code === "string" && SETUP_CODES.has(body.code)
+      ? { kind: "settings" }
+      : typeof body?.topUpUrl === "string" && /^https:\/\//.test(body.topUpUrl)
+        ? { kind: "link", label: "Add credit", href: body.topUpUrl }
+        : undefined;
+  return { ok: false, message, transcript, action };
+}
+
 export async function requestRamble(
   input: { audio: Blob } | { text: string },
   context: RambleContext,
@@ -30,21 +48,8 @@ export async function requestRamble(
 
   try {
     const response = await authedFetch("/api/tasks/ramble", { method: "POST", body: form });
-    const body = await response.json().catch(() => null) as
-      | { transcript?: unknown; tasks?: unknown; error?: unknown; code?: unknown; topUpUrl?: unknown }
-      | null;
-    const transcript = typeof body?.transcript === "string" ? body.transcript : null;
-    if (!response.ok || !Array.isArray(body?.tasks) || transcript === null) {
-      const message = typeof body?.error === "string" ? body.error : `Ramble could not read that (${response.status}).`;
-      const action: RambleAction | undefined =
-        typeof body?.code === "string" && SETUP_CODES.has(body.code)
-          ? { kind: "settings" }
-          : typeof body?.topUpUrl === "string" && /^https:\/\//.test(body.topUpUrl)
-            ? { kind: "link", label: "Add credit", href: body.topUpUrl }
-            : undefined;
-      return { ok: false, message, transcript, action };
-    }
-    return { ok: true, transcript, tasks: body.tasks as RambleReplyTask[] };
+    const body = (await response.json().catch(() => null)) as ReplyBody;
+    return readRambleReply(response.status, response.ok, body);
   } catch (error) {
     return { ok: false, message: getErrorMessage(error, "Couldn't reach Todoer. Check it's still running."), transcript: null };
   }

@@ -12,6 +12,7 @@
 import { AiError, chatJson, checkGroqKey, transcribe } from "@/lib/ai";
 import { GROQ, describeFailure, keyHint, looksLikeGroqKey, publikSpec, resolveProvider } from "@/lib/ramble/providers";
 import { balanceLine, formatBalance } from "@/lib/publik";
+import { readRambleReply } from "@/lib/ramble/request";
 
 const failures = [];
 let passed = 0;
@@ -131,6 +132,20 @@ script = [{ status: 401, body: {} }];
 check("checking a refused Groq key", await checkGroqKey(GROQ.baseUrl, "gsk_x"), "refused");
 script = [new TypeError("fetch failed")];
 check("checking with no network", await checkGroqKey(GROQ.baseUrl, "gsk_x"), "unreachable");
+
+// ─── What the card does with the route's answer ───
+const answer = (status, body) => readRambleReply(status, status < 400, body);
+check("tasks come through with what was said", answer(200, { transcript: "buy milk", tasks: [{ title: "Buy milk" }] }).ok, true);
+for (const code of ["choose", "groq_key", "publik_setup"]) {
+  check(`nothing set up (${code}) offers Settings`, answer(409, { error: "Add your Groq key in Settings.", code }).action, { kind: "settings" });
+}
+check("a balance run out offers publik's one link",
+  answer(402, { error: "Your publik balance has run out.", code: "publik_balance", topUpUrl: "https://publikhq.com/dashboard/api/add", transcript: "buy milk" }),
+  { ok: false, message: "Your publik balance has run out.", transcript: "buy milk", action: { kind: "link", label: "Add credit", href: "https://publikhq.com/dashboard/api/add" } });
+check("a link that is not https is never offered", answer(402, { error: "x", topUpUrl: "javascript:alert(1)" }).action, undefined);
+check("any other failure says what happened and offers nothing else", answer(502, { error: "Groq could not read that." }), { ok: false, message: "Groq could not read that.", transcript: null, action: undefined });
+check("an answer that is not JSON still has words", answer(500, null).message, "Ramble could not read that (500).");
+check("a 200 without tasks is not a success", answer(200, { transcript: "x" }).ok, false);
 
 // ─── publik's balance, as Settings shows it ───
 check("a balance is never rounded up", formatBalance(47_794), "$0.047");
