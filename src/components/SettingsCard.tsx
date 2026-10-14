@@ -11,7 +11,7 @@ import { downloadMyData } from "@/lib/export-data";
 import { getErrorMessage } from "@/lib/error-utils";
 import { supabase } from "@/lib/supabase";
 import { readStoredTheme, setTheme as persistTheme, type ThemeValue } from "@/lib/theme";
-import { useTimeFormat } from "@/lib/time-format";
+import { setTimeFormat, useTimeFormat } from "@/lib/time-format";
 import { setWeekStart, useWeekStart } from "@/lib/week-start";
 import { usePhone } from "@/lib/use-viewport-width";
 import { dashboardLinks } from "@/selfhost/keys";
@@ -116,15 +116,7 @@ export default function SettingsCard({
     }
   }
 
-  function handleTimeFormat(value: string) {
-    if (value !== "12h" && value !== "24h") return;
-    try {
-      localStorage.setItem("vitae_time_format", value);
-    } catch {
-      // The event below still updates every mounted consumer for this session.
-    }
-    window.dispatchEvent(new CustomEvent("vitae-preference", { detail: { timeFormat: value } }));
-  }
+
 
   return (
     <DialogCard
@@ -154,7 +146,7 @@ export default function SettingsCard({
         <TogglePill
           options={[{ value: "12h", label: "12h" }, { value: "24h", label: "24h" }]}
           value={timeFormat}
-          onChange={handleTimeFormat}
+          onChange={(value) => { if (value === "12h" || value === "24h") setTimeFormat(value); }}
           ariaLabel="Time format"
         />
       </SettingsRow>

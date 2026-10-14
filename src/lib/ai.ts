@@ -16,20 +16,21 @@ const CHAT_TIMEOUT_MS = 35_000;
 export class AiError extends Error {
   readonly status: number;
   readonly topUpUrl: string | null;
+  /** A refused key, which Settings fixes. */
+  readonly code: string | null;
 
-  constructor(message: string, status: number, topUpUrl: string | null = null) {
+  constructor(message: string, status: number, topUpUrl: string | null = null, code: string | null = null) {
     super(message);
     this.name = "AiError";
     this.status = status;
     this.topUpUrl = topUpUrl;
+    this.code = code;
   }
 }
 
 export interface Caller {
   spec: ProviderSpec;
   apiKey: string;
-  /** publik reports the balance after each call; the card can show it. */
-  onBalance?: (micros: number) => void;
 }
 
 function timedOut(error: unknown): boolean {
@@ -40,12 +41,7 @@ async function failure(caller: Caller, response: Response, step: string): Promis
   const body = await response.json().catch(() => null);
   const retry = Number(response.headers.get("retry-after"));
   const info = describeFailure(caller.spec, response.status, body, Number.isFinite(retry) ? retry : null, step);
-  return new AiError(info.message, info.status, info.topUpUrl ?? null);
-}
-
-function noteBalance(caller: Caller, response: Response): void {
-  const balance = Number(response.headers.get("x-publik-balance-micros") ?? response.headers.get("x-publik-balance"));
-  if (caller.onBalance && Number.isFinite(balance)) caller.onBalance(balance);
+  return new AiError(info.message, info.status, info.topUpUrl ?? null, info.code ?? null);
 }
 
 /** What was said in `audio`, as Whisper writes it. */
@@ -70,7 +66,6 @@ export async function transcribe(caller: Caller, audio: Blob, fileName: string, 
     throw new AiError(timedOut(error) ? `${caller.spec.label} took too long to write that down.` : `${caller.spec.label} could not be reached.`, 504);
   }
   if (!response.ok) throw await failure(caller, response, "write that down");
-  noteBalance(caller, response);
   const body = (await response.json().catch(() => null)) as { text?: unknown } | null;
   return typeof body?.text === "string" ? body.text : "";
 }
@@ -122,8 +117,7 @@ export async function chatJson(caller: Caller, system: string, user: string, sch
       }
     }
     if (!response.ok) throw await failure(caller, response, "read that");
-    noteBalance(caller, response);
-    const body = (await response.json().catch(() => null)) as { choices?: Array<{ message?: { content?: unknown } }> } | null;
+      const body = (await response.json().catch(() => null)) as { choices?: Array<{ message?: { content?: unknown } }> } | null;
     const content = body?.choices?.[0]?.message?.content;
     if (typeof content !== "string" || !content.trim()) {
       if (attempt === 0) {

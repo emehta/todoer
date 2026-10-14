@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { existsSync, promises as fs, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { arch, homedir, hostname, platform } from "node:os";
 import path from "node:path";
 import { PUBLIK_BASE_URL } from "@/lib/ramble/providers";
+import { dataDir } from "@/selfhost/config";
+import { readPrivateJson, writePrivateJson } from "@/selfhost/private-file";
 
 /**
  * publik API as one of Ramble's two providers. Server only. Adapted from
@@ -63,8 +65,13 @@ export function publikAvailable(): boolean {
   return appToken().startsWith("pat_") || Boolean(process.env.PUBLIK_API_KEY?.trim());
 }
 
-/** ~/Library/Application Support/publik/apps/todoer.json, %LOCALAPPDATA%\publik\apps\todoer.json, ~/.config/publik/apps/todoer.json */
+/**
+ * publik's own place for it: ~/Library/Application Support/publik/apps/todoer.json,
+ * %LOCALAPPDATA%\publik\apps\todoer.json, ~/.config/publik/apps/todoer.json.
+ * A copy given its own data folder (`npm run develop`) keeps its key there instead.
+ */
 export function credentialPath(): string {
+  if (process.env.TODOER_DATA_DIR?.trim()) return path.join(dataDir(), "publik.json");
   const os = platform();
   const base =
     os === "darwin" ? path.join(homedir(), "Library", "Application Support")
@@ -79,23 +86,12 @@ export function isCredential(value: unknown): value is PublikCredential {
 }
 
 export async function readCredentialFile(): Promise<PublikCredential | null> {
-  try {
-    const parsed = JSON.parse(await fs.readFile(credentialPath(), "utf8")) as unknown;
-    return isCredential(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
+  const parsed = await readPrivateJson(credentialPath());
+  return isCredential(parsed) ? parsed : null;
 }
 
-export async function writeCredentialFile(credential: PublikCredential): Promise<void> {
-  const file = credentialPath();
-  await fs.mkdir(path.dirname(file), { recursive: true });
-  await fs.writeFile(file, JSON.stringify(credential, null, 2), { mode: 0o600 });
-  if (process.platform !== "win32") await fs.chmod(file, 0o600);
-}
-
-export async function removeCredentialFile(): Promise<void> {
-  await fs.rm(credentialPath(), { force: true });
+export function writeCredentialFile(credential: PublikCredential): Promise<void> {
+  return writePrivateJson(credentialPath(), credential);
 }
 
 /**
@@ -108,22 +104,27 @@ export async function provision(prior: PublikCredential | null): Promise<PublikC
   if (!token.startsWith("pat_")) throw new Error("This copy of Todoer has no publik app token. Use your own Groq key instead.");
   let installId = prior?.install_id ?? randomUUID();
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    const response = await fetch(`${PUBLIK_BASE_URL}/installs`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        app_token: token,
-        app_slug: APP_SLUG,
-        app_version: appVersion(),
-        os: platform() === "darwin" ? "macos" : platform() === "win32" ? "windows" : "linux",
-        arch: arch(),
-        device_name: hostname().slice(0, 120),
-        install_id: installId,
-        disclosure_version: 1,
-        dialects: ["chat_completions"],
-      }),
-      signal: AbortSignal.timeout(20_000),
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${PUBLIK_BASE_URL}/installs`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          app_token: token,
+          app_slug: APP_SLUG,
+          app_version: appVersion(),
+          os: platform() === "darwin" ? "macos" : platform() === "win32" ? "windows" : "linux",
+          arch: arch(),
+          device_name: hostname().slice(0, 120),
+          install_id: installId,
+          disclosure_version: 1,
+          dialects: ["chat_completions"],
+        }),
+        signal: AbortSignal.timeout(20_000),
+      });
+    } catch {
+      throw new Error("Couldn't reach publik. Check this computer is online.");
+    }
     const body = (await response.json().catch(() => ({}))) as Record<string, unknown> & {
       error?: { type?: string; message?: string };
       wallet?: { add_credit_url?: string };
@@ -173,7 +174,6 @@ export async function readWallet(credential: PublikCredential): Promise<{ balanc
   }
 }
 
-/** The balance line publik asks for: "$0.00 · link this computer…" until linked. */
 /**
  * A balance in dollars, never rounded up: $0.047794 is "$0.047", not "$0.05",
  * which would show money that isn't there. Under a dollar it keeps a tenth of
@@ -186,6 +186,7 @@ export function formatBalance(micros: number): string {
   return `$${(Math.floor(Math.max(0, micros) / step) / 10 ** places).toFixed(places)}`;
 }
 
+/** The balance line publik asks for: "$0.00 · link this computer…" until linked. */
 export function balanceLine(micros: number | null | undefined, claimState: "anonymous" | "claimed" = "anonymous"): string {
   if (micros == null) return "";
   const dollars = micros === 0 ? "$0.00" : formatBalance(micros);

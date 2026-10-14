@@ -1,6 +1,6 @@
 import { configFromEnvironment, onTheWeb, readAppConfig, writeAppConfig } from "@/selfhost/config";
 import { fail, fromError, ok, readObject, text } from "@/selfhost/http";
-import { keyKind, sortPasted } from "@/selfhost/keys";
+import { sortPasted } from "@/selfhost/keys";
 import { probeProject } from "@/selfhost/server";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +30,6 @@ export async function POST(request: Request) {
     if (!pasted.publishableKey && !pasted.secretKey) return fail("Paste both keys from your project's API Keys page.");
     if (!pasted.publishableKey) return fail("The publishable key is missing. It starts with sb_publishable_.");
     if (!pasted.secretKey) return fail("The secret key is missing. On the API Keys page, press the eye beside it to show it.");
-    if (keyKind(pasted.secretKey) !== "secret") return fail("The secret key box has the publishable key in it.");
 
     const config = { url: pasted.url, publishableKey: pasted.publishableKey, secretKey: pasted.secretKey };
     const { reach } = await probeProject(config);

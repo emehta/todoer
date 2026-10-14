@@ -1,4 +1,3 @@
-import { createHash, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { SetupError } from "@/selfhost/server";
 
@@ -23,11 +22,15 @@ export function text(body: Record<string, unknown>, key: string): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-/** Compares two secrets in constant time, whatever their lengths. */
-export function secretsMatch(given: string, expected: string): boolean {
-  const a = createHash("sha256").update(given).digest();
-  const b = createHash("sha256").update(expected).digest();
-  return timingSafeEqual(a, b) && given.length === expected.length;
+const MIN_PASSWORD = 8;
+/* Supabase hashes a password with bcrypt, which reads 72 bytes and refuses more. */
+const MAX_PASSWORD_BYTES = 72;
+
+/** What is wrong with a new password, or null. */
+export function passwordProblem(password: string): string | null {
+  if (password.length < MIN_PASSWORD) return `Choose a password of ${MIN_PASSWORD} characters or more.`;
+  if (new TextEncoder().encode(password).length > MAX_PASSWORD_BYTES) return "That password is too long.";
+  return null;
 }
 
 export function fromError(error: unknown) {

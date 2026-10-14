@@ -17,7 +17,7 @@ export interface StatusResponse {
   configured: boolean;
   onTheWeb: boolean;
   /** The project comes from environment variables (always so on the web), so the setup screen cannot connect one. */
-  fromEnvironment?: boolean;
+  fromEnvironment: boolean;
   /** What is wrong with those variables, by name. */
   problems?: string[];
   ref?: string | null;
@@ -31,7 +31,7 @@ export function serverState(status: StatusResponse | null): ServerState | null {
   if (!status) return null;
   return {
     configured: status.configured,
-    fromEnvironment: status.fromEnvironment ?? status.onTheWeb,
+    fromEnvironment: status.fromEnvironment,
     reach: status.reach ?? null,
     schema: status.schema ?? null,
     ownerExists: status.ownerExists ?? null,
@@ -40,7 +40,7 @@ export function serverState(status: StatusResponse | null): ServerState | null {
 
 export interface ServerState {
   configured: boolean;
-  fromEnvironment?: boolean;
+  fromEnvironment: boolean;
   reach: Reach | null;
   schema: SchemaState | null;
   ownerExists: boolean | null;

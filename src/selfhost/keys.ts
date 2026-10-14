@@ -26,7 +26,7 @@ export function jwtRole(token: string): string | null {
     const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
     const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
     const json = typeof atob === "function" ? atob(padded) : Buffer.from(padded, "base64").toString("utf8");
-    const claims = JSON.parse(json) as { role?: unknown; iss?: unknown };
+    const claims = JSON.parse(json) as { role?: unknown };
     return typeof claims.role === "string" ? claims.role : null;
   } catch {
     return null;
@@ -49,16 +49,6 @@ export function sortPasted(text: string): PastedKeys {
 /** The 20-letter project reference in a Supabase project URL. */
 export function projectRef(url: string): string | null {
   return url.match(PROJECT_URL)?.[1] ?? null;
-}
-
-/** A key pasted into the wrong place, named in words. */
-export function keyKind(key: string): "publishable" | "secret" | "unknown" {
-  if (key.startsWith("sb_publishable_")) return "publishable";
-  if (key.startsWith("sb_secret_")) return "secret";
-  const role = jwtRole(key);
-  if (role === "anon") return "publishable";
-  if (role === "service_role") return "secret";
-  return "unknown";
 }
 
 /** Pages of the user's own project, linked from the setup screens. */

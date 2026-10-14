@@ -5,7 +5,7 @@
  *   npm run develop                    http://localhost:3201
  *   npm run develop -- --port 3205     another port
  *
- * It keeps its settings (the project it is connected to, the Ramble choice)
+ * It keeps its settings (the project it is connected to, the Ramble choice, publik's key)
  * in .dev-data in this folder, which git ignores, and listens on its own
  * port. So it never reads or changes the project an installed Todoer on this
  * computer uses, and both can run at once. Connect it to a test project of

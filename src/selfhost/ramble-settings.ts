@@ -99,7 +99,8 @@ export async function rambleStatus(owner: Owner): Promise<RambleStatus> {
     readPublikCredential(owner),
   ]);
   const groqKey = (typeof savedGroqKey === "string" && savedGroqKey) || null;
-  const wallet = credential ? await readWallet(credential) : null;
+  // publik is asked for the balance only when it is the choice: Groq's Save never waits on it.
+  const wallet = credential && provider === "publik" ? await readWallet(credential) : null;
   const claimState = wallet?.claimState ?? credential?.claim_state ?? null;
   const micros = wallet?.balanceMicros ?? credential?.balance_micros ?? null;
   return {

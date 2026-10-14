@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { secretsMatch } from "@/selfhost/compare";
 import type { AppConfig } from "@/selfhost/config";
 import { APP, OWNER_FLAG, SCHEMA_VERSION } from "@/selfhost/constants";
 import type { Reach, SchemaState } from "@/selfhost/steps";
@@ -58,9 +59,12 @@ export function adminClient(config: AppConfig): SupabaseClient {
  */
 export async function isProjectSecretKey(config: AppConfig, key: string): Promise<boolean> {
   if (!key) return false;
-  if (key === config.secretKey) return true;
+  if (secretsMatch(key, config.secretKey)) return true;
   const { error } = await serverClient(config.url, key).auth.admin.listUsers({ page: 1, perPage: 1 });
-  return !error;
+  if (!error) return true;
+  // Only Supabase saying no is a wrong key; an outage must not read as one.
+  if (error.status === 401 || error.status === 403) return false;
+  throw new SetupError("Couldn't reach Supabase. Try again.", 502);
 }
 
 export interface Probe {
@@ -213,5 +217,7 @@ export async function createOwnerWith(client: SupabaseClient, email: string, pas
       ownerError ? 502 : 409,
     );
   }
-  await seedGoals(client, data.user.id);
+  /* The account is made and recorded by now: a goal that failed to appear
+     costs nothing (the task card makes one), so it never fails the setup. */
+  await seedGoals(client, data.user.id).catch((goalError: unknown) => console.error(goalError));
 }

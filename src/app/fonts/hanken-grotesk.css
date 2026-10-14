@@ -1,12 +1,8 @@
 /*
- * Hanken Grotesk (SIL Open Font License 1.1, OFL.txt beside this file),
- * served from the app itself. These are the four files Google Fonts serves
- * for it, with Google's own ranges, so each is fetched only for a character
- * it draws. They are in the repo because next/font/google fetches them while
- * building, and a build without that network (a firewall, a train) failed.
- *
- * The fallback is Arial resized to Hanken's metrics, as next/font measured
- * it, so text does not shift when the font arrives.
+ * Hanken Grotesk (SIL Open Font License 1.1, OFL.txt beside this file): the
+ * four files Google Fonts serves, with its ranges, so each loads only for the
+ * characters it draws. Bundled so a build needs no network. The fallback is
+ * Arial resized to Hanken's metrics, so text doesn't shift when it arrives.
  */
 
 @font-face {
@@ -54,7 +50,7 @@
   size-adjust: 100.94%;
 }
 
-/* Tailwind's preflight sets the page in var(--font-sans); this sets that to Hanken. */
+/* The page's font (--font-display in globals.css, and Tailwind's font-sans) reads this. */
 :root {
   --font-sans: "Hanken Grotesk", "Hanken Grotesk Fallback";
 }

@@ -11,12 +11,12 @@ import { APP_NAME } from "@/selfhost/constants";
 import { OPEN_SETTINGS_EVENT, type SettingsSection } from "@/lib/open-settings";
 
 /**
- * The frame around the task list: a bar across the top with the name and
- * Settings, floating over the page, so the list scrolls up under it. There is no dock, so the room kept for one
- * at the foot of the page is a plain margin.
+ * The frame around the task list: a top bar with the name and Settings,
+ * over the page, so the list scrolls up under it.
  */
 
-const NO_DOCK_ROOM = "24px";
+/* The room the list keeps at its foot (DOCK_ROOM reads it): a plain margin, as there is no dock. */
+const FOOT_ROOM = "24px";
 
 export default function AppShell({
   children,
@@ -68,7 +68,7 @@ export default function AppShell({
           display: "flex",
           position: "relative",
           overflow: "clip",
-          ["--app-nav-clearance" as string]: NO_DOCK_ROOM,
+          ["--app-nav-clearance" as string]: FOOT_ROOM,
         } as CSSProperties}
       >
         <header

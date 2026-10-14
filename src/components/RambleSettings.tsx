@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowSquareOut, Microphone } from "@phosphor-icons/react";
 import { SettingsRow, TogglePill, settingsNote } from "@/components/SettingsControls";
 import StatusBanner from "@/components/StatusBanner";
@@ -8,6 +8,7 @@ import { DialogButton } from "@/components/form/Dialog";
 import { TextField } from "@/components/form/fields";
 import { authedFetch } from "@/lib/authed-fetch";
 import { getErrorMessage } from "@/lib/error-utils";
+import type { RambleStatus } from "@/selfhost/ramble-settings";
 
 /**
  * Ramble's part of Settings: which AI listens, and what that one needs.
@@ -21,20 +22,7 @@ import { getErrorMessage } from "@/lib/error-utils";
  *   after, with publik's cost sentence folded under it.
  */
 
-interface Status {
-  provider: "groq" | "publik" | null;
-  groq: { saved: boolean; hint: string | null; fromEnv: boolean };
-  publik: {
-    available: boolean;
-    setUp: boolean;
-    balanceLine: string;
-    costSentence: string | null;
-    claimState: "anonymous" | "claimed" | null;
-    claimUrl: string | null;
-    addCreditUrl: string | null;
-  };
-  disclosure: string;
-}
+type Status = RambleStatus;
 
 async function call(method: "GET" | "PUT" | "POST", path: string, body?: unknown): Promise<Status> {
   const response = await authedFetch(path, {
@@ -43,7 +31,9 @@ async function call(method: "GET" | "PUT" | "POST", path: string, body?: unknown
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const answer = (await response.json().catch(() => null)) as (Status & { error?: string }) | null;
-  if (!response.ok || !answer) throw new Error(answer?.error ?? `Ramble's settings did not load (${response.status}).`);
+  if (!response.ok || !answer) {
+    throw new Error(answer?.error ?? (method === "GET" ? `Ramble's settings didn't load (${response.status}).` : `That didn't save (${response.status}).`));
+  }
   return answer;
 }
 
@@ -69,7 +59,10 @@ export default function RambleSettings() {
   const [error, setError] = useState<string | null>(null);
   const [groqKey, setGroqKey] = useState("");
 
+  const busyRef = useRef(false);
+
   const run = useCallback(async (task: () => Promise<Status>) => {
+    busyRef.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -79,12 +72,28 @@ export default function RambleSettings() {
       setError(getErrorMessage(failure, "That did not work. Try again."));
       return false;
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   }, []);
 
   useEffect(() => {
     void run(() => call("GET", "/api/ramble/settings"));
+    /* Back from publik's page (signed in, or credit added): the balance and
+       its button are read again, quietly, unless a save is under way. */
+    const refresh = () => {
+      if (document.visibilityState !== "visible" || busyRef.current) return;
+      call("GET", "/api/ramble/settings").then(
+        (next) => { if (!busyRef.current) setStatus(next); },
+        () => undefined,
+      );
+    };
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("focus", refresh);
+    };
   }, [run]);
 
   if (!status) {
@@ -107,6 +116,8 @@ export default function RambleSettings() {
       if (!saved) setStatus(before);
     });
   };
+  // A copy with no publik app token can't use publik, so it isn't offered (unless already chosen, to switch away).
+  const options = status.publik.available || status.provider === "publik" ? OPTIONS : OPTIONS.filter((option) => option.value === "groq");
   const open = (url: string | null) => {
     if (url) window.open(url, "_blank", "noopener");
   };
@@ -114,7 +125,7 @@ export default function RambleSettings() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: 8 }}>
       <SettingsRow icon={Microphone} label="Listens with">
-        <TogglePill options={OPTIONS} value={status.provider} onChange={choose} ariaLabel="Ramble's AI" disabled={busy} />
+        <TogglePill options={options} value={status.provider} onChange={choose} ariaLabel="Ramble's AI" disabled={busy} />
       </SettingsRow>
 
       {status.provider === null && <p style={settingsNote}>Groq is free with your own key. publik needs no key and charges per use.</p>}

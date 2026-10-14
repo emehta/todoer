@@ -1,13 +1,11 @@
 import { onTheWeb, readAppConfig } from "@/selfhost/config";
-import { fail, fromError, ok, readObject, secretsMatch, text } from "@/selfhost/http";
+import { secretsMatch } from "@/selfhost/compare";
+import { fail, fromError, ok, passwordProblem, readObject, text } from "@/selfhost/http";
 import { createOwner } from "@/selfhost/server";
 
 export const dynamic = "force-dynamic";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MIN_PASSWORD = 8;
-/* Supabase hashes a password with bcrypt, which reads 72 bytes and refuses more. */
-const MAX_PASSWORD_BYTES = 72;
 /* Long enough that guessing it before the owner makes the account is hopeless. */
 const MIN_SETUP_CODE = 12;
 
@@ -32,8 +30,8 @@ export async function POST(request: Request) {
     const email = text(body, "email").toLowerCase();
     const password = typeof body.password === "string" ? body.password : "";
     if (!EMAIL.test(email)) return fail("Enter an email address.");
-    if (password.length < MIN_PASSWORD) return fail(`Choose a password of ${MIN_PASSWORD} characters or more.`);
-    if (new TextEncoder().encode(password).length > MAX_PASSWORD_BYTES) return fail("That password is too long. Keep it to 72 characters.");
+    const problem = passwordProblem(password);
+    if (problem) return fail(problem);
 
     await createOwner(config, email, password);
     return ok();

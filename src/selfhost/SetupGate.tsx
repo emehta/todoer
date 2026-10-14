@@ -33,21 +33,29 @@ function sessionState(session: Session | null): SessionState {
 export default function SetupGate({ children }: { children: ReactNode }) {
   const config = useAppConfig();
   const [status, setStatus] = useState<StatusResponse | null>(null);
-  const [failed, setFailed] = useState(false);
+  /* Why the status could not be read, shown as the screen's words; and whether a check is under way, for Try again's busy state. */
+  const [problem, setProblem] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
   const [session, setSession] = useState<SessionState | null>(config ? null : "none");
   const [databaseChecks, setDatabaseChecks] = useState(0);
   const [switching, setSwitching] = useState(false);
 
   const refresh = useCallback(async () => {
-    setFailed(false);
+    setChecking(true);
     try {
       const response = await fetch("/api/selfhost/status", { cache: "no-store", signal: AbortSignal.timeout(STATUS_TIMEOUT_MS) });
-      const body = (await response.json()) as StatusResponse & { error?: string };
-      if (!response.ok) throw new Error(body.error ?? `Status ${response.status}`);
+      const body = (await response.json().catch(() => ({}))) as StatusResponse & { error?: string };
+      if (!response.ok) throw new Error(body.error ?? `Todoer couldn't check its setup (${response.status}).`);
       setStatus(body);
+      setProblem(null);
     } catch (error) {
-      console.error(getErrorMessage(error, "Status check failed."));
-      setFailed(true);
+      setProblem(
+        error instanceof DOMException && error.name === "TimeoutError" ? "That took too long. Try again."
+        : error instanceof TypeError ? "Couldn't reach Todoer. Check it's still running."
+        : getErrorMessage(error, "Try again in a moment."),
+      );
+    } finally {
+      setChecking(false);
     }
   }, []);
 
@@ -72,13 +80,14 @@ export default function SetupGate({ children }: { children: ReactNode }) {
     };
   }, [config]);
 
-  if (failed) return <ProblemScreen kind="error" projectRefValue={null} onRetry={() => { void refresh(); }} />;
+  const retry = () => { void refresh(); };
+  if (problem) return <ProblemScreen kind="error" message={problem} projectRefValue={null} onRetry={retry} busy={checking} />;
 
   // A project connected in this tab reaches the page's config only on a fresh load.
   const reload = () => window.location.reload();
   const step = nextStep(serverState(status), session);
   const ref = status?.ref ?? null;
-  const fromEnvironment = status?.fromEnvironment ?? status?.onTheWeb ?? false;
+  const fromEnvironment = status?.fromEnvironment ?? false;
 
   if (switching && !fromEnvironment) return <ConnectScreen mode="switch" onConnected={reload} onCancel={() => setSwitching(false)} />;
 
@@ -86,12 +95,12 @@ export default function SetupGate({ children }: { children: ReactNode }) {
     case "loading":
       return <LoadingScreen />;
     case "environment":
-      return <EnvironmentScreen problems={status?.problems ?? []} rejected={false} onRetry={() => { void refresh(); }} />;
+      return <EnvironmentScreen problems={status?.problems ?? []} rejected={false} onRetry={retry} busy={checking} />;
     case "connect":
       return <ConnectScreen mode="first" onConnected={reload} />;
     case "rejected":
       return fromEnvironment
-        ? <EnvironmentScreen problems={[]} rejected onRetry={() => { void refresh(); }} />
+        ? <EnvironmentScreen problems={[]} rejected onRetry={retry} busy={checking} />
         : <ConnectScreen mode="rejected" onConnected={reload} />;
     case "paused":
     case "unreachable":
@@ -99,7 +108,8 @@ export default function SetupGate({ children }: { children: ReactNode }) {
         <ProblemScreen
           kind={step}
           projectRefValue={ref}
-          onRetry={() => { void refresh(); }}
+          onRetry={retry}
+          busy={checking}
           onSwitch={fromEnvironment ? undefined : () => setSwitching(true)}
         />
       );
@@ -121,7 +131,7 @@ export default function SetupGate({ children }: { children: ReactNode }) {
     case "sign-in":
       return <SignInScreen projectRefValue={ref} />;
     case "not-owner":
-      return <ProblemScreen kind="not-owner" projectRefValue={ref} onRetry={() => { void refresh(); }} />;
+      return <ProblemScreen kind="not-owner" projectRefValue={ref} onRetry={retry} />;
     case "app":
       return <AppShell signupsOpen={status?.signupsOpen ?? null} projectRefValue={ref}>{children}</AppShell>;
   }

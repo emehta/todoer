@@ -7,7 +7,7 @@
  * something already done.
  */
 
-import { dashboardLinks, jwtRole, keyKind, projectRef, sortPasted } from "@/selfhost/keys";
+import { dashboardLinks, jwtRole, projectRef, sortPasted } from "@/selfhost/keys";
 import { nextStep, serverState } from "@/selfhost/steps";
 
 const failures = [];
@@ -37,19 +37,17 @@ check("legacy service_role key reads as secret", sortPasted(jwt("service_role"))
 check("a new key wins over a legacy one", sortPasted(`${jwt("anon")} ${PUBLISHABLE}`).publishableKey, PUBLISHABLE);
 check("a JWT's role", jwtRole(jwt("service_role")), "service_role");
 check("not a JWT has no role", jwtRole("hello.world"), null);
-check("kind: publishable", keyKind(PUBLISHABLE), "publishable");
-check("kind: secret", keyKind(SECRET), "secret");
-check("kind: legacy secret", keyKind(jwt("service_role")), "secret");
-check("kind: nonsense", keyKind("password123"), "unknown");
 check("project ref", projectRef(URL), "abcdefghijklmnopqrst");
 check("no project ref in a stranger's URL", projectRef("https://supabase.co"), null);
 check("links go to that project", dashboardLinks("abcdefghijklmnopqrst").sqlEditor, "https://supabase.com/dashboard/project/abcdefghijklmnopqrst/sql/new");
 
 // ─── Steps ───
-const ready = { configured: true, onTheWeb: false, ref: "abcdefghijklmnopqrst", reach: "ok", schema: "ready", ownerExists: true };
+const ready = { configured: true, onTheWeb: false, fromEnvironment: false, ref: "abcdefghijklmnopqrst", reach: "ok", schema: "ready", ownerExists: true };
 const step = (status, session) => nextStep(serverState(status), session);
 check("nothing heard yet", step(null, null), "loading");
-check("a fresh copy connects first", step({ configured: false, onTheWeb: false }, "none"), "connect");
+check("a fresh copy connects first", step({ configured: false, onTheWeb: false, fromEnvironment: false }, "none"), "connect");
+check("variables set but incomplete name what is missing, never the connect form", step({ configured: false, onTheWeb: false, fromEnvironment: true }, "none"), "environment");
+check("variables that work go on as a saved project does", step({ ...ready, fromEnvironment: true, ownerExists: false }, "none"), "create-account");
 check("a paused project", step({ ...ready, reach: "paused" }, "owner"), "paused");
 check("an unreachable project", step({ ...ready, reach: "unreachable" }, "owner"), "unreachable");
 check("keys that were reset", step({ ...ready, reach: "rejected" }, "owner"), "rejected");

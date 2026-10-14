@@ -29,6 +29,16 @@ export function getTimeFormat(): TimeFormatPref {
   return localeDefault;
 }
 
+/** Persist the choice from Settings and tell every mounted clock. */
+export function setTimeFormat(value: TimeFormatPref): void {
+  try {
+    localStorage.setItem("vitae_time_format", value);
+  } catch {
+    // The event below still updates every mounted consumer for this session.
+  }
+  window.dispatchEvent(new CustomEvent("vitae-preference", { detail: { timeFormat: value } }));
+}
+
 /** React hook: re-renders when the user changes the preference in Settings. */
 export function useTimeFormat(): TimeFormatPref {
   return useSyncExternalStore(subscribe, getTimeFormat, getServerSnapshot);

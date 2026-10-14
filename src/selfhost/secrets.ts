@@ -1,7 +1,7 @@
-import { promises as fs } from "node:fs";
 import path from "node:path";
 import type { Owner } from "@/selfhost/owner";
 import { dataDir, onTheWeb } from "@/selfhost/config";
+import { readPrivateJson, writePrivateJson } from "@/selfhost/private-file";
 import { adminClient, SetupError } from "@/selfhost/server";
 
 /**
@@ -18,30 +18,14 @@ const FILE = "settings.json";
 
 type Values = Record<string, unknown>;
 
+const settingsFile = () => path.join(dataDir(), FILE);
+
 async function readFile(): Promise<Values> {
-  try {
-    const parsed = JSON.parse(await fs.readFile(path.join(dataDir(), FILE), "utf8")) as unknown;
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Values) : {};
-  } catch {
-    return {};
-  }
+  const parsed = await readPrivateJson(settingsFile());
+  return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Values) : {};
 }
 
-async function writeFile(values: Values): Promise<void> {
-  await fs.mkdir(dataDir(), { recursive: true });
-  const file = path.join(dataDir(), FILE);
-  const temp = `${file}.${process.pid}.${Date.now()}.tmp`;
-  await fs.writeFile(temp, `${JSON.stringify(values, null, 2)}\n`, { mode: 0o600 });
-  try {
-    await fs.rename(temp, file);
-  } catch {
-    await fs.copyFile(temp, file);
-    await fs.rm(temp, { force: true });
-  }
-  if (process.platform !== "win32") await fs.chmod(file, 0o600);
-}
-
-/* Writes on one computer are one at a time, so two saves never lose each other. */
+/* A change is read, edited and written as one step, so two saves never lose each other. */
 let queue: Promise<unknown> = Promise.resolve();
 function serial<T>(task: () => Promise<T>): Promise<T> {
   const next = queue.then(task, task);
@@ -67,7 +51,7 @@ export async function writeSecret(owner: Owner, key: string, value: unknown): Pr
       const values = await readFile();
       if (value === null) delete values[key];
       else values[key] = value;
-      await writeFile(values);
+      await writePrivateJson(settingsFile(), values);
     });
     return;
   }

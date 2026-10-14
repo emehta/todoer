@@ -44,6 +44,7 @@ check("no key, no hint", keyHint(null), null);
 const groq = { name: "groq", label: "Groq" };
 const publik = { name: "publik", label: "publik" };
 check("Groq refusing the key says to check it in Settings", describeFailure(groq, 401, null, null, "read that").message.includes("Settings"), true);
+check("and carries the code that puts Settings on the card", [describeFailure(groq, 401, null, null, "read that").code, describeFailure(publik, 403, null, null, "read that").code], ["groq_key", "publik_setup"]);
 check("publik refusing the key says to set publik up again", describeFailure(publik, 403, null, null, "read that").message.includes("publik"), true);
 check("a publik 402 keeps its message and its one link",
   describeFailure(publik, 402, { error: { message: "Add credit to keep going.", top_up_url: "https://publikhq.com/top-up" } }, null, "read that"),

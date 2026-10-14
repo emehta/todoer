@@ -17,6 +17,8 @@ function aiFailure(error: AiError, transcript: string | null) {
   if (error.topUpUrl) {
     body.code = "publik_balance";
     body.topUpUrl = error.topUpUrl;
+  } else if (error.code) {
+    body.code = error.code;
   }
   return NextResponse.json(body, { status: error.status, headers: { "cache-control": "no-store" } });
 }

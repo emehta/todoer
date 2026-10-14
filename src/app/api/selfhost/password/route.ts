@@ -1,13 +1,9 @@
 import { readAppConfig } from "@/selfhost/config";
-import { fail, fromError, ok, readObject, text } from "@/selfhost/http";
+import { fail, fromError, ok, passwordProblem, readObject, text } from "@/selfhost/http";
 import { sortPasted } from "@/selfhost/keys";
 import { isProjectSecretKey, resetOwnerPassword } from "@/selfhost/server";
 
 export const dynamic = "force-dynamic";
-
-const MIN_PASSWORD = 8;
-/* Supabase hashes a password with bcrypt, which reads 72 bytes and refuses more. */
-const MAX_PASSWORD_BYTES = 72;
 
 /**
  * A forgotten password, set again without email (Supabase's own email only
@@ -30,8 +26,8 @@ export async function POST(request: Request) {
     }
 
     const password = typeof body.password === "string" ? body.password : "";
-    if (password.length < MIN_PASSWORD) return fail(`Choose a password of ${MIN_PASSWORD} characters or more.`);
-    if (new TextEncoder().encode(password).length > MAX_PASSWORD_BYTES) return fail("That password is too long. Keep it to 72 characters.");
+    const problem = passwordProblem(password);
+    if (problem) return fail(problem);
     const email = await resetOwnerPassword(config, password);
     return ok({ ok: true, email });
   } catch (error) {

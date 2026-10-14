@@ -14,10 +14,9 @@ import { APP_NAME } from "@/selfhost/constants";
 export const dynamic = "force-dynamic";
 
 /*
- * lib/theme.ts is a client module, so its THEME_STORAGE_KEY reaches this
- * server component as a reference, not the string: the script read
- * localStorage.getItem(undefined) and every reload came up Midnight. The key
- * is spelled here, and scripts/first-paint.test.mjs holds it to lib/theme.
+ * Spelled here because lib/theme is a client module, whose constants reach a
+ * server component as references, not values. scripts/first-paint.test.mjs
+ * keeps the two equal.
  */
 const THEME_KEY = "vitae-theme";
 

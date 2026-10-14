@@ -101,6 +101,8 @@ export interface FailureInfo {
   message: string;
   /** The one link a publik 402 carries, to add credit or link the computer. */
   topUpUrl?: string | null;
+  /** A refused key: the card offers Settings, where it is fixed. */
+  code?: "groq_key" | "publik_setup";
 }
 
 /**
@@ -118,8 +120,8 @@ export function describeFailure(
   const detail = typeof error?.message === "string" ? error.message.slice(0, 300) : "";
   if (status === 401 || status === 403) {
     return spec.name === "groq"
-      ? { status: 502, message: "Groq refused your key. Check it in Settings." }
-      : { status: 502, message: "publik refused this computer's key. Set it up again in Settings." };
+      ? { status: 502, message: "Groq refused your key. Check it in Settings.", code: "groq_key" }
+      : { status: 502, message: "publik refused this computer's key. Set it up again in Settings.", code: "publik_setup" };
   }
   if (status === 402) {
     return {

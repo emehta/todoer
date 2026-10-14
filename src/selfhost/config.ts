@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { writePrivateJson } from "@/selfhost/private-file";
 import { SetupError } from "@/selfhost/server";
 
 /**
@@ -145,36 +146,13 @@ export async function readAppConfig(): Promise<AppConfig | null> {
   return config;
 }
 
-/* One write at a time, each through its own temporary file, so two tabs
-   connecting at once can neither collide nor leave half a file. */
-let queue: Promise<unknown> = Promise.resolve();
-
 /** Saves the config for a copy on this computer, readable by its owner only. */
-export function writeAppConfig(config: AppConfig): Promise<void> {
-  const task = async () => {
-    const file = configFile();
-    const temp = `${file}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`;
-    try {
-      await fs.mkdir(dataDir(), { recursive: true });
-      await fs.writeFile(temp, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
-      try {
-        await fs.rename(temp, file);
-      } catch {
-        // Windows can refuse to rename over a file another process has open.
-        await fs.copyFile(temp, file);
-        await fs.rm(temp, { force: true });
-      }
-      if (process.platform !== "win32") await fs.chmod(file, 0o600);
-    } catch {
-      await fs.rm(temp, { force: true }).catch(() => undefined);
-      throw new SetupError(`Todoer can't save its settings in ${dataDir()}. Check that your account can write to that folder.`, 500);
-    } finally {
-      cached = null;
-    }
-  };
-  const next = queue.then(task, task);
-  queue = next.catch(() => undefined);
-  return next;
+export async function writeAppConfig(config: AppConfig): Promise<void> {
+  try {
+    await writePrivateJson(configFile(), config);
+  } finally {
+    cached = null;
+  }
 }
 
 export function browserHalf(config: AppConfig | null): BrowserConfig | null {

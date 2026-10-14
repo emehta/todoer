@@ -119,7 +119,7 @@ export function ConnectScreen({
         mode === "rejected" ? (
           <p>Supabase no longer accepts the saved keys. Paste your project&apos;s current ones.</p>
         ) : mode === "switch" ? (
-          <p>Paste the other project&apos;s address and keys. Your tasks stay in the old one.</p>
+          <p>Paste the other project&apos;s URL and keys. Your tasks stay in the old one.</p>
         ) : (
           <p>Your tasks live in your own free Supabase project. Setup takes about five minutes.</p>
         )
@@ -190,7 +190,7 @@ export function DatabaseScreen({
   useEffect(() => {
     let live = true;
     fetch("/api/selfhost/schema", { cache: "no-store" })
-      .then((response) => (response.ok ? response.text() : Promise.reject(new Error("Could not read the setup."))))
+      .then((response) => (response.ok ? response.text() : Promise.reject(new Error("Could not read the setup. Reload the page."))))
       .then((text) => {
         if (live) setSql(text);
       })
@@ -217,14 +217,8 @@ export function DatabaseScreen({
 
   async function check() {
     setChecking(true);
-    setError(null);
-    try {
-      await onCheck();
-    } catch (failure) {
-      setError(getErrorMessage(failure, "That did not work. Try again."));
-    } finally {
-      setChecking(false);
-    }
+    await onCheck();
+    setChecking(false);
   }
 
   return (
@@ -248,7 +242,7 @@ export function DatabaseScreen({
       </Steps>
       {error && <StatusBanner message={error} />}
       {!error && stillMissing && !checking && (
-        <StatusBanner tone="info" message="No tables yet. Make sure Run finished without an error." />
+        <StatusBanner tone="info" message={update ? "Still the old tables. Make sure Run finished without an error." : "No tables yet. Make sure Run finished without an error."} />
       )}
       <Actions>
         {/* The step to take next is the filled one: Copy, then Check again once it is copied. */}
@@ -306,12 +300,14 @@ export function CreateAccountScreen({ onTheWeb, onCreated }: { onTheWeb: boolean
     setError(null);
     try {
       await postJson("/api/selfhost/account", { email, password, setupCode });
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
-      if (signInError) throw new Error(`The account was made, but signing in failed: ${signInError.message}`);
+      // Signing in here skips the sign-in screen; should it fail, that screen comes next anyway.
+      await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password }).catch(() => undefined);
       await onCreated();
     } catch (failure) {
       setError(getErrorMessage(failure, "That did not work. Try again."));
       setBusy(false);
+      // "Already has its account": asking again moves this screen on to sign-in.
+      await onCreated();
     }
   }
 
@@ -358,9 +354,14 @@ export function SignInScreen({ projectRefValue }: { projectRefValue: string | nu
     event.preventDefault();
     setBusy(true);
     setError(null);
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
-    if (signInError) {
-      setError(signInError.status === 400 ? "That email and password don't match." : signInError.message);
+    try {
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
+      if (signInError) {
+        setError(signInError.status === 400 ? "That email and password don't match." : signInError.message);
+        setBusy(false);
+      }
+    } catch (failure) {
+      setError(getErrorMessage(failure, "That did not work. Reload the page and try again."));
       setBusy(false);
     }
   }
@@ -446,15 +447,20 @@ export function SignInScreen({ projectRefValue }: { projectRefValue: string | nu
 
 export function ProblemScreen({
   kind,
+  message,
   projectRefValue,
   onRetry,
   onSwitch,
+  busy = false,
 }: {
   kind: "paused" | "unreachable" | "not-owner" | "error";
+  /** For "error": what went wrong, in words. */
+  message?: string;
   projectRefValue: string | null;
   onRetry: () => void;
   /** Offered when the saved project may never answer again (deleted, or paused past restoring). */
   onSwitch?: () => void;
+  busy?: boolean;
 }) {
   const links = projectRefValue ? dashboardLinks(projectRefValue) : null;
   if (kind === "not-owner") {
@@ -477,7 +483,7 @@ export function ProblemScreen({
     },
     error: {
       title: `${APP_NAME} couldn't check its setup`,
-      intro: "Try again in a moment.",
+      intro: message ?? "Try again in a moment.",
     },
   }[kind];
   const restore = kind === "paused" && links ? links.project : null;
@@ -492,8 +498,10 @@ export function ProblemScreen({
             </span>
           </DialogButton>
         )}
-        <DialogButton variant={restore ? "secondary" : "primary"} onClick={onRetry}>Try again</DialogButton>
-        {onSwitch && <DialogButton variant="ghost" onClick={onSwitch}>Use a different project</DialogButton>}
+        <DialogButton variant={restore ? "secondary" : "primary"} onClick={onRetry} busy={busy} disabled={busy}>
+          {busy ? "Checking…" : "Try again"}
+        </DialogButton>
+        {onSwitch && <DialogButton variant="ghost" onClick={onSwitch} disabled={busy}>Use a different project</DialogButton>}
       </Actions>
     </Frame>
   );
@@ -504,13 +512,13 @@ export function ProblemScreen({
  * web) with one missing or wrong: the Connect form could never work there,
  * so this names the variable to set instead.
  */
-export function EnvironmentScreen({ problems, rejected, onRetry }: { problems: string[]; rejected: boolean; onRetry: () => void }) {
+export function EnvironmentScreen({ problems, rejected, onRetry, busy = false }: { problems: string[]; rejected: boolean; onRetry: () => void; busy?: boolean }) {
   return (
     <Frame
       title={rejected ? "Supabase didn't accept these keys" : `${APP_NAME} needs its project's settings`}
       intro={
         rejected ? (
-          <p>Supabase refused the keys in this copy&apos;s environment variables. Set them again from your API Keys page, then restart or redeploy.</p>
+          <p>Copy both keys again from API Keys, set them, then restart or redeploy.</p>
         ) : (
           <p>Set these environment variables, then restart or redeploy:</p>
         )
@@ -522,7 +530,9 @@ export function EnvironmentScreen({ problems, rejected, onRetry }: { problems: s
         </ul>
       )}
       <Actions>
-        <DialogButton variant="primary" onClick={onRetry}>Check again</DialogButton>
+        <DialogButton variant="primary" onClick={onRetry} busy={busy} disabled={busy}>
+          {busy ? "Checking…" : "Check again"}
+        </DialogButton>
       </Actions>
     </Frame>
   );
