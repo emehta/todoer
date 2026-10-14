@@ -49,16 +49,21 @@ Keep the window that ran `npm start` open: closing it stops Todoer.
 
 Todoer's first screen, **Set up Todoer**, walks you through this. In short:
 
-1. **Make a project.** Sign in at [supabase.com](https://supabase.com/dashboard/projects) and create a new project. Any name and region will do. Choose a database password and keep it somewhere safe.
-   <!-- check live: the button and field names on Supabase's New project form -->
-2. **Paste the Project URL.** It looks like `https://abcdefghijklmnopqrst.supabase.co`. Once you paste it, Todoer links to the right pages of your project.
-3. **Paste the two keys** from your project's API Keys page: the **publishable key** (starts `sb_publishable_`) and the **secret key** (starts `sb_secret_`). Then press **Connect**.
-   <!-- check live: where Supabase shows the Project URL, and how the secret key is revealed -->
+1. **Make a project.**
+   - Sign in at [supabase.com](https://supabase.com/dashboard/projects). A new account may first ask you to name an organisation: any name, on the Free plan.
+   - On **Create a new project**, give it a name, a database password (keep it somewhere safe) and the region nearest you.
+   - Press **Create new project**, and wait a minute while it starts.
+2. **Copy the Project URL.** On your project's home page, its address is just under its name, like `https://abcdefghijklmnopqrst.supabase.co`. Press **Copy** beside it, and paste it into Todoer. Todoer then links straight to the right pages of your project.
+3. **Copy the two keys** from **API Keys** (Todoer links to it):
+   - the **Publishable key**, which starts `sb_publishable_`;
+   - the key under **Secret keys**, which starts `sb_secret_`. It is hidden: press the eye beside it to show it, then copy it.
+
+   Paste both into Todoer and press **Connect**.
 4. **Give the project its tables.**
-   - Press **Copy the setup**.
-   - Open your project's SQL Editor, paste, and press **Run**.
+   - In Todoer, press **Copy the setup**.
+   - Open the **SQL Editor** (Todoer links to it). If Supabase shows a note about snippets, press **Understood**.
+   - Paste, and press **Run**.
    - Back in Todoer, press **Check again**.
-   <!-- check live: SQL Editor and its Run button -->
 5. **Make your account** with an email and a password. This is the only account. You start with two goals, Personal and Work.
 
 The secret key stays on your computer, in a file only your account can read:
@@ -67,8 +72,13 @@ The secret key stays on your computer, in a file only your account can read:
 
 It is never sent to the page.
 
-**Then turn off sign-ups in Supabase.** In your project, go to **Authentication**, then **Sign In / Providers**, and switch off **Allow new users to sign up**. Nobody who signs up could see your tasks anyway, but this keeps your project to you. Todoer's Settings reminds you until it's off.
-<!-- check live: the exact place of "Allow new users to sign up" -->
+**Then turn off sign-ups in Supabase.**
+- In your project, open **Authentication**, then **Sign In / Providers**.
+- Under **User Signups**, switch off **Allow new users to sign up**, and press **Save changes**.
+
+Nobody who signs up could see your tasks anyway, but this keeps your project to you. Todoer's Settings reminds you until it's off.
+
+Leave **Enable Data API** on (under **Integrations**, **Data API**), as it is when a project is new: Todoer talks to your project through it.
 
 ## Open it again
 
@@ -83,7 +93,7 @@ To open it like an app, install it from your browser while it's open: Safari's *
 
 - **It's in your Supabase project.** No one else hosts it.
 - **Back up:** Settings → **Download my data** saves every goal and task as one file. Supabase's free plan keeps no backups of its own, so do this now and then.
-- **A paused project:** Supabase pauses a free project after a week unused. Todoer then says so and links to it: press **Restore** there, then **Try again**.
+- **A paused project:** Supabase pauses a free project after a week unused. Todoer then says so and links to it: press **Restore project** there, then **Try again**.
 - **Both apps, one project:** CronCal, the calendar (coming soon), can use the same project, and you sign in to both with the same account.
 
 ## Update

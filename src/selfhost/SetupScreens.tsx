@@ -111,7 +111,7 @@ export function ConnectScreen({ again, onConnected }: { again: boolean; onConnec
         <li>
           Make a free project on Supabase, or use one you have. <ExternalLink href="https://supabase.com/dashboard/projects">Open Supabase</ExternalLink>
         </li>
-        <li>Copy its Project URL and paste it below.</li>
+        <li>On the project&apos;s home page, press Copy beside its address, and paste it below.</li>
         <li>
           Copy its publishable key and its secret key from the API Keys page{links ? ": " : "."}
           {links && <ExternalLink href={links.apiKeys}>Open your API Keys page</ExternalLink>}
@@ -402,7 +402,7 @@ export function ProblemScreen({
   const copy = {
     paused: {
       title: "Your Supabase project is paused",
-      intro: "Free projects pause after a week without use. Open it on Supabase and press Restore, then come back here.",
+      intro: "Free projects pause after a week without use. Open it on Supabase and press Restore project, then come back here.",
     },
     unreachable: {
       title: "Supabase isn't answering",

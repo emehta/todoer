@@ -26,12 +26,12 @@ export async function POST(request: Request) {
     if (!pasted.url) return fail("Paste your Project URL. It looks like https://abcdefghijklmnopqrst.supabase.co.");
     if (!pasted.publishableKey && !pasted.secretKey) return fail("Paste both keys from your project's API Keys page.");
     if (!pasted.publishableKey) return fail("The publishable key is missing. It starts with sb_publishable_.");
-    if (!pasted.secretKey) return fail("The secret key is missing. It starts with sb_secret_. Press Reveal beside it to copy it.");
+    if (!pasted.secretKey) return fail("The secret key is missing. It starts with sb_secret_: press the eye beside it on the API Keys page to show it, then copy it.");
     if (keyKind(pasted.secretKey) !== "secret") return fail("The secret key box has the publishable key in it.");
 
     const config = { url: pasted.url, publishableKey: pasted.publishableKey, secretKey: pasted.secretKey };
     const { reach } = await probeProject(config);
-    if (reach === "paused") return fail("This project is paused. Open it on supabase.com, press Restore, and try again.", 409);
+    if (reach === "paused") return fail("This project is paused. Open it on supabase.com, press Restore project, and try again.", 409);
     if (reach === "unreachable") return fail("Could not reach that project. Check the Project URL, and that this computer is online.", 502);
     if (reach === "rejected") return fail("Supabase did not accept those keys. Copy both again from the API Keys page.", 401);
 
