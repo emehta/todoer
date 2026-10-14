@@ -45,6 +45,8 @@ cpSync(path.join(ROOT, ".next", "static"), path.join(APP, ".next", "static"), { 
 for (const file of ["scripts/start.mjs", "Start Todoer.command", "Start Todoer.cmd", "README.md", "LICENSE.md"]) {
   cpSync(path.join(ROOT, file), path.join(APP, file));
 }
+// Copied beside the server by Next, read by nothing that runs.
+for (const file of ["tsconfig.json", "extract.config.json"]) rmSync(path.join(APP, file), { force: true });
 
 const native = [];
 const secrets = [];

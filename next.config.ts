@@ -27,7 +27,7 @@ const nextConfig: NextConfig = {
   output: BUNDLE ? "standalone" : undefined,
   /* Next's image optimiser (sharp) is native, so the download would only run
      on the system it was built on, and Todoer never asks it for an image. */
-  outputFileTracingExcludes: BUNDLE ? { "*": ["node_modules/sharp/**", "node_modules/@img/**", "./extract.config.json", "./tsconfig.json"] } : undefined,
+  outputFileTracingExcludes: BUNDLE ? { "*": ["node_modules/sharp/**", "node_modules/@img/**"] } : undefined,
   // The setup SQL is read at request time, so a copy on the web must ship it.
   outputFileTracingIncludes: {
     "/api/selfhost/schema": ["./supabase/schema.sql"],
