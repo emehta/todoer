@@ -1,12 +1,12 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState, useCallback, useMemo, type ReactNode, type RefObject } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo, type ReactNode, type RefObject } from "react";
 import dynamic from "next/dynamic";
 import { CaretDown, CaretRight, Lightbulb, Plus, X } from "@phosphor-icons/react";
 import { supabase } from "@/lib/supabase";
 import { Task, NewTask, Priority } from "@/types/task";
 import type { TaskDraft } from "@/components/tasks/TaskEditModal";
-import { Category, DEFAULT_GOAL_COLOR, GOAL_COLORS } from "@/types/category";
+import { Category, firstFreeGoalColor } from "@/types/category";
 import CategoryTabs from "@/components/tasks/CategoryTabs";
 import TaskList, { type TaskMoveRequest } from "@/components/tasks/TaskList";
 import {
@@ -38,7 +38,7 @@ import { PAGE_CACHE_KEYS, readPageCache, writePageCache } from "@/lib/page-cache
 import { fetchAllRows } from "@/lib/supabase-paging";
 import { assertDeleted } from "@/lib/supabase-delete";
 import { DISPLAY_ORDER_STEP, placeByPriority, placeManyByPriority, sortTasksForDisplay } from "@/lib/task-order";
-import { useUrlTarget } from "@/lib/use-url-target";
+import type { GoalFields } from "@/lib/task-changes";
 import LoadingState from "@/components/LoadingState";
 import { preloadDescriptionEditor } from "@/components/form/DescriptionField";
 
@@ -248,7 +248,7 @@ function Separator({ phone }: { phone: boolean }) {
 
 /* ─── page ─── */
 
-function TasksPageInner() {
+export default function TasksPage() {
   const weekStart = useWeekStart();
   const phone = usePhone();
   /*
@@ -263,10 +263,8 @@ function TasksPageInner() {
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<ViewFilter>("all");
   /*
-   * Not debounced, unlike Finance's. That one re-queries Supabase on every
-   * change, so a pause is the difference between one request and twelve; this
-   * filters an array already in memory, where a pause is only latency between
-   * a keystroke and the list reacting to it.
+   * Not debounced: it filters an array already in memory, where a pause
+   * would only be latency between a keystroke and the list reacting to it.
    */
   const [taskQuery, setTaskQuery] = useState("");
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
@@ -279,11 +277,10 @@ function TasksPageInner() {
   const [createInitialDueDate, setCreateInitialDueDate] = useState<string | null>(null);
   /*
    * Saves that failed, oldest first, each with what was typed. A card closes
-   * before its write lands, so without this a failure threw the draft away and
-   * left only a banner. One slot used to hold it, and the failure took over
-   * whichever card was open to show it: the card being typed in became the
-   * failed one, and a second failure was lost. Each now waits its turn and
-   * comes back as its own card once no other is open (below).
+   * before its write lands, so without this a failure would throw the draft
+   * away and leave only a banner. Each waits its turn and comes back as its
+   * own card once no other is open (below), never taking over the card being
+   * typed in.
    */
   const [failedSaves, setFailedSaves] = useState<FailedSave[]>([]);
   /* The failed save on screen. It stays there until closed, even if another
@@ -296,9 +293,12 @@ function TasksPageInner() {
   );
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [overdueOpen, setOverdueOpen] = useState(false);
-  /* Open while searching: the box starts collapsed, so a match inside it
-     was counted in its badge and shown nowhere. */
-  const overdueShown = overdueOpen || taskQuery.trim() !== "";
+  /* Open while searching, so a match inside the collapsed box is not counted
+     in its badge and shown nowhere; closed again from its header, which
+     holds for that search. */
+  const search = taskQuery.trim();
+  const [overdueClosedFor, setOverdueClosedFor] = useState<string | null>(null);
+  const overdueShown = search ? overdueClosedFor !== search : overdueOpen;
   const [persistenceError, setPersistenceError] = useState("");
 
   /*
@@ -319,11 +319,10 @@ function TasksPageInner() {
 
   /*
    * On arriving, and again whenever the tab comes back into view or its
-   * window takes focus. The list used to load once, so a tab left open showed
-   * nothing done on the phone since, and wrote its old copy of a task back
-   * over the phone's on the next save. The reload on return is quiet: no
-   * spinner, the list on screen stays put if it fails, and a save's error in
-   * the banner is left alone.
+   * window takes focus, so a tab left open shows what was done on the phone
+   * since, and does not write its old copy of a task back over the phone's.
+   * The reload on return is quiet: no spinner, the list on screen stays put
+   * if it fails, and a save's error in the banner is left alone.
    */
   useEffect(() => {
     const writes = sync.current;
@@ -346,9 +345,9 @@ function TasksPageInner() {
         if (first) setPersistenceError("");
         /*
          * Paged, not a bare select. PostgREST stops at 1000 rows without
-         * saying so, and a task list that has been running for a few years
-         * reaches that — at which point the oldest completed tasks quietly
-         * vanish from Historical.
+         * saying so, and a task list that has run for a few years reaches
+         * that, when the oldest completed tasks would quietly vanish from
+         * Historical.
          */
         const [taskRows, catRes] = await Promise.all([
           fetchAllRows<Task>(() =>
@@ -429,11 +428,11 @@ function TasksPageInner() {
 
   const handleToggle = useCallback(
     /*
-     * The confetti is the row's now: TaskItem fires it on the click, pops the
+     * The confetti is the row's: TaskItem fires it on the click, pops the
      * circle and draws the tick, and calls this about half a second later to
-     * save. It used to fire here once the write came back, which was the
-     * delay the owner noticed. A failed save still puts the task back and
-     * says so; the burst it already had is the price of answering at once.
+     * save, so nothing waits on the write. A failed save puts the task back
+     * and says so; the burst it already had is the price of answering at
+     * once.
      */
     async (id: string, completed: boolean) => {
       setPersistenceError("");
@@ -449,18 +448,6 @@ function TasksPageInner() {
     [],
   );
 
-  /**
-   * Add a task without waiting for the database to agree.
-   *
-   * The project lives in us-east-1 and the person using it does not, so an
-   * insert that returns the row is a quarter of a second of round trip before
-   * anything appears. The dialog used to hold you there for all of it.
-   *
-   * The id is generated here rather than by the default, which is what makes
-   * this safe: the row rendered optimistically carries the id it will really
-   * have, so completing or dragging it in the meantime addresses the right
-   * row instead of one that does not exist yet.
-   */
   /**
    * Where a task lands in its day: below the last open task as important as
    * it, so a new Critical goes to the top and a High never sits under a
@@ -481,6 +468,16 @@ function TasksPageInner() {
     [tasks],
   );
 
+  /**
+   * Add a task without waiting for the database to agree: an insert that
+   * returns the row is a round trip to the user's Supabase region, often a
+   * quarter of a second, before anything would appear.
+   *
+   * The id is generated here rather than by the default, which is what makes
+   * this safe: the row rendered optimistically carries the id it will really
+   * have, so completing or dragging it in the meantime addresses the right
+   * row instead of one that does not exist yet.
+   */
   const handleAdd = useCallback(
     async (task: NewTask) => {
       setPersistenceError("");
@@ -604,11 +601,11 @@ function TasksPageInner() {
       ) as Partial<Task>;
 
       /*
-       * Show the edit and close the dialog now, write in the background.
-       * Waiting for us-east-1 meant the card sat on "Saving…" for the whole
-       * round trip for a change that was never going to be rejected. A failure
-       * puts those fields back as they were and brings the card back with the
-       * edit in it, once no other card is open.
+       * Show the edit and close the dialog now, write in the background, so
+       * the card does not sit on "Saving…" for the round trip of a change
+       * that is almost never rejected. A failure puts those fields back as
+       * they were and brings the card back with the edit in it, once no
+       * other card is open.
        */
       setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, ...payload } : t)));
       setEditingTask(null);
@@ -638,17 +635,14 @@ function TasksPageInner() {
     [tasks, placeTask],
   );
 
+  /* Throws on a failure, for the caller to say: the task card in itself, the
+     row's menu in the page's banner. */
   const handleDelete = useCallback(async (id: string) => {
     setPersistenceError("");
     const { data, error } = await tracked(sync, supabase.from("tasks").delete().eq("id", id).select("id"));
-    try {
-      /* A delete RLS refused matches no rows and reports success; without
-         this the row vanished and came back on the next load. */
-      assertDeleted(data, error, "task");
-    } catch (failure) {
-      setPersistenceError(getErrorMessage(failure, "Could not delete that task."));
-      throw failure;
-    }
+    /* A delete RLS refused matches no rows and reports success; this makes
+       it a failure, so the row does not vanish and come back on the next load. */
+    assertDeleted(data, error, "task");
     setTasks((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
@@ -795,17 +789,12 @@ function TasksPageInner() {
     onPatch: handlePatchTask,
     onDuplicate: handleDuplicateTask,
     onCopy: handleCopyTask,
-    /*
-     * handleDelete rethrows so the dialog can stay open on a failure. The row
-     * menu has nothing to keep open, and a bare `void` on a rejecting promise
-     * is an unhandled rejection. The banner is already set by the time it
-     * throws, so there is nothing left to say here.
-     */
+    /* The row's menu has no card to say a failure in, so the banner does. */
     onDelete: async (id) => {
       try {
         await handleDelete(id);
-      } catch {
-        // Reported by handleDelete through the page's error banner.
+      } catch (failure) {
+        setPersistenceError(getErrorMessage(failure, "Could not delete that task."));
       }
     },
   }), [handlePatchTask, handleDuplicateTask, handleCopyTask, handleDelete]);
@@ -828,6 +817,19 @@ function TasksPageInner() {
       const prevTask = prevTaskId ? snapshot.find((task) => task.id === prevTaskId) ?? null : null;
       const nextTask = nextTaskId ? snapshot.find((task) => task.id === nextTaskId) ?? null : null;
 
+      /* A write that failed puts back what it changed, as before the drag:
+         the moved task's day and place, a neighbour's place. The writes that
+         landed stay, as does anything else changed meanwhile, so the screen
+         shows what the database holds. */
+      const putBack = (ids: Set<string>) => {
+        const before = new Map(snapshot.filter((task) => ids.has(task.id)).map((task) => [task.id, task]));
+        setTasks((prev) => prev.map((task) => {
+          const was = before.get(task.id);
+          if (!was) return task;
+          return { ...task, display_order: was.display_order, ...(task.id === taskId ? { due_date: was.due_date } : {}) };
+        }));
+      };
+
       const persistSingleMove = async (displayOrder: number) => {
         const optimistic = applyTaskUpdates(snapshot, [
           {
@@ -848,9 +850,8 @@ function TasksPageInner() {
           .eq("id", taskId));
 
         if (error) {
-          setTasks(snapshot);
+          putBack(new Set([taskId]));
           setPersistenceError(getErrorMessage(error, "Could not move that task."));
-          return;
         }
       };
 
@@ -891,9 +892,12 @@ function TasksPageInner() {
         due_date: dueDate,
       });
 
+      /* The day renumbered in its new order. Only the moved task is given a
+         day: the others keep whichever the database has, which may be newer
+         than this tab's copy (moved on the phone since). */
       const normalizedUpdates = reorderedTargetGroup.map((task, index) => ({
         id: task.id,
-        due_date: task.id === taskId ? dueDate : task.due_date,
+        ...(task.id === taskId ? { due_date: dueDate } : {}),
         display_order: (index + 1) * DISPLAY_ORDER_STEP,
       }));
 
@@ -901,20 +905,14 @@ function TasksPageInner() {
       setTasks(optimistic);
 
       const results = await Promise.all(
-        normalizedUpdates.map((update) =>
-          tracked(sync, supabase
-            .from("tasks")
-            .update({
-              due_date: update.due_date,
-              display_order: update.display_order,
-            })
-            .eq("id", update.id)),
+        normalizedUpdates.map(({ id, ...fields }) =>
+          tracked(sync, supabase.from("tasks").update(fields).eq("id", id)),
         ),
       );
 
       const failed = results.find((result) => result.error);
       if (failed?.error) {
-        setTasks(snapshot);
+        putBack(new Set(normalizedUpdates.filter((_, index) => results[index].error).map((update) => update.id)));
         setPersistenceError(getErrorMessage(failed.error, "Could not move that task."));
       }
     },
@@ -950,24 +948,16 @@ function TasksPageInner() {
     [categories],
   );
 
+  /* `changes` is only what the goal's card changed from the goal as it
+     opened (goalChanges), so a description changed on the phone since is not
+     written back over. */
   const handleEditCategory = useCallback(
-    async (
-      id: string,
-      name: string,
-      color: string,
-      description?: string | null,
-      deadline?: string | null,
-      goal_type?: string | null,
-    ) => {
-      const updates: Record<string, unknown> = { name, color };
-      if (description !== undefined) updates.description = description;
-      if (deadline !== undefined) updates.deadline = deadline;
-      if (goal_type !== undefined) updates.goal_type = goal_type;
-
+    async (id: string, changes: Partial<GoalFields>) => {
+      if (Object.keys(changes).length === 0) return;
       setPersistenceError("");
       const { data, error } = await tracked(sync, supabase
         .from("categories")
-        .update(updates)
+        .update(changes)
         .eq("id", id)
         .select()
         .single());
@@ -978,29 +968,21 @@ function TasksPageInner() {
     [],
   );
 
+  /*
+   * One write: the tasks' foreign key (ON DELETE SET NULL) takes the goal off
+   * its tasks in the same statement, so a failure leaves the goal and its
+   * tasks as they were. Thrown for DeleteGoalDialog to say, and the page goes
+   * back to All if it was showing the goal.
+   */
   const handleDeleteCategory = useCallback(
     async (id: string) => {
       setPersistenceError("");
-      const taskReset = await tracked(sync, supabase.from("tasks").update({ category_id: null }).eq("category_id", id));
-      if (taskReset.error) {
-        setPersistenceError(getErrorMessage(taskReset.error, "Could not take the tasks out of that goal."));
-        throw taskReset.error;
-      }
-      /* Shown as soon as it is true in the database. If the delete below then
-         fails, the screen still matches what was saved: the category stays,
-         and its tasks are no longer in it. */
+      const { data, error } = await tracked(sync, supabase.from("categories").delete().eq("id", id).select("id"));
+      assertDeleted(data, error, "goal");
+
       setTasks((prev) =>
         prev.map((t) => (t.category_id === id ? { ...t, category_id: null } : t)),
       );
-
-      const categoryDelete = await tracked(sync, supabase.from("categories").delete().eq("id", id).select("id"));
-      try {
-        assertDeleted(categoryDelete.data, categoryDelete.error, "goal");
-      } catch (failure) {
-        setPersistenceError(getErrorMessage(failure, "Could not delete that goal."));
-        throw failure;
-      }
-
       setCategories((prev) => prev.filter((c) => c.id !== id));
       if (activeCategoryId === id) setActiveCategoryId(null);
     },
@@ -1008,10 +990,9 @@ function TasksPageInner() {
   );
 
   /*
-   * Mark all done, from the action bar: the open tasks of the goal that the
-   * list is showing, by id. It used to complete every open task filed under
-   * the goal, including ones a filter was hiding, which is not what the count
-   * on the button or the list on screen said.
+   * Mark all done, beside the goals: the open tasks of the goal that the list
+   * is showing, by id, so a task a filter is hiding is left alone, as the
+   * count on the button says.
    */
   const handleMarkDone = useCallback(
     async (ids: string[]) => {
@@ -1024,17 +1005,18 @@ function TasksPageInner() {
       const changed = new Set<string>();
       let failure: unknown = null;
       for (let start = 0; start < ids.length; start += MARK_DONE_BATCH) {
+        /* Every one asked for, already done or not: one ticked on another
+           device since still comes back, rather than reading as a failure. */
         const { data, error } = await tracked(sync, supabase
           .from("tasks")
           .update({ completed: true })
           .in("id", ids.slice(start, start + MARK_DONE_BATCH))
-          .eq("completed", false)
           .select("id"));
         if (error) {
           failure = error;
           break;
         }
-        /* Only the rows the database says it changed, so a write RLS refused
+        /* Only the rows the database answers with, so a write RLS refused
            does not show as done. */
         for (const row of (data ?? []) as { id: string }[]) changed.add(row.id);
       }
@@ -1164,20 +1146,21 @@ function TasksPageInner() {
   }, [filteredTasks, activeView, todayKey]);
 
   /*
-   * Why the list is empty, in words. It always said "No tasks yet. Add one
-   * below", including when a search or filter was hiding everything, when
-   * every open task was in the Overdue box above it, and in views with no Add
-   * button below.
+   * Why the list is empty, in words: a search or filter hiding everything,
+   * every open task in the Overdue box above it (which is checked first, as
+   * the box shows matches too), or a view with nothing in it yet.
    */
-  const narrowed = taskQuery.trim() !== "" || priorityFilter !== "all" || (activeView === "all" && dateFilter !== "all");
-  const emptyListMessage = narrowed
-    ? "No tasks match that search or filter."
-    : activeView === "historical"
-      ? "No completed tasks yet."
-      : activeView === "overdue"
-        ? "Nothing is overdue."
-        : overdueTasks.length > 0
-          ? "Nothing else is due. The rest is in Overdue above."
+  const narrowed = search !== "" || priorityFilter !== "all" || (activeView === "all" && dateFilter !== "all");
+  const emptyListMessage = overdueTasks.length > 0
+    ? narrowed
+      ? "Everything that matches is in Overdue above."
+      : "Nothing else is due. The rest is in Overdue above."
+    : narrowed
+      ? "No tasks match that search or filter."
+      : activeView === "historical"
+        ? "No completed tasks yet."
+        : activeView === "overdue"
+          ? "Nothing is overdue."
           : undefined;
 
   /*
@@ -1199,7 +1182,10 @@ function TasksPageInner() {
     >
       <button
         type="button"
-        onClick={() => setOverdueOpen((v) => !v)}
+        onClick={() => {
+          if (search) setOverdueClosedFor(overdueShown ? search : null);
+          else setOverdueOpen((v) => !v);
+        }}
         aria-expanded={overdueShown}
         aria-controls="overdue-task-list"
         style={{
@@ -1254,46 +1240,30 @@ function TasksPageInner() {
 
   /* ─── insights panel ─── */
 
-  /*
-   * Closed until asked for. It used to be a resizable column pinned open on
-   * the right, which spent a third of the page on a chart whether or not
-   * anyone was reading it — and left no room for the priority breakdown to run
-   * across. It now drops in above the list at the full column width, so the
-   * drag-to-resize handle it replaced has nothing left to size.
-   */
+  /* Closed until asked for: a card over the page, at the full column width. */
   const [insightsOpen, setInsightsOpen] = useState(false);
-
-  /* ─── deep links from universal search ─── */
-
-  /*
-   * `initialLoadComplete` gates the record link. A `?task=` arriving before
-   * the fetch has landed would find nothing in `tasks` and open no dialog at
-   * all — the URL consumed and the row silently not shown, which is the one
-   * failure a deep link must not have. The two that open an empty form need
-   * no data and so need no gate.
-   */
-  useUrlTarget("task", initialLoadComplete, (id) => {
-    const target = tasks.find((task) => task.id === id);
-    if (!target) return;
-    setEditingStartsInEdit(false);
-    setEditingTask(target);
-  });
-
-  useUrlTarget("new", true, () => {
-    setCreateInitialDueDate(todayStr());
-    setCreateModalOpen(true);
-  });
-
-  useUrlTarget("insights", true, () => setInsightsOpen(true));
 
   /*
    * The oldest failed save comes back once no card is open, so it never
    * replaces the one being typed in, and the next waits for it to close.
+   * The page's own cards are known here; any other (a goal's, Settings,
+   * Ramble) is a modal dialog in <body>, watched for until it has gone.
    */
   const nextFailed = failedSaves[0] ?? null;
   const cardOpen = editingTask !== null || createModalOpen || insightsOpen;
   useEffect(() => {
-    if (nextFailed && !cardOpen && shownFailedId !== nextFailed.id) setShownFailedId(nextFailed.id);
+    if (!nextFailed || cardOpen || shownFailedId === nextFailed.id) return;
+    const show = () => {
+      if (document.querySelector('[role="dialog"][aria-modal="true"]')) return false;
+      setShownFailedId(nextFailed.id);
+      return true;
+    };
+    if (show()) return;
+    const observer = new MutationObserver(() => {
+      if (show()) observer.disconnect();
+    });
+    observer.observe(document.body, { childList: true });
+    return () => observer.disconnect();
   }, [nextFailed, cardOpen, shownFailedId]);
   const failedOnScreen = nextFailed && nextFailed.id === shownFailedId ? nextFailed : null;
 
@@ -1306,14 +1276,9 @@ function TasksPageInner() {
       goal_type: values.goal_type,
     });
   };
-  /* The task card's New goal: a name only, in the first colour no goal has yet. */
-  const createGoalNamed = (name: string) => {
-    const taken = new Set(categories.map((c) => c.color.toLowerCase()));
-    const color = GOAL_COLORS.find((option) => !taken.has(option.value.toLowerCase()))?.value ?? DEFAULT_GOAL_COLOR;
-    return handleCreateCategory(name, color);
-  };
-  const editGoal = (id: string, values: GoalFormValues) =>
-    handleEditCategory(id, values.name, values.color, values.description, values.deadline, values.goal_type);
+  /* The task card's and Ramble's New goal: a name only, in the first colour
+     no goal has yet. */
+  const createGoalNamed = (name: string) => handleCreateCategory(name, firstFreeGoalColor(categories));
 
   /* ─── render ─── */
 
@@ -1358,8 +1323,8 @@ function TasksPageInner() {
         flexDirection: "column",
         /*
          * Reaches back over the app shell's gutters so the scroller runs to the
-         * edge of the screen, and with it the scrollbar — which used to sit
-         * 32px in with task rows still to the right of it.
+         * edge of the screen, and with it the scrollbar, rather than 32px in
+         * with task rows still to the right of it.
          *
          * `flex: 1` rather than `height: 100%`: the negative top margin is part
          * of the item's margin box, so the flex container works out the height
@@ -1394,14 +1359,11 @@ function TasksPageInner() {
       >
         <div style={{ maxWidth: LIST_COLUMN_WIDTH, margin: "0 auto" }}>
         {/*
-          ── Row 1: the heading, and the one thing that is not a filter ──
+          ── Row 1: the heading, and what is not a filter ──
 
-          The title used to share this line with three view tabs, two filter
-          pills, a hairline and Insights — six controls and a heading, which
-          wrapped as soon as the column narrowed and put the filters on a
-          ragged second line under the word "Tasks". The filters have a line of
-          their own below now; what is left here is the name of the page and a
-          button that opens a different view of it.
+          The name of the page, Ramble, Add task and Insights. The filters
+          have a line of their own below, so this one never wraps as the
+          column narrows.
         */}
         <div
           style={{
@@ -1426,6 +1388,7 @@ function TasksPageInner() {
             categories={categories}
             activeCategoryId={activeCategoryId}
             onAdd={handleAddMany}
+            onCreateGoal={createGoalNamed}
             style={{ marginLeft: "auto" }}
           />
 
@@ -1478,10 +1441,9 @@ function TasksPageInner() {
         {/*
           ── Row 2: the filter line ──
 
-          Search takes the slack on the left, the three pickers hold the right,
-          the same shape Finance's transaction list uses. Everything on this
-          line narrows what is below it and nothing else does, so the line is
-          readable as one job.
+          Search takes the slack on the left, the three pickers hold the right.
+          Everything on this line narrows what is below it and nothing else
+          does, so the line is readable as one job.
         */}
         <div className={controls.filterLine}>
           <SearchField
@@ -1515,8 +1477,7 @@ function TasksPageInner() {
           The goals, and at the end of the row, beside +, the selected goal's
           own actions: they act on the goal, so they sit with the goals, while
           Add task, which acts on the list, is in the page header. The owner
-          chose this layout from four built and compared on 29 Sep 2026. It
-          replaced a bar of buttons between this row and the list.
+          chose this layout from four built and compared on 29 Sep 2026.
         */}
         <div style={{ minWidth: 0, marginBottom: 4 }}>
           <CategoryTabs
@@ -1524,7 +1485,7 @@ function TasksPageInner() {
             active={activeCategoryId}
             onChange={setActiveCategoryId}
             onCreate={createGoal}
-            onEdit={editGoal}
+            onEdit={handleEditCategory}
             onDelete={handleDeleteCategory}
             onReorder={handleReorderCategories}
             trailing={activeCategory ? (
@@ -1623,11 +1584,9 @@ function TasksPageInner() {
       )}
 
       {/*
-        Insights as a card over the page, the way Settings opens.
-        It used to expand in place above the list, which pushed the goals, the
-        overdue box and every task down the page to read a chart, and left the
-        thing you were looking at somewhere below the fold. A modal centres it,
-        dims what is behind it, and gives the page back untouched on Escape.
+        Insights as a card over the page, the way Settings opens: nothing in
+        the list moves to make room for a chart, and Escape gives the page
+        back untouched.
       */}
       {insightsOpen && (
         <Modal onClose={() => setInsightsOpen(false)} maxWidth={760} label="Task insights">
@@ -1659,17 +1618,5 @@ function TasksPageInner() {
       )}
 
     </div>
-  );
-}
-
-/**
- * `useUrlTarget` reads the query string, and Next needs a boundary around any
- * client component that does — the same wrapper `/tools` and `/journal` use.
- */
-export default function TasksPage() {
-  return (
-    <Suspense fallback={<LoadingState label="Loading tasks…" minHeight="60vh" />}>
-      <TasksPageInner />
-    </Suspense>
   );
 }

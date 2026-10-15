@@ -117,7 +117,7 @@ export async function chatJson(caller: Caller, system: string, user: string, sch
       }
     }
     if (!response.ok) throw await failure(caller, response, "read that");
-      const body = (await response.json().catch(() => null)) as { choices?: Array<{ message?: { content?: unknown } }> } | null;
+    const body = (await response.json().catch(() => null)) as { choices?: Array<{ message?: { content?: unknown } }> } | null;
     const content = body?.choices?.[0]?.message?.content;
     if (typeof content !== "string" || !content.trim()) {
       if (attempt === 0) {
@@ -136,7 +136,7 @@ export async function chatJson(caller: Caller, system: string, user: string, sch
       throw new AiError(`${caller.spec.label}'s answer was not readable.`, 502);
     }
   }
-  throw new AiError(`${caller.spec.label}'s answer did not fit the task list.`, 502);
+  throw new AiError(`${caller.spec.label}'s answer didn't fit the task list.`, 502);
 }
 
 /** Whether Groq accepts a key, without spending any of its limit: it lists the models. */

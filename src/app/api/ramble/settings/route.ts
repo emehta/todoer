@@ -33,7 +33,7 @@ export async function PUT(request: Request) {
         if (!looksLikeGroqKey(key)) return fail("That isn't a Groq key. Groq's keys start with gsk_.");
         const check = await checkGroqKey(GROQ.baseUrl, key);
         if (check === "refused") return fail("Groq didn't accept that key. Copy it again from Groq's API Keys page.", 400);
-        if (check === "unreachable") return fail("Couldn't reach Groq to check the key. Check that this computer is online.", 502);
+        if (check === "unreachable") return fail("Could not reach Groq to check the key. Check that this computer is online.", 502);
       }
       await saveGroqKey(owner, key);
     }

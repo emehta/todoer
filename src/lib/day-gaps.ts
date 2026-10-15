@@ -1,13 +1,12 @@
 /**
  * The days between two days that have tasks, folded into one gap.
  *
- * The task list used to draw every day from today to the last task as its own
- * heading with an "Add task" row, so a task two days out came with two empty
- * days above it saying "Add task, Add task". The owner asked for those runs
- * to become one quiet connector instead (29 Sep 2026). While a task is being
- * dragged the days of the next two weeks open again, so there is still
- * somewhere to drop a task onto 1 October (dragDayEntries); that switch is in
- * TaskList, and this module only decides what folds.
+ * A run of empty days is one quiet connector (the owner's ask, 29 Sep 2026),
+ * not a heading and an "Add task" row for each, so a task two days out does
+ * not come with two empty days above it. While a task is being dragged the
+ * days of the next two weeks open again, so there is still somewhere to drop
+ * a task onto 1 October (dragDayEntries); that switch is in TaskList, and
+ * this module only decides what folds.
  *
  * Pure and exported, so `scripts/day-gaps.test.mjs` can hold it to that.
  */
@@ -77,11 +76,10 @@ export const DRAG_OPEN_DAYS = 14;
  * this week and next whichever day the week starts on. Empty days further
  * out stay folded, as they are at rest.
  *
- * A drag used to open every empty day up to the furthest task, one row each:
- * a task 80 days out made 78 rows of "Drop here", the list grew from 1,148px
- * to 8,784px under the finger, and moving that task to next week meant
- * dragging it up through 7,600px of them. A day further out than two weeks
- * is set with the row's date picker.
+ * Not every empty day up to the furthest task: a task 80 days out would make
+ * 78 rows of "Drop here", and moving it to next week would mean dragging it
+ * up through all of them. A day further out than two weeks is set with the
+ * row's date picker.
  */
 export function dragDayEntries(dates: readonly string[], isEmpty: (date: string) => boolean, today: string): DayEntry[] {
   const lastOpen = shiftDateStr(today, DRAG_OPEN_DAYS - 1);

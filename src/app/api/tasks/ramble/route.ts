@@ -4,7 +4,7 @@ import { LIMITS, checkRambleContext } from "@/lib/ramble/context";
 import { checkRambleReply, cleanTranscript, rambleSchema, rambleSystemPrompt, whisperPrompt } from "@/lib/ramble/prompt";
 import { resolveProvider } from "@/lib/ramble/providers";
 import { MAX_UPLOAD_BYTES, recordingFileName } from "@/lib/ramble/recording";
-import { fail, fromError } from "@/selfhost/http";
+import { fail, fromError, ok } from "@/selfhost/http";
 import { requireOwner } from "@/selfhost/owner";
 import { readChoice } from "@/selfhost/ramble-settings";
 
@@ -26,6 +26,24 @@ function aiFailure(error: AiError, transcript: string | null) {
 /* A second or so to write a minute down and a few more to read it; this
    leaves room for one retry of each. */
 export const maxDuration = 60;
+
+/**
+ * GET /api/tasks/ramble
+ *
+ * Whether a ramble would run: `{ ready: true }`, or `{ ready: false }` with
+ * the words and `code` a ramble would be refused with. Ramble's button asks
+ * before it records, so a take is never made that could not be sent. Read
+ * from the saved choice alone; the provider is never asked.
+ */
+export async function GET(request: Request) {
+  try {
+    const owner = await requireOwner(request);
+    const resolved = resolveProvider(await readChoice(owner));
+    return ok(resolved.ok ? { ready: true } : { ready: false, error: resolved.message, code: resolved.code });
+  } catch (error) {
+    return fromError(error);
+  }
+}
 
 /**
  * POST /api/tasks/ramble
@@ -80,7 +98,7 @@ export async function POST(request: Request) {
     }
 
     if (!transcript) {
-      return NextResponse.json({ error: "Nothing was heard. Try again a little closer to the microphone." }, { status: 422 });
+      return NextResponse.json({ error: "Nothing was heard. Record again a little closer to the microphone." }, { status: 422 });
     }
 
     let raw: unknown;

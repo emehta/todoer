@@ -22,6 +22,8 @@ export interface Recorder {
   resume: () => void;
   /** How loud it is now: the signal's RMS, 0 to 1 (lib/ramble/waveform reads it as decibels). */
   rms: () => number;
+  /** How much the take holds so far, as the encoder hands it over each second. */
+  bytes: () => number;
 }
 
 type WindowWithWebkitAudio = Window & { webkitAudioContext?: typeof AudioContext };
@@ -33,6 +35,7 @@ export function startRecorder(): Recorder {
   let samples: Uint8Array<ArrayBuffer> | null = null;
   let cancelled = false;
   const chunks: Blob[] = [];
+  let recorded = 0;
 
   /* Made now, inside the click, so Safari lets it run. */
   let audio: AudioContext | null = null;
@@ -70,7 +73,9 @@ export function startRecorder(): Recorder {
       audioBitsPerSecond: RECORDING_BITS_PER_SECOND,
     });
     recorder.ondataavailable = (event) => {
-      if (event.data.size > 0) chunks.push(event.data);
+      if (event.data.size === 0) return;
+      chunks.push(event.data);
+      recorded += event.data.size;
     };
     /* In slices of a second, so a take is never all held in the encoder
        when it ends. */
@@ -146,5 +151,6 @@ export function startRecorder(): Recorder {
       }
       return Math.sqrt(sum / samples.length);
     },
+    bytes: () => recorded,
   };
 }

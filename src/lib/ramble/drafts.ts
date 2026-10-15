@@ -19,7 +19,7 @@ import { foldText } from "@/lib/text-match";
 import type { Priority, Task } from "@/types/task";
 import type { RambleSource } from "./context";
 import { isDateKey } from "./context";
-import type { RambleReplyTask, SpokenTime } from "./prompt";
+import { clock, type RambleReplyTask, type SpokenTime } from "./prompt";
 
 /** A time the card asks about: the hour as said, and the two it could be. */
 export interface TimeQuestion {
@@ -158,10 +158,6 @@ export function priorityFromWords(words: string): Priority | null {
 
 /* ─── when ─── */
 
-function clock(minutes: number): string {
-  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
-}
-
 export type TimeAnswer =
   | { time: string | null; question: null }
   | { time: null; question: TimeQuestion };
@@ -285,4 +281,13 @@ export function rambleDrafts(
     });
   });
   return drafts;
+}
+
+/**
+ * The row that names the review's fields (Date, Time, Priority, Goal) for
+ * the rows under it: the first that will be added. A task already in the
+ * list shows no fields, so it cannot be the one.
+ */
+export function labelledDraftKey(drafts: readonly Pick<RambleDraft, "key" | "include">[]): string | null {
+  return drafts.find((draft) => draft.include)?.key ?? null;
 }

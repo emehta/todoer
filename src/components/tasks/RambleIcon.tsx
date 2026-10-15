@@ -8,12 +8,11 @@ import styles from "./Ramble.module.css";
  * Ramble's mark, "Triad" (the owner's pick from the previews, 8 Oct 2026):
  * three sine waves of a voice, still at rest, flowing and breathing while
  * the button it sits in is pointed at or focused, and gliding back to rest
- * when it is left. They used to freeze wherever they were, which the owner
- * asked to change the same day.
+ * when it is left, never freezing wherever they were.
  *
  * Each strand is a fixed gradient seen through a mask that holds the wave,
- * and the wave is what moves. A gradient on the moving path itself travelled
- * with it, and the wave slid out of its own colour. The colours are the
+ * and the wave is what moves: a gradient on the moving path itself would
+ * travel with it, and the wave slide out of its own colour. The colours are the
  * theme's accent (Ramble.module.css, --ink-from and --ink-to), and the fade
  * at each end is short, so the waves fill the icon.
  *

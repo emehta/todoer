@@ -1,11 +1,13 @@
 "use client";
 
-import { useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type { Category } from "@/types/category";
 import type { NewTask, Task } from "@/types/task";
 import Tooltip from "@/components/Tooltip";
+import { RAMBLE_CHANGED_EVENT } from "@/lib/open-settings";
 import { buildRambleSource, localClock, type RambleSource } from "@/lib/ramble/context";
 import { startRecorder, type Recorder } from "@/lib/ramble/recorder";
+import { rambleSetup } from "@/lib/ramble/request";
 import { useWeekStart } from "@/lib/week-start";
 import styles from "./Ramble.module.css";
 import RambleCard from "./RambleCard";
@@ -18,20 +20,55 @@ interface Props {
   /** The goal the page is showing, for a task the model filed nowhere. */
   activeCategoryId: string | null;
   onAdd: (tasks: NewTask[]) => void;
+  onCreateGoal: (name: string) => Promise<Category>;
   /** Where the button sits in the header: its margin, set by the page. */
   style?: CSSProperties;
 }
+
+type Opened = { recorder: Recorder | null; setupMessage: string | null; source: RambleSource };
 
 /**
  * Ramble, left of Add task: its mark alone (RambleIcon), which flows and
  * takes the hover fill when pointed at. The take starts on this click, so
  * the browser's microphone prompt comes with it and Safari lets the card's
  * waveform run.
+ *
+ * It knows beforehand whether Ramble is set up, asked when the page opens,
+ * when the window comes back, and when Settings changes Ramble. Not set up,
+ * the click opens the card on what to do in Settings and records nothing, so
+ * no one talks for a minute into a take that could not be sent.
  */
-export default function RambleButton({ tasks, categories, activeCategoryId, onAdd, style }: Props) {
+export default function RambleButton({ tasks, categories, activeCategoryId, onAdd, onCreateGoal, style }: Props) {
   const weekStart = useWeekStart();
-  const [open, setOpen] = useState<{ recorder: Recorder; source: RambleSource } | null>(null);
+  const [open, setOpen] = useState<Opened | null>(null);
+  /* What to set up before Ramble can listen, or null when nothing is (or
+     Todoer could not be asked, when a take is tried as usual). */
+  const [setupMessage, setSetupMessage] = useState<string | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    let live = true;
+    /* Focus and visibility arrive together: one question for the two. */
+    let asking = false;
+    const check = () => {
+      if (asking || document.visibilityState !== "visible") return;
+      asking = true;
+      void rambleSetup().then((answer) => {
+        asking = false;
+        if (live && answer !== undefined) setSetupMessage(answer);
+      });
+    };
+    check();
+    document.addEventListener("visibilitychange", check);
+    window.addEventListener("focus", check);
+    window.addEventListener(RAMBLE_CHANGED_EVENT, check);
+    return () => {
+      live = false;
+      document.removeEventListener("visibilitychange", check);
+      window.removeEventListener("focus", check);
+      window.removeEventListener(RAMBLE_CHANGED_EVENT, check);
+    };
+  }, []);
 
   /*
    * The card opens out of the button and folds back into it: for the one
@@ -39,7 +76,7 @@ export default function RambleButton({ tasks, categories, activeCategoryId, onAd
    * transition name, so the browser draws one box going between the two.
    * The names never overlap, which a transition refuses.
    */
-  function openCard(next: { recorder: Recorder; source: RambleSource }) {
+  function openCard(next: Opened) {
     const trigger = triggerRef.current;
     if (!trigger || !canMorph()) {
       setOpen(next);
@@ -69,7 +106,7 @@ export default function RambleButton({ tasks, categories, activeCategoryId, onAd
     <>
       <style>{MORPH_CSS}</style>
       <span style={{ display: "inline-flex", flexShrink: 0, ...style }}>
-        <Tooltip label="Ramble">
+        <Tooltip label="Add tasks by speaking">
           <button
             ref={triggerRef}
             type="button"
@@ -77,9 +114,9 @@ export default function RambleButton({ tasks, categories, activeCategoryId, onAd
             aria-haspopup="dialog"
             aria-label="Ramble: add tasks by speaking"
             onClick={() => {
-              const recorder = startRecorder();
+              const recorder = setupMessage === null ? startRecorder() : null;
               const source = buildRambleSource(tasks, categories, { ...localClock(), weekStart });
-              openCard({ recorder, source });
+              openCard({ recorder, setupMessage, source });
             }}
           >
             <RambleIcon />
@@ -90,10 +127,12 @@ export default function RambleButton({ tasks, categories, activeCategoryId, onAd
       {open && (
         <RambleCard
           recorder={open.recorder}
+          setupMessage={open.setupMessage}
           source={open.source}
           categories={categories}
           fallbackGoalId={activeCategoryId && categories.some((c) => c.id === activeCategoryId) ? activeCategoryId : null}
           onAdd={onAdd}
+          onCreateGoal={onCreateGoal}
           onClose={closeCard}
         />
       )}

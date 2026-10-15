@@ -125,8 +125,8 @@ export default function TaskRowActions({
   /*
    * The picker's time field reports every change, and a spinner held down
    * reports a lot of them. In the dialog those land in local state and cost
-   * nothing; here each one is a write, so ten arrow presses were ten updates
-   * racing each other to decide the final value.
+   * nothing; here each one is a write, so ten arrow presses would be ten
+   * updates racing each other to decide the final value.
    *
    * The date half still writes immediately, because picking a date closes the
    * picker and there is nothing left to coalesce.

@@ -9,6 +9,9 @@ import type { Category } from "@/types/category";
 import StatusBanner from "@/components/StatusBanner";
 import { formatTime, useTimeFormat } from "@/lib/time-format";
 import CategoryIcon from "./CategoryIcon";
+import NewGoalField, { FieldAlert, NEW_GOAL, goalNamed } from "./NewGoalField";
+import { getDueDateStyle } from "./TaskItem";
+import { useNudge } from "./useNudge";
 import { useTaskQuickDates } from "./useTaskQuickDates";
 import controls from "./TaskControls.module.css";
 import { todayStr } from "@/lib/date-utils";
@@ -36,17 +39,14 @@ import { contentColor } from "@/lib/content-palette";
  * it is about 110KB compressed, and the list does not need it. The page
  * starts fetching it once idle (preloadDescriptionEditor), so it is usually
  * there before a card opens. Should the chunk not load at all, the field is
- * the plain text box it used to be rather than a broken card.
+ * a plain text box rather than a broken card. Ramble's review uses it too.
  */
-const DescriptionEditor = lazy(() =>
+export const DescriptionEditor = lazy(() =>
   import("@/components/form/DescriptionEditor").catch(() => ({ default: DescriptionTextarea })),
 );
 
 /** The fields a dialog is filled from when a failed save brings it back. */
 export type TaskDraft = TaskFields;
-
-/* Long enough to read as a nudge, short enough not to delay a second try. */
-const NUDGE_MS = 320;
 
 interface Props {
   task?: Task;
@@ -75,19 +75,8 @@ interface Props {
   onCreateGoal?: (name: string) => Promise<Category>;
 }
 
-/** The picker's last option, which turns the field into a name box. */
-const NEW_GOAL = "__new_goal__";
-
 /** What counts as "a control has focus" for the Enter-saves rule below. */
 const INTERACTIVE = "button, a, input, textarea, select, [role='option'], [role='menuitem'], [contenteditable='true']";
-
-function dueDateColor(date: string | null): string {
-  if (!date) return "var(--c-text-3)";
-  const today = todayStr();
-  if (date < today) return "var(--c-danger)";
-  if (date === today) return "var(--c-text-1)";
-  return "var(--c-text-2)";
-}
 
 export default function TaskEditModal({ task, categories, onSave, onCreate, onDelete, onClose, startInEdit, initialDueDate, initialCategoryId, draft, initialError, onCreateGoal }: Props) {
   const isCreateMode = !task;
@@ -103,10 +92,10 @@ export default function TaskEditModal({ task, categories, onSave, onCreate, onDe
   const [dueTime, setDueTime] = useState<string | null>(draft ? draft.due_time : task?.due_time ?? null);
   const [priority, setPriority] = useState<Priority>(draft?.priority ?? task?.priority ?? "medium");
   /*
-   * A new task starts in the goal the page is showing. Opening Add task from
-   * inside Website and having to pick Website again was the complaint, and an
-   * empty goal is also what turned Enter into a red nudge instead of a save.
-   * Only a real category: a stale id would render as "Goal" and fail the save.
+   * A new task starts in the goal the page is showing, so Add task from
+   * inside Website does not ask for Website again, and Enter saves rather
+   * than nudging for a goal. Only a real category: a stale id would render as
+   * no goal and fail the save.
    */
   const [categoryId, setCategoryId] = useState<string | null>(
     draft ? draft.category_id : task?.category_id
@@ -150,21 +139,16 @@ export default function TaskEditModal({ task, categories, onSave, onCreate, onDe
       closeNewGoal();
       return null;
     }
-    const existing = categories.find((goal) => goal.name.trim().toLowerCase() === name.toLowerCase());
     let id: string;
-    if (existing) {
-      id = existing.id;
-    } else {
-      setNewGoalBusy(true);
-      setNewGoalError("");
-      try {
-        id = (await onCreateGoal(name)).id;
-      } catch (error) {
-        setNewGoalError(getErrorMessage(error, "Could not make that goal."));
-        return null;
-      } finally {
-        setNewGoalBusy(false);
-      }
+    setNewGoalBusy(true);
+    setNewGoalError("");
+    try {
+      id = await goalNamed(name, categories, onCreateGoal);
+    } catch (error) {
+      setNewGoalError(getErrorMessage(error, "Could not make that goal."));
+      return null;
+    } finally {
+      setNewGoalBusy(false);
     }
     setCategoryId(id);
     setGoalMissing(false);
@@ -178,22 +162,19 @@ export default function TaskEditModal({ task, categories, onSave, onCreate, onDe
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   const [actionError, setActionError] = useState(initialError ?? "");
   /*
-   * Required fields report themselves by colour and a nudge, not by text.
+   * Required fields report themselves by colour and a nudge; a missing goal
+   * also says so under its field, since a new account's first task has none
+   * picked and nothing else would say one is needed.
    *
    * The two "missing" flags are cleared by the change handlers rather than an
    * effect, so the red goes the moment the field is filled and stays put until
-   * then — outliving the animation, which reduced motion flattens to nothing.
+   * then, outliving the animation, which reduced motion flattens to nothing.
    */
   const [titleMissing, setTitleMissing] = useState(false);
   const [goalMissing, setGoalMissing] = useState(false);
-  const [nudging, setNudging] = useState(false);
-  const nudgeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [nudging, nudgeCard] = useNudge();
   const titleRef = useRef<HTMLInputElement>(null);
   const savingRef = useRef(false);
-
-  useEffect(() => () => {
-    if (nudgeTimer.current) clearTimeout(nudgeTimer.current);
-  }, []);
 
   /*
    * Plain Enter saves when no control has focus: the card's background, or
@@ -221,12 +202,6 @@ export default function TaskEditModal({ task, categories, onSave, onCreate, onDe
     document.addEventListener("keydown", handle);
     return () => document.removeEventListener("keydown", handle);
   }, [editing]);
-
-  function nudgeCard() {
-    if (nudgeTimer.current) clearTimeout(nudgeTimer.current);
-    setNudging(true);
-    nudgeTimer.current = setTimeout(() => setNudging(false), NUDGE_MS);
-  }
 
   /*
    * Back to the title once a picker has done its job.
@@ -287,42 +262,43 @@ export default function TaskEditModal({ task, categories, onSave, onCreate, onDe
   async function handleSave() {
     /*
      * A ref, not the `saving` state, because two saves can start in the same
-     * event: Cmd+Enter in the title reached both the title's handler and the
-     * card's, both read `saving` as false, and two tasks were inserted.
+     * event (Cmd+Enter reaches both the title's handler and the card's), and
+     * set before anything is awaited: a second press while a New goal name is
+     * being made would otherwise make the goal and the task twice.
      */
     if (saving || savingRef.current) return;
-
-    /*
-     * A new task has to name the goal it belongs to, and every task needs a
-     * title. Neither disables the button: a dead button explains nothing, and
-     * the click is what triggers the nudge that does.
-     *
-     * Only a new one needs the goal. Deleting a category leaves its tasks with
-     * none, and requiring one on edit meant those tasks could not have so much
-     * as a typo fixed without being filed somewhere first.
-     */
-    /* A name typed under New goal and never confirmed is still the goal the
-       person meant: it is made (or found) first, then the task saved in it. */
-    let goalId = categoryId;
-    if (newGoalName !== null && newGoalName.trim()) {
-      const made = await confirmNewGoal();
-      if (!made) return;
-      goalId = made;
-    }
-    const hasTitle = Boolean(title.trim());
-    const hasGoal = Boolean(goalId) || !isCreateMode;
-    if (!hasTitle || !hasGoal) {
-      setTitleMissing(!hasTitle);
-      setGoalMissing(!hasGoal);
-      nudgeCard();
-      return;
-    }
-
     savingRef.current = true;
-    setSaving(true);
-    setActionError("");
 
     try {
+      /*
+       * A new task has to name the goal it belongs to, and every task needs a
+       * title. Neither disables the button: a dead button explains nothing,
+       * and the click is what triggers the nudge that does.
+       *
+       * Only a new one needs the goal. Deleting a goal leaves its tasks with
+       * none, and those must still take a typo fix without being filed
+       * somewhere first.
+       */
+      /* A name typed under New goal and never confirmed is still the goal the
+         person meant: it is made (or found) first, then the task saved in it. */
+      let goalId = categoryId;
+      if (newGoalName !== null && newGoalName.trim()) {
+        const made = await confirmNewGoal();
+        if (!made) return;
+        goalId = made;
+      }
+      const hasTitle = Boolean(title.trim());
+      const hasGoal = Boolean(goalId) || !isCreateMode;
+      if (!hasTitle || !hasGoal) {
+        setTitleMissing(!hasTitle);
+        setGoalMissing(!hasGoal);
+        nudgeCard();
+        return;
+      }
+
+      setSaving(true);
+      setActionError("");
+
       const toSave: TaskDraft = goalId === fields.category_id ? fields : { ...fields, category_id: goalId };
       if (isCreateMode) {
         if (!onCreate) throw new Error("Task creation is unavailable.");
@@ -356,8 +332,8 @@ export default function TaskEditModal({ task, categories, onSave, onCreate, onDe
     try {
       await onDelete(task.id);
       onClose();
-    } catch {
-      setActionError("Could not delete this task. Try again.");
+    } catch (error) {
+      setActionError(getErrorMessage(error, "Could not delete this task. Try again."));
       setConfirmingDelete(false);
     } finally {
       setSaving(false);
@@ -393,8 +369,8 @@ export default function TaskEditModal({ task, categories, onSave, onCreate, onDe
       onClose();
       return;
     }
-    /* Back to view mode with the saved task, not the draft: pressing Edit
-       again used to bring the cancelled edits back as if they had been kept. */
+    /* Back to view mode with the saved task, not the draft, so pressing Edit
+       again does not bring the cancelled edits back as if kept. */
     if (task) {
       setTitle(task.title);
       setDescription(task.description ?? "");
@@ -485,7 +461,7 @@ export default function TaskEditModal({ task, categories, onSave, onCreate, onDe
             {dueLine && (
               <DetailRow icon={<CalendarBlank size={14} />}>
                 {/* The row's rule: red when overdue, full ink today. */}
-                <span style={{ color: dueDateColor(task.due_date) }}>{dueLine}</span>
+                <span style={getDueDateStyle(task.due_date, todayStr())}>{dueLine}</span>
               </DetailRow>
             )}
             <DetailRow icon={<Flag size={14} />}>
@@ -611,67 +587,45 @@ export default function TaskEditModal({ task, categories, onSave, onCreate, onDe
             </FieldGroup>
             <FieldGroup label="Goal">
               {newGoalName === null ? (
-                <SelectField
-                  id={goalFieldId}
-                  ariaLabel="Goal"
-                  icon={activeCat ? undefined : <Tag size={14} />}
-                  placeholder={categories.length ? "Goal" : "No goals yet"}
-                  value={categoryId}
-                  invalid={goalMissing}
-                  options={[
-                    ...categories.map((c) => ({ value: c.id, label: c.name, color: c.color })),
-                    ...(onCreateGoal ? [{ value: NEW_GOAL, label: "New goal" }] : []),
-                  ]}
-                  onChange={(next) => {
-                    if (next === NEW_GOAL) {
-                      setNewGoalName("");
-                      setNewGoalError("");
-                      return;
-                    }
-                    setCategoryId(next);
-                    setGoalMissing(false);
-                    refocusTitle();
-                  }}
-                />
-              ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <TextField
-                    autoFocus
-                    aria-label="New goal's name"
-                    aria-describedby={newGoalError ? `${goalFieldId}-error` : undefined}
-                    placeholder="Goal name"
-                    value={newGoalName}
-                    invalid={Boolean(newGoalError) || goalMissing}
-                    readOnly={newGoalBusy}
-                    onChange={(event) => {
-                      setNewGoalName(event.target.value);
-                      setNewGoalError("");
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Escape") {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        closeNewGoal();
+                  <SelectField
+                    id={goalFieldId}
+                    ariaLabel="Goal"
+                    icon={activeCat ? undefined : <Tag size={14} />}
+                    placeholder={categories.length ? "Choose a goal" : "No goals yet"}
+                    value={categoryId}
+                    invalid={goalMissing}
+                    options={[
+                      ...categories.map((c) => ({ value: c.id, label: c.name, color: c.color })),
+                      ...(onCreateGoal ? [{ value: NEW_GOAL, label: "New goal" }] : []),
+                    ]}
+                    onChange={(next) => {
+                      if (next === NEW_GOAL) {
+                        setNewGoalName("");
+                        setNewGoalError("");
                         return;
                       }
-                      if (event.key !== "Enter") return;
-                      event.preventDefault();
-                      event.stopPropagation();
-                      void confirmNewGoal();
+                      setCategoryId(next);
+                      setGoalMissing(false);
+                      refocusTitle();
                     }}
                   />
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <DialogButton variant="secondary" busy={newGoalBusy} disabled={newGoalBusy || !newGoalName.trim()} onClick={() => { void confirmNewGoal(); }}>
-                      {newGoalBusy ? "Adding…" : "Add"}
-                    </DialogButton>
-                    <DialogButton variant="ghost" disabled={newGoalBusy} onClick={closeNewGoal}>
-                      Cancel
-                    </DialogButton>
-                  </div>
-                  {newGoalError && (
-                    <span id={`${goalFieldId}-error`} role="alert" style={{ color: "var(--c-danger)", fontSize: "var(--ui-type-micro)" }}>{newGoalError}</span>
-                  )}
+                  {goalMissing && <FieldAlert>Choose a goal.</FieldAlert>}
                 </div>
+              ) : (
+                <NewGoalField
+                  id={goalFieldId}
+                  name={newGoalName}
+                  busy={newGoalBusy}
+                  error={newGoalError}
+                  invalid={goalMissing}
+                  onChange={(name) => {
+                    setNewGoalName(name);
+                    setNewGoalError("");
+                  }}
+                  onAdd={() => { void confirmNewGoal(); }}
+                  onCancel={closeNewGoal}
+                />
               )}
             </FieldGroup>
           </div>

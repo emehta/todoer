@@ -7,7 +7,9 @@ import StatusBanner from "@/components/StatusBanner";
 import { DialogButton } from "@/components/form/Dialog";
 import { TextField } from "@/components/form/fields";
 import { authedFetch } from "@/lib/authed-fetch";
-import { getErrorMessage } from "@/lib/error-utils";
+import { getErrorMessage, isNetworkError } from "@/lib/error-utils";
+import { RAMBLE_CHANGED_EVENT } from "@/lib/open-settings";
+import { UNREACHABLE } from "@/lib/ramble/request";
 import type { RambleStatus } from "@/selfhost/ramble-settings";
 
 /**
@@ -20,19 +22,31 @@ import type { RambleStatus } from "@/selfhost/ramble-settings";
  *   agreed to with the button under it; then the balance and its one button,
  *   Sign in with publik until this computer is linked, Add a plan or pack
  *   after, with publik's cost sentence folded under it.
+ *
+ * A copy without publik offers Groq alone: no choice to make, just the key.
  */
 
 type Status = RambleStatus;
 
+/** What is under way, so only the button pressed says so. */
+type Action = "load" | "provider" | "key" | "remove" | "publik";
+
 async function call(method: "GET" | "PUT" | "POST", path: string, body?: unknown): Promise<Status> {
-  const response = await authedFetch(path, {
-    method,
-    headers: body === undefined ? undefined : { "content-type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await authedFetch(path, {
+      method,
+      headers: body === undefined ? undefined : { "content-type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch (error) {
+    /* Todoer's own server, not Supabase, is what did not answer. */
+    if (isNetworkError(error)) throw new Error(UNREACHABLE);
+    throw error;
+  }
   const answer = (await response.json().catch(() => null)) as (Status & { error?: string }) | null;
   if (!response.ok || !answer) {
-    throw new Error(answer?.error ?? (method === "GET" ? `Ramble's settings didn't load (${response.status}).` : `That didn't save (${response.status}).`));
+    throw new Error(answer?.error ?? (method === "GET" ? `Could not load Ramble's settings (${response.status}).` : `Could not save that (${response.status}).`));
   }
   return answer;
 }
@@ -55,30 +69,38 @@ const OPTIONS = [
 
 export default function RambleSettings() {
   const [status, setStatus] = useState<Status | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<Action | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [groqKey, setGroqKey] = useState("");
 
   const busyRef = useRef(false);
+  /* Every button waits while anything is under way. */
+  const busy = pending !== null;
 
-  const run = useCallback(async (task: () => Promise<Status>) => {
+  const run = useCallback(async (action: Action, task: () => Promise<Status>) => {
     busyRef.current = true;
-    setBusy(true);
-    setError(null);
+    setPending(action);
+    /* A load's error stays up while it is tried again, its button saying so. */
+    if (action !== "load") setError(null);
     try {
       setStatus(await task());
+      setError(null);
+      /* Ramble's button, on the page behind, asks again whether it can listen. */
+      if (action !== "load") window.dispatchEvent(new Event(RAMBLE_CHANGED_EVENT));
       return true;
     } catch (failure) {
-      setError(getErrorMessage(failure, "That did not work. Try again."));
+      setError(getErrorMessage(failure, "That didn't work. Try again."));
       return false;
     } finally {
       busyRef.current = false;
-      setBusy(false);
+      setPending(null);
     }
   }, []);
 
+  const load = useCallback(() => run("load", () => call("GET", "/api/ramble/settings")), [run]);
+
   useEffect(() => {
-    void run(() => call("GET", "/api/ramble/settings"));
+    void load();
     /* Back from publik's page (signed in, or credit added): the balance and
        its button are read again, quietly, unless a save is under way. */
     const refresh = () => {
@@ -94,7 +116,7 @@ export default function RambleSettings() {
       document.removeEventListener("visibilitychange", refresh);
       window.removeEventListener("focus", refresh);
     };
-  }, [run]);
+  }, [load]);
 
   if (!status) {
     return (
@@ -102,7 +124,14 @@ export default function RambleSettings() {
         <SettingsRow icon={Microphone} label="Listens with">
           <TogglePill options={OPTIONS} value={null} onChange={() => {}} ariaLabel="Ramble's AI" disabled />
         </SettingsRow>
-        {error && <StatusBanner message={error} style={{ marginBottom: 8 }} />}
+        {error && (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
+            <StatusBanner message={error} style={{ alignSelf: "stretch" }} />
+            <DialogButton variant="secondary" busy={pending === "load"} disabled={busy} onClick={() => { void load(); }}>
+              {pending === "load" ? "Checking…" : "Try again"}
+            </DialogButton>
+          </div>
+        )}
       </>
     );
   }
@@ -112,39 +141,54 @@ export default function RambleSettings() {
     // Shown at once; the answer that comes back (a second or two, as it asks publik for the balance) settles it.
     const before = status;
     setStatus({ ...status, provider });
-    void run(() => call("PUT", "/api/ramble/settings", { provider })).then((saved) => {
+    void run("provider", () => call("PUT", "/api/ramble/settings", { provider })).then((saved) => {
       if (!saved) setStatus(before);
     });
   };
-  // A copy with no publik app token can't use publik, so it isn't offered (unless already chosen, to switch away).
-  const options = status.publik.available || status.provider === "publik" ? OPTIONS : OPTIONS.filter((option) => option.value === "groq");
+  /* A copy with no publik app token can't use publik, so Groq is all there
+     is: no choice to make, and Save chooses it with the key. (publik stays
+     offered when already chosen, to switch away from it.) */
+  const groqOnly = !status.publik.available && status.provider !== "publik";
+  const showsGroq = groqOnly || status.provider === "groq";
   const open = (url: string | null) => {
     if (url) window.open(url, "_blank", "noopener");
   };
+  const keyLine = status.groq.fromEnv ? "Using GROQ_API_KEY" : `Key saved${status.groq.hint ? ` (${status.groq.hint})` : ""}`;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: 8 }}>
       <SettingsRow icon={Microphone} label="Listens with">
-        <TogglePill options={options} value={status.provider} onChange={choose} ariaLabel="Ramble's AI" disabled={busy} />
+        {groqOnly
+          ? <span style={{ color: "var(--c-text-2)", fontSize: "var(--ui-type-body-sm)" }}>Groq</span>
+          : <TogglePill options={OPTIONS} value={status.provider} onChange={choose} ariaLabel="Ramble's AI" disabled={busy} />}
       </SettingsRow>
 
-      {status.provider === null && <p style={settingsNote}>Groq is free with your own key. publik needs no key and charges per use.</p>}
+      {status.provider === null && !groqOnly && <p style={settingsNote}>Groq is free with your own key. publik needs no key and charges per use.</p>}
 
-      {status.provider === "groq" && (
-        status.groq.saved ? (
+      {showsGroq && (
+        status.groq.saved && status.provider === "groq" ? (
           <div style={row}>
-            <span style={settingsNote}>{status.groq.fromEnv ? "Using GROQ_API_KEY" : `Key saved${status.groq.hint ? ` (${status.groq.hint})` : ""}`}</span>
+            <span style={settingsNote}>{keyLine}</span>
             {!status.groq.fromEnv && (
-              <DialogButton variant="ghost" disabled={busy} onClick={() => void run(() => call("PUT", "/api/ramble/settings", { groqKey: null }))}>
-                Remove
+              <DialogButton variant="ghost" disabled={busy} onClick={() => void run("remove", () => call("PUT", "/api/ramble/settings", { groqKey: null }))}>
+                {pending === "remove" ? "Removing…" : "Remove"}
               </DialogButton>
             )}
+          </div>
+        ) : status.groq.saved ? (
+          /* Groq alone, with a key from GROQ_API_KEY and nothing chosen yet. */
+          <div style={row}>
+            <span style={settingsNote}>{keyLine}</span>
+            <DialogButton variant="primary" busy={pending === "provider"} disabled={busy} onClick={() => void run("provider", () => call("PUT", "/api/ramble/settings", { provider: "groq" }))}>
+              {pending === "provider" ? "Saving…" : "Use Groq"}
+            </DialogButton>
           </div>
         ) : (
           <form
             onSubmit={(event) => {
               event.preventDefault();
-              void run(() => call("PUT", "/api/ramble/settings", { groqKey })).then((saved) => {
+              const change = groqOnly ? { provider: "groq", groqKey } : { groqKey };
+              void run("key", () => call("PUT", "/api/ramble/settings", change)).then((saved) => {
                 if (saved) setGroqKey("");
               });
             }}
@@ -154,8 +198,8 @@ export default function RambleSettings() {
               <div style={{ flex: "1 1 auto", minWidth: 0 }}>
                 <TextField aria-label="Groq key" type="password" value={groqKey} onChange={(event) => { setGroqKey(event.target.value); setError(null); }} placeholder="Paste your Groq key" autoComplete="off" spellCheck={false} />
               </div>
-              <DialogButton type="submit" variant="primary" busy={busy} disabled={busy || !groqKey.trim()}>
-                {busy ? "Checking…" : "Save"}
+              <DialogButton type="submit" variant="primary" busy={pending === "key"} disabled={busy || !groqKey.trim()}>
+                {pending === "key" ? "Checking…" : "Save"}
               </DialogButton>
             </div>
             <div><Link href="https://console.groq.com/keys">Get a free key</Link></div>
@@ -170,8 +214,8 @@ export default function RambleSettings() {
           <>
             <p style={settingsNote}>{status.disclosure}</p>
             <div>
-              <DialogButton variant="primary" busy={busy} disabled={busy} onClick={() => void run(() => call("POST", "/api/ramble/publik", { accept: true }))}>
-                {busy ? "Setting up…" : "Accept and use publik"}
+              <DialogButton variant="primary" busy={pending === "publik"} disabled={busy} onClick={() => void run("publik", () => call("POST", "/api/ramble/publik", { accept: true }))}>
+                {pending === "publik" ? "Setting up…" : "Accept and use publik"}
               </DialogButton>
             </div>
           </>

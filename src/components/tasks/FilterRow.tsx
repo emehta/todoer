@@ -32,14 +32,9 @@ export type DateFilter =
 export type PriorityFilter = "all" | Priority;
 
 /**
- * Which slice of the list is on screen.
- *
- * Was three buttons in a row beside the page title — `tasks/ViewTabs`, now
- * deleted. It is the same kind of question as the two filters beside it ("show
- * me less than everything, along this one axis"), and it was the only one of
- * the three answering it in a different shape, so it reads as a picker like
- * they do. The three together cost one line instead of a title row that had
- * run out of room.
+ * Which slice of the list is on screen. The same kind of question as the two
+ * filters beside it ("show me less than everything, along this one axis"),
+ * so it is a picker as they are, and the three together take one line.
  */
 export type ViewFilter = "all" | "overdue" | "historical";
 
@@ -109,16 +104,8 @@ interface MenuPosition {
 
 /**
  * One narrowing filter: a button stating the current answer, which opens the
- * rest.
- *
- * Three of these on `/tasks` and, until this replaced them, two hand-written
- * copies differing only in what they put before the label. Adding the view
- * filter as a third copy is how a page ends up with three controls that drift.
- *
- * `components/FilterSelect` is the same idea and is what Finance uses. This
- * one is separate for one reason: dates carry a per-option *icon* and that one
- * does not, only a colour dot. Worth merging when someone can add icons there
- * without a third page's filters riding on the change.
+ * rest. The view, date and priority filters are all this one control, so the
+ * three cannot drift apart.
  */
 function FilterDropdown<T extends string>({
   label,
@@ -148,7 +135,7 @@ function FilterDropdown<T extends string>({
    * positioned inside the row.
    *
    * The row these triggers sit in scrolls sideways on a phone and carries a
-   * mask to show it — and a mask applies to everything the element paints,
+   * mask to show it, and a mask applies to everything the element paints,
    * including an absolutely positioned child outside its box. The menu was
    * laid out at its full height and drew nothing at all: present to the
    * measuring code, invisible on screen, which is the worst version of broken.
@@ -197,15 +184,15 @@ function FilterDropdown<T extends string>({
 
     function onPointerDown(event: MouseEvent) {
       const target = event.target as Node;
-      /* The menu is portalled, so it is not inside the trigger's wrapper —
+      /* The menu is portalled, so it is not inside the trigger's wrapper:
          without this, choosing an option counts as an outside click and
          unmounts the button before its own handler can run. */
       if (triggerRef.current?.contains(target)) return;
       if (menuRef.current?.contains(target)) return;
       setPosition(null);
     }
-    /* Tab on to the next filter and open it, and this one used to stay open
-       beside it: only a press closed it, never the keyboard leaving. */
+    /* Closed when focus leaves it, so tabbing on to the next filter and
+       opening it does not leave this one open beside it. */
     function onFocusIn(event: FocusEvent) {
       const target = event.target as Node;
       if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return;
@@ -322,7 +309,7 @@ function FilterDropdown<T extends string>({
           visible, so the button is as wide as the longest option and does not
           resize when you pick a different one. These sit at the right-hand end
           of a row whose search field takes the slack, so a trigger that grew
-          on selection moved itself *and* the two filters beside it — a control
+          on selection moved itself *and* the two filters beside it, a control
           that jumps out from under the pointer that just used it.
 
           The stack takes any room the trigger has past its own width, as it
@@ -349,22 +336,11 @@ function FilterDropdown<T extends string>({
   );
 }
 
-/*
- * The two halves used to be one row sitting to the right of the goals.
- *
- * They answer different questions, though. Date and priority narrow what the
- * list shows, which is the same job the All / Overdue / Historical tabs do, so
- * they belong beside those. The three-dot menu acts on whichever goal is
- * selected, so it belongs on the goals row. Splitting them puts every control
- * next to the thing it changes.
- */
-
 /**
  * The three filters that narrow the list, for the line under the page title.
- *
- * All three, not two: the view used to be a separate row of tabs beside the
- * heading. They answer one question between them — what is on screen — so they
- * are one group, and the heading keeps a line to itself.
+ * They answer one question between them, what is on screen, so they are one
+ * group, and the heading keeps a line to itself. What acts on the selected
+ * goal sits on the goals row instead, next to the thing it changes.
  */
 export function TaskFilters({
   viewFilter,

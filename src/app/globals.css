@@ -1,13 +1,13 @@
 @import "tailwindcss";
 
 /*
- * Square corners, to match the signed-out site.
+ * Square corners.
  *
  * Tailwind's rounded-* utilities read these rather than the --ui-radius-*
  * scale below, so both have to be flattened or the app ends up half square.
  * rounded-full is deliberately untouched: it resolves to an infinite radius
- * rather than one of these variables, so every genuinely circular control —
- * checkboxes, avatars, the nav pill, the arrow buttons — keeps its shape.
+ * rather than one of these variables, so every genuinely circular control
+ * keeps its shape.
  */
 @theme {
   --radius: 0px;
@@ -36,61 +36,47 @@
   /*
    * ─── Three tiers, and nothing else ───────────────────────────────────────
    *
-   * Every corner in the app answers to one of these. Before this there were
-   * four radii in play with no rule behind them, applied wherever someone had
-   * last been asked to round something, so the same kind of box was 0px on
-   * Calendar and 6px on Habits.
+   * Every corner in the app answers to one of these, so the same kind of box
+   * has the same corner everywhere.
    *
    *   CONTROL   xs · sm · md          0px    buttons, inputs, tabs, filter
-   *                                          pills, segmented controls. Square,
-   *                                          like the signed-out site.
+   *                                          pills, segmented controls. Square.
    *
-   *   ITEM      item                  6px    one row or tile in a list of like
-   *                                          things: a task, a calendar event,
-   *                                          a stat box, a transaction.
+   *   ITEM      item                  4px    one row or tile in a list of like
+   *                                          things: a task, a stat box.
    *
    *   CONTAINER lg · xl              0px    the surfaces those sit on: cards,
    *                                          panels, menus, popovers, dialogs.
-   *                                          Square. Rounding these was tried
-   *                                          and it put a soft corner on every
-   *                                          card on Home, Finance, Habits and
-   *                                          Calendar at once, which is not
-   *                                          what anyone wanted. The corner is
-   *                                          for the thing in the list, not
-   *                                          the surface under it.
-   *
-   *   FLASH CARD card                14px    journal and gratitude entries
-   *                                          only, which are meant to read as
-   *                                          physical cards.
+   *                                          Square. The corner is for the
+   *                                          thing in the list, not the
+   *                                          surface under it.
    *
    * Plus two shapes that are not a tier: tooltip, and round for anything
-   * circular. The scale being separate names is what makes this a five-line
-   * edit here rather than 388 edits out in the components, which is exactly
-   * what the previous note said it was for.
+   * circular. The scale being separate names is what makes a change of corner
+   * a five-line edit here rather than hundreds out in the components.
    */
   --ui-radius-sm: 0px;
   --ui-radius-md: 0px;
   --ui-radius-lg: 0px;
   --ui-radius-xl: 0px;
   /*
-   * Two exceptions to the flat scale, for things that are objects rather than
-   * controls. A journal or gratitude card is a flash card and wants a card's
-   * corner; a task row, an overdue box or a calendar event is an item in a
-   * list and wants only a hint of one. Both are named for what they are, so
-   * the flat scale above stays flat.
+   * The exception to the flat scale, for things that are objects rather than
+   * controls: a task row or an overdue box is an item in a list and wants a
+   * hint of a corner. It is named for what it is, so the flat scale above
+   * stays flat.
    */
   --ui-radius-item: 4px;
   /* Every tooltip, ours and the chart library's. They are small floating
      labels rather than controls, and a sharp corner on a 20px-tall bubble
      reads as a rendering fault. */
   --ui-radius-tooltip: 8px;
-  /* The Pomodoro face is 340px square and reads as a shape, not a control. */
+  /* Anything circular. */
   --ui-radius-round: 9999px;
   /*
    * Insights is the one control in the app that is meant to catch the eye, so
    * it gets its own blue rather than the theme accent, which changes under it.
    * Deep enough that a white label on the filled button clears 4.5:1, bright
-   * enough to read as electric against all four page backgrounds.
+   * enough to read as electric against every theme's page.
    */
   --c-electric: #0B72E8;
   --ui-type-micro: 10px;
@@ -123,8 +109,8 @@
   --c-tag-bg: #2a2a2a;
   /* The wash behind the matched span in a search result. A tint of the
      accent rather than the usual yellow highlighter: it has to sit under
-     --c-text-1 at 13px in all four themes, and yellow does not on the three
-     dark ones. */
+     --c-text-1 at 13px in every theme, and yellow does not on the dark
+     ones. */
   --c-search-mark: rgba(47,169,127,0.30);
   --c-accent: #2fa97f;
   --c-accent-strong: #0d7d59;
@@ -133,45 +119,26 @@
   --c-info: #88aff0;
   --c-danger: #df6b62;
 
-  /* Market ribbon. Deliberately louder than --c-success/--c-danger:
-     those are tuned for body text, and at ribbon size they read as
-     washed out rather than as an exchange board. */
-  /* Investments charts: the account and its benchmark. Checked as a pair
-     against this theme's surface (lightness, chroma, colour-blind distance). */
-  /* From --c-accent's channels, not a copy of the old mint's. These were the
-     last two places the retired moss palette survived, and being a wash they
-     were subtle enough to sit there unnoticed while everything around them
-     moved to the emerald. */
-  /*
-   * The nav pill while it is announcing a completed task.
-   *
-   * Not --c-success: that one is tuned to be read as *text* on the page
-   * background (#74c990 here), and white type on it measures 1.9:1. These are
-   * tuned the other way round — a fill dark enough to carry white at 5:1 or
-   * better in every theme, checked rather than eyeballed.
-   */
   --dashboard-card-bg: var(--c-card-bg);
   --dashboard-card-border: rgba(255,255,255,0.12);
-  /* Standardized elevation — soft, contained (negative spread), not bottom-heavy */
+  /* Standardized elevation: soft, contained (negative spread), not bottom-heavy */
   --shadow-xs: 0 1px 2px rgba(0,0,0,0.22);
   --shadow-soft: 0 1px 2px rgba(0,0,0,0.18), 0 6px 16px -6px rgba(0,0,0,0.30);
   --shadow-pop: 0 6px 16px -4px rgba(0,0,0,0.34), 0 18px 44px -12px rgba(0,0,0,0.48);
   --task-shadow: var(--shadow-xs);
-  /* Saturday and Sunday read as a darker column, not just an untinted one. */
   --cal-toggle-off-bg: rgba(120,120,120,0.30);
   --cal-toggle-border: var(--c-field-border);
   --cal-toggle-knob: #fff;
   --dot-color: rgba(255,255,255,0.07);
   --c-scrim: rgba(0,0,0,0.60);
 
-  /* Motion. Interactions used ten different durations between 0.1s and 0.5s —
-     differences nobody can perceive — and mostly the browser default easing.
-     Three tiers and one curve. */
+  /* Motion: two durations and one curve for every interaction. Finer
+     differences are ones nobody can perceive. */
   --motion-fast: 120ms;   /* micro: ticks, small icon swaps */
-  --motion-base: 150ms;   /* standard: hover, background, border */   /* deliberate: panels, expand/collapse */
+  --motion-base: 150ms;   /* standard: hover, background, border */
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
-  /* The properties hover and active states in this app actually change. Replaces
-     `transition: all`, which also animated layout properties and caused jank. */
+  /* The properties hover and active states in this app actually change, not
+     `transition: all`, which also animates layout properties and causes jank. */
   --transition-ui:
     background var(--motion-base) var(--ease-out),
     border-color var(--motion-base) var(--ease-out),
@@ -181,54 +148,46 @@
     opacity var(--motion-base) var(--ease-out);
 
   /* Focus. Selected/active states are expressed as background tints, so focus
-     uses a ring instead — a different mechanism, never confused with selection. */
+     uses a ring instead: a different mechanism, never confused with selection. */
   --c-focus: #7da8f5;
   /*
-   * Colour that belongs to the content rather than the theme: a category, a
-   * priority, a habit, an event, a mood. Those hues are fixed (types/*.ts),
-   * so they cannot be drawn as-is on four different grounds: a Tailwind 500
-   * green is legible on near-black and 1.7:1 on white. A hued label is
-   * instead mixed from the hue and the theme's own --c-text-1, which is light
-   * on the dark themes and near-black on Light, so the same hue comes out a
-   * pale tint here and a deep shade there. --hue-ink is the hue's share,
-   * set per theme as the most it can take with every palette in the app
-   * still at 4.5:1 on its own fill; --hue-fill is that fill. Used through
-   * .ui-hue-chip and .ui-hue-ink in @layer components.
+   * Colour that belongs to the content rather than the theme: a goal's, a
+   * priority's. Those hues are fixed (types/*.ts), so they cannot be drawn
+   * as-is on every theme's ground: a Tailwind 500 green is legible on
+   * near-black and 1.7:1 on white. A hued label is instead mixed from the
+   * hue and the theme's own --c-text-1, which is light on the dark themes
+   * and near-black on Light, so the same hue comes out a pale tint here and
+   * a deep shade there. --hue-ink is the hue's share, set per theme as the
+   * most it can take with every palette in the app still at 4.5:1. Used
+   * through .ui-hue-ink in @layer components and hueInk in lib/styles.
    */
   --hue-ink: 44%;
   /*
-   * Task priority as a hue: the ring, and the tint the row is filled with
-   * (TaskControls.module.css). The ring needs 3:1 against the card. Critical and Medium borrow
-   * --c-danger and --c-info. High was one orange everywhere, 2.5:1 on Light.
+   * Task priority as a hue (types/task): the ring, and the tint the row is
+   * filled with (PriorityWash.module.css). The ring needs 3:1 against the
+   * card, so High is set per theme: one orange everywhere is 2.5:1 on Light.
+   * Critical and Medium borrow --c-danger and --c-info.
    */
   --priority-high: #eb8909;
   --priority-low: #808080;
   /*
-   * Calendar events: a tint of the event's colour over the surface, and a
-   * title mixed from that colour and the theme's text. They were the raw
-   * colour at 73% with white on top, which on Light was 1.5 to 2.0:1 and on
-   * a yellow event unreadable anywhere. A past event gets half the tint and
-   * neutral text instead of fading to 55% opacity. Tuned so all twenty event
-   * colours clear 4.5:1 in each theme; used through eventFill and eventInk
-   * in lib/styles.
-   *
-   * The ink is mostly the theme's own text, with a hint of the event's colour
-   * (14%). At 40% an upcoming event's title read duller than a past one's,
-   * which is plain text: the owner asked for it close to white, taking on only
-   * a little of the block (29 Sep 2026). Less colour is only ever more
-   * contrast, so the 4.5:1 above still holds.
+   * Calendar events, for eventFill and eventInk in lib/styles, which CronCal
+   * shares: a tint of the event's colour over the surface, and a title mixed
+   * from that colour and the theme's text, not the raw colour with white on
+   * top, which on Light is 1.5 to 2.0:1. A past event gets half the tint.
+   * Tuned so all twenty event colours clear 4.5:1 in each theme. The ink is
+   * mostly the theme's own text, with a hint of the event's colour (14%).
    */
   --event-fill: 30%;
   --event-fill-past: 15%;
   --event-ink: 14%;
   /*
    * Selected: a tab, a segment, a filter chip, a current value in a menu.
-   * A wash and a border of the theme's own accent, with the label bold. It
-   * was --c-tag-bg alone, 1.07 to 1.14:1 against the unselected state on
-   * Light with the same border, while the Token tool used solid green: two
-   * answers to one question, and one of them nearly invisible. The border
-   * clears 3:1 on the card in every theme. Same expression in all four
-   * blocks because each resolves against its own --c-accent.
+   * A wash and a border of the theme's own accent, with the label bold:
+   * --c-tag-bg alone is 1.07 to 1.14:1 against the unselected state on
+   * Light, nearly invisible. The border clears 3:1 on the card in every
+   * theme. Same expression in every theme block because each resolves
+   * against its own --c-accent.
    */
   --c-selected-bg: color-mix(in srgb, var(--c-accent) 18%, transparent);
   --c-selected-border: color-mix(in srgb, var(--c-accent) 70%, transparent);
@@ -243,106 +202,32 @@
   --c-danger-wash: color-mix(in srgb, var(--c-danger) 12%, #1a1a1a);
   --c-danger-line: color-mix(in srgb, var(--c-danger) 34%, #1a1a1a);
 
-  /* Uppercase micro-labels used 0.06em, 0.07em and 0.08em interchangeably — the
-     same job, three answers. Uppercase at 11-12px wants the wider setting. */
+  /* One tracking for uppercase micro-labels: uppercase at 11-12px wants the
+     wider setting. */
   --tracking-label: 0.08em;
 
   --scrollbar-thumb: rgba(255,255,255,0.08);
   --scrollbar-thumb-hover: rgba(255,255,255,0.15);
 
-  /* ── Public site ──────────────────────────────────────────────────────────
-     The landing page and the auth screens. A separate axis from the app's four
-     themes: those switch on `data-theme` for the signed-in app, these switch on
-     `data-public-theme` and only ever have two states. Light is the default, so
-     these values are the light palette and the dark ones live in the
-     `[data-public-theme="dark"]` block below.
-
-     These were plain constants in `lib/public-site.ts` while the public site
-     was light-only. They are variables now so one attribute on <html> flips
-     the whole surface; `public-site.ts` still holds the scale and reads these.
-
-     Text is never green. Mossy green is the accent — buttons, marks, focus
-     rings. Every text colour here is a neutral. */
+  /* ── Public pages ─────────────────────────────────────────────────────────
+     A separate axis from the app's themes: those switch on `data-theme` for
+     the signed-in app, these switch on `data-public-theme` and only ever have
+     two states. Light is the default, so these are the light values and the
+     dark ones live in the `[data-public-theme="dark"]` block below. */
   --public-bg: #ffffff;
-  /*
-   * Card and panel fill. Translucent, not opaque: the cursor dust is painted
-   * behind the page content, so a solid card hid it completely and the trail
-   * appeared to stop dead at every card edge.
-   *
-   * A *tint*, not a wash of the page colour. White at 0.62 over a white page
-   * composites to plain white: the card came out exactly the colour of the
-   * background, so there was no pane to see and it read as nothing at all.
-   * A faint dark tint gives the glass a value of its own, and being only a few
-   * percent opaque it lets the dust through at nearly full strength for the
-   * frost to diffuse.
-   */
-  /* Mirrors PUBLIC_RADIUS in lib/public-site.ts, for the rules that moved into
-     @layer components below and cannot read the TS constant. Keep the two in
-     step; the public site is square. */
-  /* Hover dims the surface only — never a lift, and never a drop shadow. It
-     has to clear the panel tint now that panels are tinted too. */
-  /*
-   * Frost. Diffuses the dust behind a card into a glow rather than showing
-   * hard pixels through it, which is what makes the card read as a pane of
-   * glass rather than a hole in the page.
-   *
-   * This only works because the dust canvas is absolutely positioned. A
-   * `backdrop-filter` does not sample composited layers, so while the canvas
-   * was `position: fixed` a frosted card was completely opaque to the trail —
-   * which is why the frost was briefly removed instead of the cause being
-   * fixed. See the note at the top of PixelDust.tsx.
-   */
-  /* There is deliberately no gradient over the pane. A 152deg raking light
-     used to sit here, on the theory that it separated frosted glass from a
-     flat translucent rectangle. It did the opposite: a directional wash across
-     a card's *body* reads as a gradient fill, not as glass — on dark it was
-     plainly a light corner fading to a dark one, with the diagonal visible.
-     Frost is the blur above; the edge is the 1px border. Light belongs on an
-     edge (see --public-glass-sheen), never raked across a face. */
-  /* A firmer rule for short dividers, which all but vanish at 12px tall. */
-
-  /* ── One green ───────────────────────────────────────────────────────────
-     The emerald the mark, the favicon and the app icon are built on. The
-     accent, the buttons, the focus rings, the washes and the icon tiles are
-     all this hue now; they used to be a separate mossy green, which meant the
-     logo and everything it sat beside were two different greens that were
-     close enough to look like a mistake rather than a choice.
-
-     --public-brand is the value; --public-accent is the same colour under the
-     name the rest of the sheet already used, so nothing had to be renamed at
-     every call site.
-
-     Running text is still never green — that rule is about body copy going
-     dirty olive, and it holds. Marks, buttons, icons and hovers are the
-     exception, as they always were.
-
-     7.5:1 on the light page. The dark variant is lifted because #0a6e4f on
-     #1c1c1c is 1.5:1 and unreadable. */
+  /* The emerald the mark and the app icon are built on, for marks and
+     highlights, never running text. 7.5:1 on the light page. */
   --public-brand: #0a6e4f;
 }
 
-/* ── Public site, dark ──────────────────────────────────────────────────────
-   Borrowed from Midnight, the signed-in app's default theme, so signing in is
-   not a jolt: --page-bg, --c-card-bg, --c-hover, --c-text-1/2/3, --c-border and
-   --c-accent are the same values here.
-
-   The one place it departs: Midnight puts white text on the accent, which is
-   only legible because the app uses the accent as a translucent wash. The
-   public Sign in button is a solid fill, so on dark it inverts — a light green
-   ground with near-black text, 7.7:1, rather than white on green at 2.4:1. */
+/* ── Public pages, dark ─────────────────────────────────────────────────────
+   Midnight's page colour, the signed-in app's default theme, so signing in is
+   not a jolt. */
 [data-public-theme="dark"] {
   --public-bg: #1c1c1c;
 
-  /* Accent stays the light mint for arrows, marks and focus rings, which sit
-     directly on the page and need to lift off it. The buttons do not use it:
-     a solid fill of it is a pale slab on a dark page. They take Midnight's
-     --c-accent-strong with white on top, which is the same pairing the
-     signed-in app uses for a filled accent, and reads as moss rather than
-     mint. Hover lifts rather than deepens, since the fill is already dark. */
   /* Same hue as the light emerald (159° against 161°), lifted to 5.5:1 on
-     #1c1c1c. See the note in the light block. The button is a third step —
-     a solid fill needs to sit above the page and below white text, which
-     neither the mark's value nor the accent's manages on a dark ground. */
+     #1c1c1c, where the light one is 1.5:1 and unreadable. */
   --public-brand: #2fa97f;
 }
 
@@ -378,13 +263,6 @@
   --c-danger-line: color-mix(in srgb, var(--c-danger) 34%, var(--c-surface));
   --c-danger: #b42318;
 
-  /* Market ribbon. Deliberately louder than --c-success/--c-danger:
-     those are tuned for body text, and at ribbon size they read as
-     washed out rather than as an exchange board. */
-  /* Investments charts: the account and its benchmark. Checked as a pair
-     against this theme's surface (lightness, chroma, colour-blind distance). */
-  /* Deeper here: the pill sits on a near-white page, so the fill has to carry
-     the contrast on its own. White on this is 7.1:1. */
   --dashboard-card-bg: var(--c-card-bg);
   --dashboard-card-border: rgba(0,0,0,0.10);
   --shadow-xs: 0 1px 2px rgba(13,29,20,0.05);
@@ -414,8 +292,7 @@
   --c-hover: #3a2d24;
   --c-tag-bg: #33271f;
   --c-search-mark: rgba(224,138,51,0.32);
-  /* Honey gold. It was sage green, #a8c49c, which made Warm Nature on a
-     brown floor: every button, selection and today chip was green. */
+  /* Honey gold, not green, so Warm never reads as Nature on a brown floor. */
   --c-accent: #d8a657;
   --c-accent-strong: #8c6a2e;
   --c-on-accent: #ffffff;
@@ -434,12 +311,6 @@
   --c-danger-line: color-mix(in srgb, var(--c-danger) 34%, #261d17);
   --c-danger: #e4786e;
 
-  /* Market ribbon. Deliberately louder than --c-success/--c-danger:
-     those are tuned for body text, and at ribbon size they read as
-     washed out rather than as an exchange board. */
-  /* Investments charts: the account and its benchmark. Checked as a pair
-     against this theme's surface (lightness, chroma, colour-blind distance). */
-  /* A shade warmer than Midnight's, to sit with the amber palette. 5.4:1. */
   --dashboard-card-bg: var(--c-card-bg);
   --dashboard-card-border: rgba(255,220,180,0.11);
   --task-shadow: var(--shadow-xs);
@@ -484,12 +355,6 @@
   --c-danger-line: color-mix(in srgb, var(--c-danger) 46%, #1f201f);
   --c-danger: #ef8076;
 
-  /* Market ribbon. Deliberately louder than --c-success/--c-danger:
-     those are tuned for body text, and at ribbon size they read as
-     washed out rather than as an exchange board. */
-  /* Investments charts: the account and its benchmark. Checked as a pair
-     against this theme's surface (lightness, chroma, colour-blind distance). */
-  /* Mossy rather than emerald, so it reads as this theme's green. 5.4:1. */
   --dashboard-card-bg: var(--c-card-bg);
   --dashboard-card-border: rgba(144,200,130,0.11);
   --task-shadow: var(--shadow-xs);
@@ -503,8 +368,8 @@
 }
 
 /*
- * Onyx: true black for an OLED phone at night. No lit ground: cards, pills
- * and the dock are drawn by hairlines (one edge at white 0.12, one inner line
+ * Onyx: true black for an OLED phone at night. No lit ground: cards and
+ * pills are drawn by hairlines (one edge at white 0.12, one inner line
  * at 0.07), and the accent is white, so a filled button is white with black
  * type on it. Its content colours are a set of gemstones, one depth and one
  * clarity (lib/content-palette).
@@ -559,8 +424,7 @@
  * Indigo: parchment text on deep indigo with a wave-aqua accent, from
  * Kanagawa (rebelot/kanagawa.nvim, wave) pushed toward navy. Every content
  * colour is one of its names (waveRed, roninYellow, crystalBlue, oniViolet);
- * the cards are flat with spring-blue hairlines, and the ticker sits in a
- * deeper ink band.
+ * the cards are flat with spring-blue hairlines.
  */
 [data-theme="indigo"] {
   --page-bg: #161b2b;
@@ -612,7 +476,7 @@
  * Dusk: a muted violet night with a rose accent, for evenings, from Rose Pine
  * Moon (base #232136, love #eb6f92, gold #f6c177, rose #ea9a97, pine #3e8fb0,
  * foam #9ccfd8, iris #c4a7e7). Rose Pine has no orange or green, so those are
- * drawn at its lightness. Iris hairlines; the ticker band sits below the page.
+ * drawn at its lightness. Iris hairlines.
  * The accent is light, so a filled button carries dark type.
  */
 [data-theme="dusk"] {
@@ -663,8 +527,8 @@
 
 /*
  * Oxblood: oxblood leather, gilt and a brass lamp. Wine grounds, parchment
- * ink, a champagne brass accent and brass hairlines on the cards, the ticker
- * and search. Red still reads as red because the ground is a dim purple red
+ * ink, a champagne brass accent and brass hairlines on the cards and search.
+ * Red still reads as red because the ground is a dim purple red
  * and its scarlet is hot and bright.
  */
 [data-theme="oxblood"] {
@@ -769,12 +633,10 @@
 }
 
 /*
- * The phone dock is a single row of circles at most 52px across, in an 8px
- * frame 20px off the bottom edge: 90px to its top at most (Sidebar's DOCK_*),
- * and this keeps 10px clear above that. Unlayered, like the :root block it
- * overrides: a layered declaration loses to an unlayered one whatever its
- * specificity. 619 is APP_PHONE_BREAKPOINT less one, the width the dock
- * switches at.
+ * The foot room on a phone, the fallback for anything outside AppShell,
+ * which sets its own. Unlayered, like the :root block it overrides: a
+ * layered declaration loses to an unlayered one whatever its specificity.
+ * 619 is APP_PHONE_BREAKPOINT less one.
  */
 @media (max-width: 619px) {
   :root {
@@ -797,23 +659,6 @@
     padding: 0;
   }
 
-  /*
-   * AuthGate's loading splash — the first thing painted on every route.
-   *
-   * The server renders it for everyone, because it cannot read localStorage and
-   * so cannot know whether this visitor has a session. The public palette is
-   * the right default: a visitor on their way to the landing page should not
-   * see a black frame first, and --public-bg is #ffffff unless they have turned
-   * the public site dark.
-   *
-   * For someone signed in that default was the bug — a full-screen white frame
-   * on every reload of a dark dashboard, whichever of the four app themes was
-   * active, because this splash never looked at --page-bg at all.
-   * `data-app-session` is set before first paint by the script in layout.tsx,
-   * so the very first frame is already the right colour rather than being
-   * corrected once React hydrates.
-   */
-
   body {
     background: var(--page-bg);
     color: var(--c-text-1);
@@ -833,8 +678,8 @@
   /*
    * iOS Safari zooms the page into any field set below 16px the moment it
    * takes focus, and leaves it zoomed after the keyboard closes. Every field
-   * here is 13 or 14px, so on a phone each tap into one threw the layout off
-   * the side of the screen. !important because the sizes are inline styles.
+   * here is 13 or 14px, so on a phone each tap into one would throw the
+   * layout off the side of the screen. !important because the sizes are inline styles.
    * The title fields are 18px and above already, and this must only ever
    * raise a size, so a field whose inline style names a title, display or
    * timer step is left alone.
@@ -860,27 +705,6 @@
     box-shadow: 0 0 0 1000px var(--page-bg) inset;
     transition: background-color 99999s ease-in-out 0s;
   }
-
-  /*
-   * The sign-in fields cannot use the opaque inset above.
-   *
-   * They are glass over the page's own backdrop, so an opaque fill would
-   * flatten the blur — and the fill here was a hardcoded near-white from when
-   * the auth screen was light-only. Once the public site gained a dark mode,
-   * autofilling the username painted a white block inside a dark field, with
-   * the theme's own light ink on top of it, all but invisible.
-   *
-   * Clipping the background to the text leaves the glass alone: the browser's
-   * autofill fill is then only drawn inside the glyph shapes, which
-   * -webkit-text-fill-color paints over. Both colours come from the public
-   * palette, so they follow the light/dark toggle like everything else.
-   */
-
-  /*
-   * Firefox does not implement :-webkit-autofill, and an unknown selector in
-   * a comma list invalidates the whole rule, so its equivalent has to stand
-   * on its own.
-   */
 
   /* One interaction treatment across disabled native controls. Individual
      components can still choose context-specific disabled colours. */
@@ -928,86 +752,12 @@
 
 @layer components {
   /*
-   * Keyboard focus on the public site draws in its ink, not the app's pale
-   * --c-focus, which is about 2.1:1 on the white public page. The landing
-   * page did this for itself; the index pages, articles and the reading
-   * list share this class and were left with the app's ring.
-   */
-
-  /*
-   * A row of cards: a grid on a desktop, a swipeable rail on a phone.
-   *
-   * Stacking three or five cards vertically on a narrow screen turned a
-   * glanceable row into a long scroll past near-identical boxes. As a rail
-   * they stay one row and the thumb moves through them, snapping card to
-   * card. Resources keeps its vertical grid — those are one-line rows, not
-   * cards, and there is nothing to swipe through.
-   */
-
-  /* ── Public site: resource rows, card cues, section links ────────────────
-     Shared by the landing page and the /articles, /projects and /resources
-     indexes. Here rather than in one component's style block because three
-     routes render them and a second copy would drift. */
-
-  /*
-   * ── One hover language for every linked surface on the public site ──
-   *
-   * A card and a resource row are the same promise — point at it, open it —
-   * and they now answer the same way: the fill steps up to `--public-dim`,
-   * the border to `--public-line-hover`, and whatever arrow the surface
-   * carries takes the accent and slides a pixel or two out of the corner.
-   *
-   * Only the fill and border are shared, because they are all the two have in
-   * common. A row also lights its mark and plays it; a card has no mark.
-   *
-   * Both take their fill from here rather than from an inline style, and that
-   * is the whole reason this works. Inline beats the stylesheet, so while the
-   * fill was set inline by PUBLIC_GLASS the cards had no hover state at all
-   * and the rows tinted their border but never their background — a rule that
-   * matched, was read, and changed nothing.
-   */
-
-  /* A section-level link: quiet until pointed at, like the card cues. */
-
-  /* Muted at rest, accent and a nudge on hover. Faded rather than hidden, so
-     the card reads as something you can open before you point at it.
-     Named for the card, not the article: a project card carries the labelled
-     version of the same cue, below. */
-
-  /*
-   * The labelled cue: "Open ↗" at the foot of a project card.
-   *
-   * The same reaction as the bare arrow above — accent, and the arrow slides
-   * out of the corner — because it is the same affordance wearing a word. Its
-   * resting colour is left alone: a project card says "Open" where an article
-   * card says nothing, and quietening it here would be a change to how the
-   * page looks standing still, which is not what was wrong with it.
-   */
-
-  /* Icon and label as one group, so the arrow keeps the far right and the
-     gap between mark and title never stretches with the card. */
-
-  /* The mark alone, no tile. A duotone glyph in the accent green sitting
-     directly on the card — the lit box around it read as a second card
-     inside the card. */
-
-  /*
-   * A field with no box of its own, showing focus as its own underline.
-   *
-   * The shared ring is a 2px outline offset 3px from the element, which suits
-   * a bordered control and not a text field that has no border: on the event
-   * title it drew a floating blue rectangle around nothing, in a blue that
-   * belongs to no theme's palette. The underline the field already has
-   * becomes the indicator instead, in the accent.
-   */
-  /*
    * A boxed field lights its own edge when anything inside it takes focus.
    *
    * The shared ring is a 2px outline offset 3px from the element, so on a
-   * field that already draws a border it painted a second, detached blue
-   * rectangle outside the first — and blue belongs to none of the four
-   * palettes. The row's own outline becomes the indicator, in the accent,
-   * and the control inside stops drawing its own.
+   * field that already draws a border it would paint a second, detached
+   * rectangle outside the first. The row's own outline becomes the
+   * indicator, in the accent, and the control inside stops drawing its own.
    */
   .ui-field:focus-within {
     box-shadow: 0 0 0 2px var(--c-accent);
@@ -1017,12 +767,6 @@
   .ui-field :is(input, textarea, select):focus-visible {
     outline: none;
   }
-
-  /*
-   * Hover is handled in React — the pointer moves the same cursor the arrow
-   * keys do, so a CSS :hover would light a second row. This is only the part
-   * the keyboard cannot reach.
-   */
 
   .ui-hover-control {
     background: transparent;
@@ -1048,28 +792,13 @@
   }
 
   /*
-   * Outlined button that turns reddish only under the cursor.
-   *
-   * For a destructive action that should not shout at rest — Sign out sat on
-   * the neutral control hover, so nothing about reaching for it said the word
-   * "out".
-   *
-   * The tint is behind @supports on purpose. Written inline, the CSS build
-   * emits `background: var(--c-danger)` as a fallback for engines without
-   * color-mix, which would put red text on a solid red button. Colour and
-   * border alone are already unmistakably reddish, so that is the floor.
-   */
-
-  /*
    * Shimmering placeholder, used by the per-page loading skeletons.
    *
    * The sweep is a ::after so the base stays a flat surface colour underneath;
    * the reduced-motion block at the end of this file runs it once and leaves
-   * it parked off-screen, which is exactly the right fallback — a plain block.
+   * it parked off-screen, which is exactly the right fallback: a plain block.
    */
-  /* Footer legal links: present, not advertised. */
-
-  .vitae-skeleton {
+  .ui-skeleton {
     display: block;
     position: relative;
     overflow: hidden;
@@ -1077,64 +806,14 @@
     background: var(--c-surface);
   }
 
-  .vitae-skeleton::after {
+  .ui-skeleton::after {
     content: "";
     position: absolute;
     inset: 0;
     transform: translateX(-100%);
     background: linear-gradient(90deg, transparent 0%, var(--c-hover) 50%, transparent 100%);
-    animation: vitae-skeleton-sweep 1.3s ease-in-out infinite;
+    animation: skeleton-sweep 1.3s ease-in-out infinite;
   }
-
-  /*
-   * The Habits heading row: title, category filters, Insights.
-   *
-   * One line where there is room, the way /tasks lays its controls out. On a
-   * phone eight chips wrapped to four rows and put 238px of controls above the
-   * first habit, so below the app's phone breakpoint the filters take a line of
-   * their own as a single scrollable rail — the same treatment the header gives
-   * its clocks — and the title keeps the Insights button beside it.
-   */
-  /* The page header row. Values mirror PAGE_HEADER_ROW in lib/styles.ts;
-     it lives in CSS because the narrow-screen rules below reorder its
-     children, which an inline style cannot do. */
-
-  /*
-   * The Finance filter line: one long search field with the account picker
-   * built into its left end, and the date range beside it.
-   *
-   * The two filters used to be eight chips laid across the row — the account
-   * types beside the page title, the date ranges on a row below it — and the
-   * search box was a 240px stub in the right-hand chart column. As pickers
-   * they state the current answer rather than every option, which is what
-   * frees the row for a field you can actually read a merchant name in.
-   *
-   * No hairlines here any more: with two controls instead of eight chips
-   * there are no groups left to separate, so the rule that hid them below
-   * 920px went with them.
-   */
-
-  /*
-   * The category rail under the Transactions heading: one line, scrolled.
-   *
-   * Sixteen categories wrapped to three rows and put ninety pixels of chips
-   * between the heading and the first transaction. Scrolling keeps it to one
-   * line at any width.
-   */
-
-  /*
-   * The fade that stands in for the hidden scrollbar.
-   *
-   * `data-fade` is measured in the page — the end that actually has rail
-   * behind it — rather than painted on permanently, because a fade over the
-   * last chip of a rail that fits reads as a half-rendered control. Masking
-   * rather than a gradient overlay, so it works over the dot-grid page
-   * background without having to know what colour that is.
-   *
-   * Unprefixed only: `mask-image` needs no prefix in any browser this
-   * targets, and writing the pair in this file is the Lightning CSS merge
-   * trap in CLAUDE.md.
-   */
 
   .ui-choice:not([aria-pressed="true"]):not([aria-selected="true"]):is(:hover, :focus-visible):not(:disabled) {
     background: var(--c-hover) !important;
@@ -1154,24 +833,18 @@
 
 }
 
-/* Dotted grid background for non-home pages */
+/* Dotted grid background for the page */
 .dot-grid-bg {
   background-image: radial-gradient(circle, var(--dot-color) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
 /*
- * The Insights button.
- *
- * The first version swept a white band across it on a loop. It read as the
- * cheap gloss you get on a free template: a hard-edged highlight travelling in
- * one direction, over and over, announcing itself. Gone.
- *
- * What is left is the glass itself moving. The fill is a wide gradient of one
- * colour at three densities, twice the width of the button, drifting slowly
- * back and forth. There is no edge to catch the eye and nothing white in it,
- * so it reads as light shifting inside a tinted surface rather than something
- * sliding over the top of it.
+ * The Insights button: the glass itself moving. The fill is a wide gradient
+ * of one colour at three densities, twice the width of the button, drifting
+ * slowly back and forth. There is no edge to catch the eye and nothing white
+ * in it, so it reads as light shifting inside a tinted surface rather than
+ * something sliding over the top of it.
  *
  * The prefers-reduced-motion block at the end of this file pins it after one
  * pass, which leaves a static gradient and loses nothing.
@@ -1190,10 +863,9 @@
   background-size: 220% 100%;
   background-position: 0% 50%;
   border: 1px solid color-mix(in srgb, var(--c-electric) 55%, transparent);
-  /* Unprefixed only. Writing `-webkit-backdrop-filter` beside it is what
-     silently removed this button's frost: Lightning CSS merges the pair into
-     the -webkit- form alone, and current Chrome ignores that. See the note in
-     CLAUDE.md under Known Pitfalls. */
+  /* Unprefixed only. Writing `-webkit-backdrop-filter` beside it would
+     silently remove this button's frost: Lightning CSS merges the pair into
+     the -webkit- form alone, and current Chrome ignores that (CONTRIBUTING.md). */
   backdrop-filter: blur(12px) saturate(1.5);
   color: var(--c-text-1);
   animation: insightsDrift 7s ease-in-out infinite alternate;
@@ -1204,76 +876,24 @@
   border-color: color-mix(in srgb, var(--c-electric) 80%, transparent);
 }
 
-/* Animations — outside @layer so they don't compete */
+/* Animations, outside @layer so they don't compete */
 
 @keyframes insightsDrift {
   from { background-position: 0% 50%; }
   to   { background-position: 100% 50%; }
 }
 
-@keyframes vitae-skeleton-sweep {
+@keyframes skeleton-sweep {
   to {
     transform: translateX(100%);
   }
 }
 
-/*
- * The nav pill announcing a completed task.
- *
- * Glow only — deliberately nothing that changes the pill's geometry. The
- * brief is that the bar keeps its shape and size exactly and only its colour
- * changes, and a scale or a translate on a bar that is pinned to the bottom
- * of the viewport reads as the page shifting under you. `forwards` holds the
- * settled glow until the state flips back, at which point the inline shadow
- * takes over through its own transition.
- */
-
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
-/* Honour the OS reduced-motion setting: several animations here loop forever. */
-
-/* ── Resource mark motion ────────────────────────────────────────────────────
-   What each gesture named in `ResourceIcon.tsx` actually means. Here rather
-   than in that component because two routes render these rows, and the note
-   above says why a second copy of a row's styling drifts.
-
-   Outside @layer with the other keyframes: @keyframes is not subject to layer
-   ordering, and the project keeps them together at the end of the file.
-
-   This replaced six keyframes that rotated, scaled and translated whole
-   glyphs — a book that swivelled, a nib that shook, a chart that inflated —
-   because a Phosphor icon is one merged path and the glyph was the only thing
-   there was to move. The marks are now drawn as separate strokes, so the
-   drawing itself can change: the book's pages leave the spine and its text
-   writes itself in, the bar draws out of its own centre and takes its plates,
-   the chart line climbs and then grows an arrowhead.
-
-   Three rules hold it together:
-
-   - **Nothing moves until the row is hovered or focused.** Six marks moving
-     on their own would be a fairground, and the animation is an answer to
-     being pointed at.
-   - **Every gesture is written as a `from` and no `to`.** The implicit end
-     state is then the resting drawing, by construction — which matters
-     because these rules only exist while the row is pointed at, so a gesture
-     ending anywhere else would snap the mark when the pointer left.
-   - **Timing lives with the geometry**, as `--mark-delay` and
-     `--mark-duration` set per part in the component, so the sequence of a mark
-     reads in one place instead of as a wall of nth-child rules down here.
-
-   The reduced-motion block below collapses all of it. */
-
-/* pathLength="1" in the component normalises every length, so this one value
-   covers a 40-unit tick and a 300-unit polyline. Harmless at rest: a dash as
-   long as the path, at offset 0, is a solid stroke. */
-
-/* The nib, travelling the line and lifting off the end of the word. */
-
-/* The two that land rather than arrive: a plate hitting the collar and a
-   quote mark being set both overshoot slightly and settle. */
-
+/* Honour the OS reduced-motion setting: some animations here loop forever. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

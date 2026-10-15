@@ -14,6 +14,22 @@ export const RECORDING_BITS_PER_SECOND = 32_000;
 /** The most the route takes: under publik's 4 MB and Vercel's 4.5 MB, with room for the context. */
 export const MAX_UPLOAD_BYTES = 3_500_000;
 
+/* A take sends itself once it holds this much, so one recorded at more than
+   it was asked for is never refused after the talking is done. The room left
+   is for the slice still in the encoder when it stops, about a second: seven
+   seconds even at 320 kbps. */
+export const SEND_AT_BYTES = MAX_UPLOAD_BYTES - 300_000;
+
+/**
+ * When a take ends, by the clock that excludes pauses: at three minutes, or
+ * sooner where the bytes so far, `bytes` in `ms` of recording, say it will
+ * reach SEND_AT_BYTES first. Read again as each slice arrives.
+ */
+export function takeLimitMs(bytes: number, ms: number): number {
+  if (bytes <= 0 || ms <= 0) return MAX_RECORDING_MS;
+  return Math.min(MAX_RECORDING_MS, Math.floor((SEND_AT_BYTES / bytes) * ms));
+}
+
 /* Opus in WebM is what Chrome and Arc record; Safari records MP4 (AAC), and
    since 18.4 WebM as well. Groq accepts all of these. */
 const PREFERRED_TYPES = [

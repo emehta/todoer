@@ -97,7 +97,8 @@ export function weekendStart(today: string): string {
   return weekday === 6 ? today : shiftDateStr(today, (6 - weekday + 7) % 7);
 }
 
-function clock(minutes: number): string {
+/** Minutes since midnight as "HH:MM". */
+export function clock(minutes: number): string {
   return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 }
 

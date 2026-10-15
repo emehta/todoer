@@ -31,3 +31,9 @@ export const GOAL_COLORS = [
 ] as const;
 
 export const DEFAULT_GOAL_COLOR = "#22c55e";
+
+/** A new goal's colour: the first no goal has yet, so two goals made in a row differ. */
+export function firstFreeGoalColor(categories: readonly Pick<Category, "color">[]): string {
+  const taken = new Set(categories.map((c) => c.color.toLowerCase()));
+  return GOAL_COLORS.find((option) => !taken.has(option.value.toLowerCase()))?.value ?? DEFAULT_GOAL_COLOR;
+}

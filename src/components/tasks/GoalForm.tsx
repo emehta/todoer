@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { TextAlignLeft } from "@phosphor-icons/react";
 import type { Category } from "@/types/category";
-import { DEFAULT_GOAL_COLOR, GOAL_COLORS } from "@/types/category";
+import { GOAL_COLORS, firstFreeGoalColor } from "@/types/category";
 import { usePhone } from "@/lib/use-viewport-width";
 import { DialogButton, DialogCard, DialogFooter } from "@/components/form/Dialog";
 import {
@@ -33,27 +33,26 @@ function asGoalType(value: string | null | undefined): "short-term" | "long-term
 
 /**
  * A goal's details: name, description, deadline, whether it is short or long
- * term, and its colour. The same card edits a goal and creates one.
- *
- * It was a small panel hung under the + or the tab's ⋯, with fields a size
- * smaller than anywhere else, the browser's own date picker and a "+" that
- * opened the operating system's colour window. It is the same card as a task
- * or an event now (29 Sep 2026), so adding a goal looks like adding anything
- * else.
+ * term, and its colour. The same card edits a goal and creates one, and it
+ * is the task card's kind of card (29 Sep 2026), so adding a goal looks like
+ * adding a task.
  */
 export default function GoalForm({
   category,
+  categories,
   onSubmit,
   onClose,
 }: {
   /** The goal to edit; absent for a new one. */
   category?: Category;
+  /** Every goal, so a new one starts in a colour none of them has. */
+  categories: readonly Category[];
   onSubmit: (values: GoalFormValues) => Promise<void>;
   onClose: () => void;
 }) {
   const phone = usePhone();
   const [formName, setFormName] = useState(category?.name ?? "");
-  const [formColor, setFormColor] = useState(category?.color ?? DEFAULT_GOAL_COLOR);
+  const [formColor, setFormColor] = useState(() => category?.color ?? firstFreeGoalColor(categories));
   const [formDesc, setFormDesc] = useState(category?.description ?? "");
   const [formDeadline, setFormDeadline] = useState<string | null>(category?.deadline ?? null);
   /* Null for a goal with no type, which it keeps unless one is picked. */

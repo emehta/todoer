@@ -8,10 +8,8 @@
 
 import {
   DISPLAY_ORDER_STEP as STEP,
-  openTasksByDay,
   placeManyByPriority,
   placeByPriority,
-  sortTasksByPriority,
   sortTasksForDisplay,
 } from "@/lib/task-order";
 
@@ -137,68 +135,6 @@ check("twenty Highs into one gap stay between the Critical and the Medium",
   [crowdedOrder[0], crowdedOrder.slice(1, 21).every((p) => p === "high"), crowdedOrder[21]], ["critical", true, "medium"]);
 check("…with no two tasks sharing a number",
   new Set(crowded.map((t) => t.display_order)).size, crowded.length);
-
-/* ── the calendar's order ──────────────────────────────────────────────── */
-
-/*
- * The calendar draws four of a day and folds the rest into "+N more", so its
- * order decides what is seen at all. It drew /tasks' order, where a drag can
- * leave a Low on top, and two Criticals sat out of sight under the fold.
- */
-const outOfOrder = [
-  task("low", 512, { id: "low" }),
-  task("medium", 1024, { id: "m1" }),
-  task("critical", 2048, { id: "c1" }),
-  task("high", 3072, { id: "h" }),
-  task("medium", 4096, { id: "m2" }),
-  task("critical", 5120, { id: "c2" }),
-];
-check("a day the owner dragged out of order still reads Critical to Low",
-  sortTasksByPriority(outOfOrder).map((t) => t.id), ["c1", "c2", "h", "m1", "m2", "low"]);
-check("…so the four the calendar shows are the four that matter most",
-  sortTasksByPriority(outOfOrder).slice(0, 4).map((t) => t.priority), ["critical", "critical", "high", "medium"]);
-check("…and the input is not reordered in place",
-  outOfOrder.map((t) => t.id), ["low", "m1", "c1", "h", "m2", "c2"]);
-
-check("within a priority the hand-made order of /tasks is kept",
-  sortTasksByPriority([
-    task("high", 3072, { id: "late" }),
-    task("high", 1024, { id: "early" }),
-    task("high", 2048, { id: "middle" }),
-  ]).map((t) => t.id), ["early", "middle", "late"]);
-check("…then creation time, for two tasks sharing a number",
-  sortTasksByPriority([
-    task("medium", 1024, { id: "second", created_at: "2026-09-28T11:00:00Z" }),
-    task("medium", 1024, { id: "first", created_at: "2026-09-28T10:00:00Z" }),
-  ]).map((t) => t.id), ["first", "second"]);
-check("…then the id, so the order never depends on the order rows arrive in",
-  [
-    sortTasksByPriority([task("low", 0, { id: "b", created_at: "x" }), task("low", 0, { id: "a", created_at: "x" })]).map((t) => t.id),
-    sortTasksByPriority([task("low", 0, { id: "a", created_at: "x" }), task("low", 0, { id: "b", created_at: "x" })]).map((t) => t.id),
-  ], [["a", "b"], ["a", "b"]]);
-check("a missing order or creation time does not throw, and sorts first",
-  sortTasksByPriority([
-    task("high", 1024, { id: "set" }),
-    task("high", null, { id: "none", created_at: null }),
-  ]).map((t) => t.id), ["none", "set"]);
-check("a priority outside the four goes below Low rather than above Critical",
-  sortTasksByPriority([task(null, 0, { id: "odd" }), task("low", 0, { id: "low" }), task("critical", 9, { id: "c" })]).map((t) => t.id),
-  ["c", "low", "odd"]);
-
-const week = openTasksByDay([
-  task("medium", 1024, { id: "tue-m", due_date: "2026-10-06" }),
-  task("high", 2048, { id: "tue-h", due_date: "2026-10-06" }),
-  task("critical", 1024, { id: "mon-done", due_date: "2026-10-05", completed: true }),
-  task("low", 1024, { id: "mon-l", due_date: "2026-10-05" }),
-  task("high", 7168, { id: "undated", due_date: null }),
-]);
-check("tasks are grouped by the day they are due, each day sorted",
-  Object.fromEntries([...week].map(([day, list]) => [day, list.map((t) => t.id)])),
-  { "2026-10-06": ["tue-h", "tue-m"], "2026-10-05": ["mon-l"] });
-check("a done task and an undated one are on no day",
-  [...week.values()].flat().some((t) => t.id === "mon-done" || t.id === "undated"), false);
-check("a day with nothing due has no entry",
-  week.has("2026-10-07"), false);
 
 /* ── several at once (Ramble) ──────────────────────────────────────────── */
 

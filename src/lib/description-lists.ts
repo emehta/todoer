@@ -273,8 +273,8 @@ export function descriptionOutline(text: string | null | undefined): OutlineItem
 
 /**
  * The description on one line, for the task row: a line of text as it is, a
- * bullet as "• ", a number as "1. ", each after the last. The row used to
- * show the raw text, so every list read "- one - two".
+ * bullet as "• ", a number as "1. ", each after the last, so a list never
+ * reads as "- one - two".
  */
 export function descriptionPreview(text: string | null | undefined): string {
   const parts: string[] = [];

@@ -5,8 +5,7 @@ import styles from "./DescriptionEditor.module.css";
 
 /**
  * A task's description as the card reads it: its lines, and its bullets and
- * numbers as the lists the editor drew. It used to be the raw text, so a list
- * read as lines with dashes on them.
+ * numbers as the lists the editor drew, not as lines with dashes on them.
  */
 export default function DescriptionText({ text, empty }: { text: string | null | undefined; empty: string }) {
   const blocks = parseDescription(text);

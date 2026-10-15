@@ -3,7 +3,7 @@
  * checks it.
  *
  * The page already holds the tasks and goals, so it builds this and sends it
- * with the recording: no Supabase round trip from sin1 before Groq is asked.
+ * with the recording: no Supabase round trip before the provider is asked.
  * Goals and open tasks go out under short keys ("g1", "t4") rather than
  * their ids, which the model has only to pick from, never to copy; the ids
  * stay in the browser (RambleSource) and the keys are turned back into them

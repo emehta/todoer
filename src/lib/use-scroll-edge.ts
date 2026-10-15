@@ -11,8 +11,8 @@ export type ScrollEdge = "none" | "start" | "end" | "both";
  *
  * For rows of controls that are one line at a desktop width and too wide for a
  * phone. Hiding the scrollbar and letting the row end wherever the screen does
- * is the failure this exists to avoid — a row you cannot see the end of,
- * ending early — so the end that has something behind it is faded instead.
+ * is the failure this exists to avoid (a row you cannot see the end of,
+ * ending early), so the end that has something behind it is faded instead.
  *
  * Measured rather than painted on permanently: a fade at an end you have
  * already reached promises content that is not there, which is the same lie as

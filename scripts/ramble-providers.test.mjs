@@ -12,7 +12,7 @@
 import { AiError, chatJson, checkGroqKey, transcribe } from "@/lib/ai";
 import { GROQ, describeFailure, keyHint, looksLikeGroqKey, publikSpec, resolveProvider } from "@/lib/ramble/providers";
 import { balanceLine, formatBalance } from "@/lib/publik";
-import { readRambleReply } from "@/lib/ramble/request";
+import { readRambleReply, readRambleSetup } from "@/lib/ramble/request";
 
 const failures = [];
 let passed = 0;
@@ -29,7 +29,9 @@ check("Groq chosen with a key runs on Groq", resolveProvider({ ...none, provider
 check("publik chosen but not set up asks to set it up", resolveProvider({ ...none, provider: "publik", groqKey: "gsk_abc" }).code, "publik_setup");
 check("publik set up runs on publik, at its own base URL", resolveProvider({ ...none, provider: "publik", publikKey: "pk_live_x", publikBaseUrl: "https://example.test/v1" }).spec?.baseUrl, "https://example.test/v1");
 check("publik without a base URL uses publik's own", publikSpec(null).baseUrl, "https://publikhq.com/api/v1");
-check("publik asks for a tier, never a vendor model", publikSpec(null).chatModel.startsWith("publik-"), true);
+check("publik's chat asks for a tier, never a vendor model", publikSpec(null).chatModel.startsWith("publik-"), true);
+/* publik takes OpenAI's name for transcription, and only that (measured 14 Oct 2026, AGENTS.md). */
+check("publik's transcription asks for whisper-1", publikSpec(null).transcribeModel, "whisper-1");
 
 // Made up, and put together here so the source holds nothing shaped like a key.
 const fakeGroqKey = `${"gsk"}_abcdefghijklmnopqrstuvwxyz0123`;
@@ -142,11 +144,26 @@ for (const code of ["choose", "groq_key", "publik_setup"]) {
 }
 check("a balance run out offers publik's one link",
   answer(402, { error: "Your publik balance has run out.", code: "publik_balance", topUpUrl: "https://publikhq.com/dashboard/api/add", transcript: "buy milk" }),
-  { ok: false, message: "Your publik balance has run out.", transcript: "buy milk", action: { kind: "link", label: "Add credit", href: "https://publikhq.com/dashboard/api/add" } });
+  { ok: false, message: "Your publik balance has run out.", transcript: "buy milk", action: { kind: "link", label: "Open publik", href: "https://publikhq.com/dashboard/api/add" }, retry: false });
 check("a link that is not https is never offered", answer(402, { error: "x", topUpUrl: "javascript:alert(1)" }).action, undefined);
-check("any other failure says what happened and offers nothing else", answer(502, { error: "Groq could not read that." }), { ok: false, message: "Groq could not read that.", transcript: null, action: undefined });
+check("a provider's failure says what happened and offers nothing else", answer(502, { error: "Groq could not read that." }), { ok: false, message: "Groq could not read that.", transcript: null, action: undefined, retry: true });
 check("an answer that is not JSON still has words", answer(500, null).message, "Ramble could not read that (500).");
 check("a 200 without tasks is not a success", answer(200, { transcript: "x" }).ok, false);
+
+/* Try again sends the same audio, so it is offered only where that can fare differently. */
+check("a busy or failing provider can be tried again",
+  [429, 500, 502, 504].map((status) => answer(status, { error: "x" }).retry), [true, true, true, true]);
+check("a recording too long, empty or with nothing heard cannot",
+  [400, 413, 422].map((status) => answer(status, { error: "x" }).retry), [false, false, false]);
+check("nor can Ramble not set up, or a balance run out",
+  [answer(409, { error: "x", code: "choose" }).retry, answer(402, { error: "x" }).retry], [false, false]);
+
+/* Asked before the microphone is: whether a ramble would run. */
+check("set up, a ramble runs", readRambleSetup(true, { ready: true }), null);
+check("not set up, the route's own words for it",
+  readRambleSetup(true, { ready: false, error: "Choose how Ramble listens in Settings.", code: "choose" }), "Choose how Ramble listens in Settings.");
+check("a failed question says neither, so a take is tried as usual",
+  [readRambleSetup(false, { error: "Sign in first." }), readRambleSetup(true, null), readRambleSetup(true, { ready: false })], [undefined, undefined, undefined]);
 
 // ─── publik's balance, as Settings shows it ───
 check("a balance is never rounded up", formatBalance(47_794), "$0.047");

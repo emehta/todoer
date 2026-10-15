@@ -4,7 +4,7 @@
  * `npm test -- task-changes`.
  */
 
-import { taskChanges } from "@/lib/task-changes";
+import { goalChanges, taskChanges } from "@/lib/task-changes";
 
 const failures = [];
 let passed = 0;
@@ -75,6 +75,18 @@ const blank = { title: "", description: "", due_date: "2026-10-07", due_time: nu
 check("a blank new card untouched is nothing to lose", taskChanges(blank, { ...blank, description: null }), {});
 check("a title typed on a new card is", Object.keys(taskChanges(blank, { ...blank, title: "Buy a lamp" })), ["title"]);
 check("spaces alone on a new card are not", taskChanges(blank, { ...blank, title: "   " }), {});
+
+/* A goal's card, the same question: only what it changed is written. */
+const goal = { name: "Gym", color: "#22C55E", description: "Three times a week", deadline: "2026-12-31", goal_type: "long-term" };
+const goalCard = (changes = {}) => ({ name: "Gym", color: "#22c55e", description: "Three times a week", deadline: "2026-12-31", goal_type: "long-term", ...changes });
+check("a goal's card untouched writes nothing, the colour's case included", goalChanges(goal, goalCard()), {});
+check("a goal renamed writes the name alone", goalChanges(goal, goalCard({ name: "Gym and swim" })), { name: "Gym and swim" });
+check("a stale tab recolouring a goal leaves the phone's description",
+  goalChanges(goal, goalCard({ color: "#3b82f6" })), { color: "#3b82f6" });
+check("a deadline and a term cleared are written as none",
+  goalChanges(goal, goalCard({ deadline: null, goal_type: null })), { deadline: null, goal_type: null });
+check("an empty description against none is no change",
+  goalChanges({ ...goal, description: null }, goalCard({ description: "" })), {});
 
 if (failures.length > 0) {
   console.error(`\n  ${failures.length} failed, ${passed} passed\n`);

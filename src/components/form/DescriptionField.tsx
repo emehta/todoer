@@ -73,9 +73,9 @@ export function DescriptionFieldLoading({ value, placeholder, icon }: Descriptio
 }
 
 /**
- * The text box the description used to be, for when the editor cannot be
- * loaded (offline, or a deploy that replaced its chunk): the lines can
- * still be read and changed, only not drawn as lists while typing.
+ * A plain text box, for when the editor cannot be loaded (offline, or an
+ * update that replaced its chunk): the lines can still be read and changed,
+ * only not drawn as lists while typing.
  */
 export function DescriptionTextarea({ id, value, onChange, placeholder, icon, autoFocus }: DescriptionFieldProps) {
   return (

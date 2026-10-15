@@ -16,12 +16,6 @@ export interface Task {
   display_order: number;
 }
 
-/** What the calendar reads of a task: enough to place it on its day and colour it. */
-export type CalendarTask = Pick<
-  Task,
-  "id" | "title" | "due_date" | "completed" | "priority" | "display_order" | "created_at"
->;
-
 export type NewTask = {
   title: string;
   description: string | null;
@@ -32,10 +26,8 @@ export type NewTask = {
 };
 
 /**
- * Theme-aware priority colours. These were duplicated in `app/page.tsx` with
- * CSS-variable values while this copy stayed hardcoded, so the dashboard and the
- * task pages disagreed. The variable form wins: it follows the project rule that
- * themed surfaces never hardcode colour, and it tracks all four themes.
+ * Priority colours, as CSS variables so they follow every theme: a themed
+ * surface never hardcodes a colour.
  */
 export const PRIORITY_COLORS: Record<Priority, string> = {
   critical: "var(--c-danger)",

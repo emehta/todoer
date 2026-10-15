@@ -11,7 +11,7 @@ Only the latest release is fixed. To update, see [Update](README.md#update).
 Todoer runs on the user's own computer against their own Supabase project. What it guards:
 
 - **The secret key** (`sb_secret_`) is kept on the server side only: in `config.json` in the app-data folder, readable by the user's account alone (mode 600 on Mac and Linux). It is never sent to the page. A page can't swap a working project for another: that takes removing `config.json` by hand (README, "Move to another project").
-- **This computer only.** The server listens on 127.0.0.1. `src/proxy.ts` refuses any request whose Host isn't a loopback name, which stops a web page pointing its own domain at Todoer (DNS rebinding), and every write must come from Todoer's own pages (same origin, JSON), which stops another site posting to it.
+- **This computer only.** The server listens on 127.0.0.1. `src/proxy.ts` refuses any request whose Host isn't a loopback name, which stops a web page pointing its own domain at Todoer (DNS rebinding), and every write must come from Todoer's own pages (same origin, and JSON or a form upload such as Ramble's recording), which stops another site posting to it.
 - **One owner per project.** The account is made by the server with `app_metadata.self_host_owner`, which only the secret key can set. The tables' row level security needs that flag as well as the row's own user, so someone who signs up to the project through Supabase's API sees and writes nothing. Ramble's routes, the only ones that spend anything, check the same flag on the caller's session. A forgotten password is reset only with the secret key.
 - **Ramble's keys** stay on the server side: the Groq key in `settings.json` beside the config, the publik key in publik's own file. Neither reaches the page; Settings shows only the Groq key's last four characters.
 - **The database setup** (`supabase/schema.sql`) never drops or deletes anything, revokes everything from the browser's roles before granting the four privileges the app needs, and keeps the server's own tables out of the browser's reach.
@@ -21,4 +21,4 @@ Todoer runs on the user's own computer against their own Supabase project. What 
 ## Out of scope
 
 - Someone who can already use the computer as its user: they can read the settings file, as they can read anything else of that user's.
-- Supabase's own service, and the AI services Ramble sends a recording to (Groq, publik).
+- Supabase's own service, and the AI services Ramble sends a recording to (Groq, publik), with the goal names and task titles it needs to read it.

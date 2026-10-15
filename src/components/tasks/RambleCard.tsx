@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, lazy, useEffect, useRef, useState, type CSSProperties } from "react";
+import { Suspense, useEffect, useRef, useState, type CSSProperties } from "react";
 import { Tag, TextAlignLeft, X } from "@phosphor-icons/react";
 import type { Category } from "@/types/category";
 import type { NewTask, Priority } from "@/types/task";
@@ -10,25 +10,30 @@ import { ChoiceChips, FieldGroup, TextField } from "@/components/form/fields";
 import DateField, { formatFieldDate } from "@/components/form/DateField";
 import TimeField, { formatFieldTime } from "@/components/form/TimeField";
 import SelectField from "@/components/form/SelectField";
-import { DescriptionFieldLoading, DescriptionTextarea } from "@/components/form/DescriptionField";
+import { DescriptionFieldLoading } from "@/components/form/DescriptionField";
 import BackButton from "@/components/BackButton";
 import Tooltip from "@/components/Tooltip";
 import formStyles from "@/components/form/form.module.css";
 import controls from "./TaskControls.module.css";
 import styles from "./Ramble.module.css";
+import NewGoalField, { FieldAlert, NEW_GOAL, goalNamed } from "./NewGoalField";
 import RambleIcon from "./RambleIcon";
 import RambleWaveform, { type WaveMode } from "./RambleWaveform";
+import { DescriptionEditor } from "./TaskEditModal";
 import { MORPH, morph } from "./ramble-morph";
+import { useNudge } from "./useNudge";
 import { useTaskQuickDates } from "./useTaskQuickDates";
 import { usePhone } from "@/lib/use-viewport-width";
 import { useTimeFormat } from "@/lib/time-format";
+import { getErrorMessage } from "@/lib/error-utils";
 import type { RambleSource } from "@/lib/ramble/context";
-import { rambleDrafts, type RambleDraft } from "@/lib/ramble/drafts";
+import { labelledDraftKey, rambleDrafts, type RambleDraft } from "@/lib/ramble/drafts";
 import { transcriptSentences } from "@/lib/ramble/prompt";
 import { startRecorder, type Recorder } from "@/lib/ramble/recorder";
 import {
   ASK_BEFORE_DISCARD_MS,
   MAX_RECORDING_MS,
+  SEND_AT_BYTES,
   formatRecordingTime,
   microphoneProblem,
   monotonicNow,
@@ -36,19 +41,11 @@ import {
   readClock,
   resumeClock,
   startClock,
+  takeLimitMs,
   type TakeClock,
 } from "@/lib/ramble/recording";
 import { requestRamble, type RambleAction } from "@/lib/ramble/request";
 import { openSettings } from "@/lib/open-settings";
-
-/*
- * The description's list editor, as the task card has it: real bullets, not
- * "- " typed out in a box. Its own chunk, fetched once the Tasks page is
- * idle; the plain box if it will not load.
- */
-const DescriptionEditor = lazy(() =>
-  import("@/components/form/DescriptionEditor").catch(() => ({ default: DescriptionTextarea })),
-);
 
 type Phase =
   | { kind: "starting" }
@@ -58,9 +55,6 @@ type Phase =
   | { kind: "review" }
   | { kind: "failed"; message: string; canRetry: boolean; action?: RambleAction };
 
-/* Long enough to read as a nudge, as on the task card. */
-const NUDGE_MS = 320;
-
 /* Listening needs no more room than its waveform: the full card around it
    was "too large for no reason" (the owner, 7 Oct 2026). */
 const LISTENING_WIDTH = 400;
@@ -69,13 +63,17 @@ const LISTENING_WIDTH = 400;
 const ENDING_MS = 20_000;
 
 interface Props {
-  /** Started by the button's own click, which Safari needs for the waveform. */
-  recorder: Recorder;
+  /** Started by the button's own click, which Safari needs for the waveform. Null when Ramble is not set up. */
+  recorder: Recorder | null;
+  /** Why Ramble cannot listen yet: the card opens on it, with Settings, and records nothing. */
+  setupMessage: string | null;
   source: RambleSource;
   categories: Category[];
   /** The goal the page is showing, for a task the model filed nowhere. */
   fallbackGoalId: string | null;
   onAdd: (tasks: NewTask[]) => void;
+  /** Makes a goal from a row's New goal, as the task card's does. */
+  onCreateGoal: (name: string) => Promise<Category>;
   onClose: () => void;
 }
 
@@ -92,22 +90,31 @@ interface Props {
  * am from pm is asked there, a task already in the list is left out with
  * Add anyway, a task with no goal asks for one. View transcript turns the
  * card to what was heard, a sentence a line, the way back on its title line.
+ * With Ramble not set up it opens on what to do in Settings instead.
  */
-export default function RambleCard({ recorder: firstRecorder, source, categories, fallbackGoalId, onAdd, onClose }: Props) {
+export default function RambleCard({ recorder: firstRecorder, setupMessage, source, categories, fallbackGoalId, onAdd, onCreateGoal, onClose }: Props) {
   const phone = usePhone();
   const timeFormat = useTimeFormat();
   const quickDates = useTaskQuickDates();
-  const [recorder, setRecorder] = useState<Recorder>(firstRecorder);
-  const [phase, setPhase] = useState<Phase>({ kind: "starting" });
+  const [recorder, setRecorder] = useState<Recorder | null>(firstRecorder);
+  const [phase, setPhase] = useState<Phase>(() => (
+    firstRecorder
+      ? { kind: "starting" }
+      : { kind: "failed", message: setupMessage ?? "", canRetry: false, action: { kind: "settings" } }
+  ));
   /* Asked before a take is thrown away; what it was doing, to go back to. */
   const [askingDiscard, setAskingDiscard] = useState<null | "recording" | "paused">(null);
   const [elapsed, setElapsed] = useState(0);
+  /* When the take sends itself: three minutes, or sooner at a byte rate that
+     would pass the upload limit first (takeLimitMs), read from `heard`. */
+  const [limit, setLimit] = useState(MAX_RECORDING_MS);
+  const heard = useRef({ bytes: 0, limit: MAX_RECORDING_MS });
   const [drafts, setDrafts] = useState<RambleDraft[]>([]);
   const [transcript, setTranscript] = useState<string | null>(null);
   const [view, setView] = useState<"tasks" | "transcript">("tasks");
   const [attempted, setAttempted] = useState(false);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
-  const [nudging, setNudging] = useState(false);
+  const [nudging, nudge] = useNudge();
   const audio = useRef<Blob | null>(null);
   const clock = useRef<TakeClock>({ banked: 0, since: null });
   const sendRef = useRef<HTMLButtonElement>(null);
@@ -116,8 +123,7 @@ export default function RambleCard({ recorder: firstRecorder, source, categories
   /* Closed while a ramble was being read: its answer, when it comes, is dropped. */
   const closed = useRef(false);
   const cancelTimer = useRef<{ recorder: Recorder; timer: number } | null>(null);
-  const nudgeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  /* The latest send, for the timer's own at three minutes. */
+  /* The latest send, for the timer's own at the take's limit. */
   const sendLatest = useRef<() => void>(() => {});
   useEffect(() => {
     sendLatest.current = () => { void send(); };
@@ -125,6 +131,7 @@ export default function RambleCard({ recorder: firstRecorder, source, categories
 
   /* Recording once the microphone says yes, or why it would not. */
   useEffect(() => {
+    if (!recorder) return;
     let live = true;
     recorder.ready.then(
       () => {
@@ -146,15 +153,12 @@ export default function RambleCard({ recorder: firstRecorder, source, categories
    * once) does not stop a take that is still wanted.
    */
   useEffect(() => {
+    if (!recorder) return;
     if (cancelTimer.current?.recorder === recorder) window.clearTimeout(cancelTimer.current.timer);
     return () => {
       cancelTimer.current = { recorder, timer: window.setTimeout(() => recorder.cancel(), 0) };
     };
   }, [recorder]);
-
-  useEffect(() => () => {
-    if (nudgeTimer.current) clearTimeout(nudgeTimer.current);
-  }, []);
 
   const recording = phase.kind === "recording";
   const paused = phase.kind === "paused";
@@ -162,18 +166,23 @@ export default function RambleCard({ recorder: firstRecorder, source, categories
   const reviewing = phase.kind === "review";
 
   /* The timer, from the take's own clock (pauses left out), and the send at
-     three minutes. */
+     the take's limit, or at once should it hold the most that is sent. */
   useEffect(() => {
-    if (!taking) return;
+    if (!taking || !recorder) return;
     const tick = () => {
       const ms = readClock(clock.current, monotonicNow());
       setElapsed(ms);
-      if (ms >= MAX_RECORDING_MS) sendLatest.current();
+      const bytes = recorder.bytes();
+      if (bytes !== heard.current.bytes) {
+        heard.current = { bytes, limit: takeLimitMs(bytes, ms) };
+        setLimit(heard.current.limit);
+      }
+      if (ms >= heard.current.limit || bytes >= SEND_AT_BYTES) sendLatest.current();
     };
     tick();
     const interval = window.setInterval(tick, 200);
     return () => window.clearInterval(interval);
-  }, [taking]);
+  }, [taking, recorder]);
 
   /*
    * Where focus goes as the card changes: Send while recording, so Enter
@@ -195,14 +204,8 @@ export default function RambleCard({ recorder: firstRecorder, source, categories
     card?.querySelector<HTMLElement>("[data-autofocus]")?.focus({ preventScroll: true });
   }, [phase.kind, view, recording, taking, askingDiscard]);
 
-  function nudge() {
-    if (nudgeTimer.current) clearTimeout(nudgeTimer.current);
-    setNudging(true);
-    nudgeTimer.current = setTimeout(() => setNudging(false), NUDGE_MS);
-  }
-
   function pause() {
-    if (!recording) return;
+    if (!recording || !recorder) return;
     recorder.pause();
     clock.current = pauseClock(clock.current, monotonicNow());
     setElapsed(readClock(clock.current, monotonicNow()));
@@ -210,7 +213,7 @@ export default function RambleCard({ recorder: firstRecorder, source, categories
   }
 
   function resume() {
-    if (!paused) return;
+    if (!paused || !recorder) return;
     recorder.resume();
     clock.current = resumeClock(clock.current, monotonicNow());
     setPhase({ kind: "recording" });
@@ -222,7 +225,7 @@ export default function RambleCard({ recorder: firstRecorder, source, categories
     if (closed.current) return;
     if (!result.ok) {
       if (result.transcript) setTranscript(result.transcript);
-      setPhase({ kind: "failed", message: result.message, canRetry: !result.action, action: result.action });
+      setPhase({ kind: "failed", message: result.message, canRetry: result.retry && !result.action, action: result.action });
       return;
     }
     const found = rambleDrafts(result.tasks, source, fallbackGoalId);
@@ -241,7 +244,7 @@ export default function RambleCard({ recorder: firstRecorder, source, categories
   }
 
   async function send() {
-    if (finishing.current || !taking) return;
+    if (finishing.current || !taking || !recorder) return;
     finishing.current = true;
     setAskingDiscard(null);
     /* Reading from the press, not from when the recorder answers, so
@@ -267,11 +270,13 @@ export default function RambleCard({ recorder: firstRecorder, source, categories
 
   /* A new take, from this click, so Safari lets its waveform run too. */
   function recordAgain() {
-    recorder.cancel();
+    recorder?.cancel();
     const next = startRecorder();
     morph(() => {
       audio.current = null;
       clock.current = { banked: 0, since: null };
+      heard.current = { bytes: 0, limit: MAX_RECORDING_MS };
+      setLimit(MAX_RECORDING_MS);
       setTranscript(null);
       setDrafts([]);
       setView("tasks");
@@ -285,14 +290,14 @@ export default function RambleCard({ recorder: firstRecorder, source, categories
 
   function close() {
     closed.current = true;
-    recorder.cancel();
+    recorder?.cancel();
     onClose();
   }
 
   /*
    * Cancel, Escape, the X and a press outside. A take of more than a few
    * seconds is held and asked about first, in the card, so a stray Escape
-   * never loses a minute of talking; in review, with tasks not yet added,
+   * never loses a minute of talking; in review, with tasks still to add,
    * it asks in the footer, as the task card does. While a take is being
    * read the card is busy, and only its own Cancel closes it.
    */
@@ -311,7 +316,7 @@ export default function RambleCard({ recorder: firstRecorder, source, categories
       setAskingDiscard(was);
       return;
     }
-    if (reviewing && drafts.length > 0) {
+    if (reviewing && included.length > 0) {
       setConfirmingDiscard((asking) => !asking);
       return;
     }
@@ -357,8 +362,9 @@ export default function RambleCard({ recorder: firstRecorder, source, categories
   }
 
   const readingTranscript = reviewing && view === "transcript";
-  const addLabel = included.length === 1 ? "Add task" : included.length > 1 ? `Add ${included.length} tasks` : "Add tasks";
-  const left = MAX_RECORDING_MS - elapsed;
+  const addLabel = included.length === 1 ? "Add task" : `Add ${included.length} tasks`;
+  const labelledKey = labelledDraftKey(drafts);
+  const left = limit - elapsed;
 
   /* Ramble again, with Ramble's own mark: a new take in place of this one. */
   const againButton = (
@@ -370,7 +376,7 @@ export default function RambleCard({ recorder: firstRecorder, source, categories
   );
 
   let footer;
-  if (reviewing && confirmingDiscard) {
+  if (reviewing && confirmingDiscard && included.length > 0) {
     footer = (
       <DialogFooter
         start={(
@@ -396,9 +402,16 @@ export default function RambleCard({ recorder: firstRecorder, source, categories
           </div>
         )}
       >
-        {/* On a phone the X is Cancel, and the footer keeps to one row. */}
-        {!phone && <DialogButton variant="secondary" onClick={requestClose}>Cancel</DialogButton>}
-        <DialogButton variant="primary" onClick={add} data-autofocus>{addLabel}</DialogButton>
+        {/* Nothing left to add: the one way on is out. On a phone the X is
+            Cancel, and the footer keeps to one row. */}
+        {included.length === 0 ? (
+          <DialogButton variant="primary" onClick={close} data-autofocus>Close</DialogButton>
+        ) : (
+          <>
+            {!phone && <DialogButton variant="secondary" onClick={requestClose}>Cancel</DialogButton>}
+            <DialogButton variant="primary" onClick={add} data-autofocus>{addLabel}</DialogButton>
+          </>
+        )}
       </DialogFooter>
     );
   }
@@ -409,7 +422,7 @@ export default function RambleCard({ recorder: firstRecorder, source, categories
   if (askingDiscard) {
     status = <span className={styles.question}>Discard this recording?</span>;
   } else if (phase.kind === "reading") {
-    status = "Reading";
+    status = "Reading…";
   } else if (paused) {
     status = "Paused";
   } else if (recording) {
@@ -518,7 +531,7 @@ export default function RambleCard({ recorder: firstRecorder, source, categories
                   busy={phase.kind === "reading"}
                   aria-keyshortcuts="Enter"
                 >
-                  {phase.kind === "reading" ? "Sending" : "Send"}
+                  {phase.kind === "reading" ? "Sending…" : "Send"}
                 </DialogButton>
               </>
             )}
@@ -590,9 +603,10 @@ export default function RambleCard({ recorder: firstRecorder, source, categories
                   categories={categories}
                   quickDates={quickDates}
                   phone={phone}
-                  labelled={index === 0}
+                  labelled={draft.key === labelledKey}
                   attempted={attempted}
                   formatClock={(value) => formatFieldTime(value, timeFormat)}
+                  onCreateGoal={onCreateGoal}
                   onChange={(patch) => update(draft.key, patch)}
                   onRemove={() => remove(draft.key)}
                   onSubmit={add}
@@ -635,6 +649,7 @@ function DraftRow({
   labelled,
   attempted,
   formatClock,
+  onCreateGoal,
   onChange,
   onRemove,
   onSubmit,
@@ -644,10 +659,11 @@ function DraftRow({
   categories: Category[];
   quickDates: ReturnType<typeof useTaskQuickDates>;
   phone: boolean;
-  /** The first row names its fields; the rows under it line up with those names. */
+  /** The first row to be added names its fields; the rows under it line up with those names. */
   labelled: boolean;
   attempted: boolean;
   formatClock: (value: string) => string;
+  onCreateGoal: (name: string) => Promise<Category>;
   onChange: (patch: Partial<RambleDraft>) => void;
   onRemove: () => void;
   onSubmit: () => void;
@@ -655,9 +671,24 @@ function DraftRow({
 }) {
   const goal = categories.find((category) => category.id === draft.category_id) ?? null;
   const question = draft.timeQuestion;
-  /* On a phone the fields sit two by two and no longer line up under the
+  const goalMissing = attempted && !draft.category_id;
+  /* The name typed under the picker's New goal, while it is open. */
+  const [newGoal, setNewGoal] = useState<{ name: string; busy: boolean; error: string } | null>(null);
+  /* On a phone the fields sit two by two and do not line up under the
      first row's names, so every row names its own. */
   const label = (text: string) => (labelled || phone ? text : undefined);
+
+  async function addGoal() {
+    const name = newGoal?.name.trim();
+    if (!name || newGoal?.busy) return;
+    setNewGoal({ name, busy: true, error: "" });
+    try {
+      onChange({ category_id: await goalNamed(name, categories, onCreateGoal) });
+      setNewGoal(null);
+    } catch (error) {
+      setNewGoal({ name, busy: false, error: getErrorMessage(error, "Could not make that goal.") });
+    }
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -760,15 +791,37 @@ function DraftRow({
           />
         </FieldGroup>
         <FieldGroup label={label("Goal")}>
-          <SelectField
-            ariaLabel="Goal"
-            icon={goal ? undefined : <Tag size={14} />}
-            placeholder={categories.length ? "Goal" : "No goals yet"}
-            value={draft.category_id}
-            invalid={attempted && !draft.category_id}
-            options={categories.map((c) => ({ value: c.id, label: c.name, color: c.color }))}
-            onChange={(next) => onChange({ category_id: next })}
-          />
+          {newGoal === null ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <SelectField
+                ariaLabel="Goal"
+                icon={goal ? undefined : <Tag size={14} />}
+                placeholder={categories.length ? "Choose a goal" : "No goals yet"}
+                value={draft.category_id}
+                invalid={goalMissing}
+                options={[
+                  ...categories.map((c) => ({ value: c.id, label: c.name, color: c.color })),
+                  { value: NEW_GOAL, label: "New goal" },
+                ]}
+                onChange={(next) => {
+                  if (next === NEW_GOAL) setNewGoal({ name: "", busy: false, error: "" });
+                  else onChange({ category_id: next });
+                }}
+              />
+              {goalMissing && <FieldAlert>Choose a goal.</FieldAlert>}
+            </div>
+          ) : (
+            <NewGoalField
+              id={`ramble-goal-${draft.key}`}
+              name={newGoal.name}
+              busy={newGoal.busy}
+              error={newGoal.error}
+              invalid={goalMissing}
+              onChange={(name) => setNewGoal({ name, busy: false, error: "" })}
+              onAdd={() => { void addGoal(); }}
+              onCancel={() => setNewGoal(null)}
+            />
+          )}
         </FieldGroup>
       </div>
     </div>

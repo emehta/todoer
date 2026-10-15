@@ -20,6 +20,7 @@ import DeleteGoalDialog from "./DeleteGoalDialog";
 import Tooltip from "@/components/Tooltip";
 import { useScrollEdge } from "@/lib/use-scroll-edge";
 import { SELECTED } from "@/lib/styles";
+import { goalChanges, type GoalFields } from "@/lib/task-changes";
 import controls from "./TaskControls.module.css";
 import { contentColor } from "@/lib/content-palette";
 
@@ -33,13 +34,11 @@ interface Props {
   categories: Category[];
   active: string | null;
   onChange: (id: string | null) => void;
-  /*
-   * The full goal form's values, from + and from a tab's ⋯ Edit goal. Both
-   * used to open a small form of their own with only a name and a colour, so
-   * a goal's type, deadline and description could not be set from here.
-   */
+  /* The full goal form's values, from +; and from a tab's ⋯ Edit goal, only
+     what the form changed from the goal as it opened. */
   onCreate: (values: GoalFormValues) => Promise<void>;
-  onEdit: (id: string, values: GoalFormValues) => Promise<void>;
+  onEdit: (id: string, changes: Partial<GoalFields>) => Promise<void>;
+  /** Deletes the goal; the page goes back to All if it was showing it. */
   onDelete: (id: string) => Promise<void>;
   /** The categories' ids in their new order, after a drag or Alt+arrow. */
   onReorder: (orderedIds: string[]) => void;
@@ -111,7 +110,7 @@ export default function CategoryTabs({
 
   const plusRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
-  /* Shared with the filter group above this row — see lib/use-scroll-edge. */
+  /* Shared with the filter group above this row (lib/use-scroll-edge). */
   const scrollEdge = useScrollEdge(scrollerRef, [categories]);
 
   /*
@@ -150,18 +149,13 @@ export default function CategoryTabs({
    * Bring the chosen filter into view.
    *
    * A row that scrolls can hold the active pill off screen, and then the page
-   * is filtered by something the header does not show — the one state a
+   * is filtered by something the header does not show, the one state a
    * filter row must never be in. `block: "nearest"` so this can only ever
    * move the row sideways; without it the page itself scrolls.
    *
-   * Instantly, not smoothly. `behavior: "smooth"` is a JS request that Chrome
-   * honours regardless of `prefers-reduced-motion` — the global reduce block
-   * in globals.css cannot reach it, because it is not a transition — so it
-   * would be the one animation in the app that ignores the setting. It would
-   * also be the only smooth scroll here at all: the two other call sites both
-   * take the default. And this app has already had a horizontal row that
-   * glided on its own reported as a bug, on the calendar's week strip. A
-   * correction should land, not travel.
+   * Instantly, not smoothly: Chrome runs `behavior: "smooth"` whatever
+   * `prefers-reduced-motion` says, out of reach of the reduce block in
+   * globals.css, and a correction should land, not travel.
    */
   useEffect(() => {
     const el = scrollerRef.current;
@@ -194,12 +188,6 @@ export default function CategoryTabs({
   function openEdit(cat: Category) {
     setGoalForm({ mode: "edit", category: cat });
     setContextMenu(null);
-  }
-
-  /* Deleting the goal the page is showing puts the page back on All. */
-  async function deleteGoal(id: string) {
-    await onDelete(id);
-    if (active === id) onChange(null);
   }
 
   function handleContextMenu(e: React.MouseEvent, category: Category) {
@@ -287,13 +275,10 @@ export default function CategoryTabs({
               }}
             >
               {/*
-                Duotone, which is the middle of a correction that overshot.
-                This was Tag at fill weight and read as a solid block of
-                colour, so it became TagSimple at the default weight, which is
-                a hollow outline with nothing inside it and no punch hole to
-                say it is a tag at all. Duotone keeps the outline in the
-                category's colour and washes the body with the same colour at
-                low opacity: it has weight at 14px without being a block.
+                Duotone: the outline in the goal's colour and the body washed
+                with it at low opacity, so it has weight at 14px without
+                reading as a solid block, and keeps the punch hole that says
+                it is a tag.
               */}
               <Tag size={14} weight="duotone" style={{ color: contentColor(cat.color), flexShrink: 0 }} aria-hidden="true" />
               {cat.name}
@@ -313,11 +298,10 @@ export default function CategoryTabs({
               }}
               className={`${controls.categoryChipMenu} flex items-center justify-center`}
               /*
-               * text-2, not the text-4 it was. At 13px regular in the faintest
-               * ink the dots were close to invisible on the pill they sit on,
-               * which made a control that only appears on hover look like a
-               * rendering artefact. Bold at 15px in text-2 reads as three
-               * dots; the direct-hover rule takes it to text-1.
+               * Bold at 15px in text-2, which reads as three dots: in the
+               * faintest ink they would be close to invisible on the pill, and
+               * a control that only appears on hover would look like a
+               * rendering artefact. The direct-hover rule takes it to text-1.
                */
               style={{ width: 22, height: 22, color: "var(--c-text-2)", borderRadius: "var(--ui-radius-sm)" }}
             >
@@ -331,7 +315,7 @@ export default function CategoryTabs({
         </div>
 
         {/*
-          Outside the scroller on purpose — see the note on .categoryScroller.
+          Outside the scroller on purpose: see the note on .categoryScroller.
           It is not one of the choices, so it must not scroll away, and its
           popover would be clipped by an overflow ancestor.
         */}
@@ -340,8 +324,8 @@ export default function CategoryTabs({
           <Tooltip label="Add a goal">
           <button
             type="button"
-            onClick={() => setGoalForm((open) => (open?.mode === "new" ? null : { mode: "new" }))}
-            aria-label={goalForm?.mode === "new" ? "Close the new goal form" : "Add a goal"}
+            onClick={() => setGoalForm({ mode: "new" })}
+            aria-label="Add a goal"
             aria-haspopup="dialog"
             aria-expanded={goalForm?.mode === "new"}
             className={`${controls.iconButton} flex items-center justify-center`}
@@ -400,17 +384,18 @@ export default function CategoryTabs({
       )}
 
       {pendingDelete && (
-        <DeleteGoalDialog category={pendingDelete} onDelete={deleteGoal} onClose={() => setPendingDelete(null)} />
+        <DeleteGoalDialog category={pendingDelete} onDelete={onDelete} onClose={() => setPendingDelete(null)} />
       )}
 
       {goalForm?.mode === "new" && (
-        <GoalForm onSubmit={onCreate} onClose={() => setGoalForm(null)} />
+        <GoalForm categories={categories} onSubmit={onCreate} onClose={() => setGoalForm(null)} />
       )}
       {goalForm?.mode === "edit" && (
         <GoalForm
           key={goalForm.category.id}
           category={goalForm.category}
-          onSubmit={(values) => onEdit(goalForm.category.id, values)}
+          categories={categories}
+          onSubmit={(values) => onEdit(goalForm.category.id, goalChanges(goalForm.category, values))}
           onClose={() => setGoalForm(null)}
         />
       )}

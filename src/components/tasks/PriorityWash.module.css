@@ -1,16 +1,14 @@
 /*
  * How much of its priority's hue an open task takes, and what the hue is
- * mixed into: a row on /tasks (TaskItem) and a pill on the calendar's tasks
- * row (TimeGrid) both carry this class and draw with priorityFill and
- * priorityLine in lib/styles.ts, so the two cannot drift apart.
+ * mixed into: a row on /tasks (TaskItem) carries this class and draws with
+ * priorityFill and priorityLine in lib/styles.ts.
  *
- * Here, in a module, and not in globals.css. They were theme variables there
- * for one deploy and every row went transparent in production: Vercel served
- * the new component against a globals.css chunk built before the commit, the
- * three variables were undefined, and an undefined variable throws out the
- * whole background declaration. A module ships with the component that
- * imports it, so the task and its values cannot arrive apart (CLAUDE.md,
- * Known Pitfalls). The helpers also carry Midnight's values as fallbacks.
+ * Here, in a module, and not in globals.css: a stylesheet can arrive older
+ * than the page that uses it, and an undefined variable throws out the whole
+ * background declaration, so every row would go transparent. A module ships
+ * with the component that imports it, so the task and its values cannot
+ * arrive apart (CONTRIBUTING.md). The helpers also carry Midnight's values
+ * as fallbacks.
  *
  * Light takes less, because a light ground shows a tint more. Nature mixes
  * into a mostly neutral base, because red over its green reads as khaki.

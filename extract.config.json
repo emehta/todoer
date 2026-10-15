@@ -22,6 +22,10 @@
     "scripts/readable-on.test.mjs",
     "scripts/ramble.test.mjs"
   ],
-  "cuts": {},
+  "cuts": {
+    "src/lib/use-url-target.ts": "Deep links for the source app's search, which Todoer doesn't have.",
+    "src/types/habit.ts": "The source app's habits.",
+    "src/components/PageTitle.tsx": "Used only by the source app's other pages' loading screens."
+  },
   "ignorePackages": []
 }

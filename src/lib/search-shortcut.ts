@@ -3,17 +3,13 @@
 import { useEffect, type RefObject } from "react";
 
 /**
- * "/" puts the caret in the page's search field, as on GitHub and YouTube.
- *
- * Shared by the app's field (`SearchField`) and the public site's
- * (`PublicSearchField`), so the key does the same thing on every page that
- * has a search.
+ * "/" puts the caret in the page's search field (`SearchField`), as on GitHub
+ * and YouTube.
  */
 
 /*
  * The fields that answer "/", oldest first. The newest one on screen takes
- * the key: a page opened over another (a tool chosen in a hub) mounts after
- * it, and is the one being looked at.
+ * the key: a field mounted later is on what is being looked at.
  */
 const shortcutFields: HTMLInputElement[] = [];
 

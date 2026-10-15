@@ -38,16 +38,16 @@ function Tip({ label, children }: { label: string | null; children: React.ReactN
  * The selected goal's own action, Mark all done, at the end of the goal tabs
  * beside the + that adds a goal.
  *
- * The owner chose this over a bar of buttons above the list (29 Sep 2026):
- * what acts on the whole list, Add task, is in the page header, and what acts
- * on the selected goal sits next to the goals. It names itself in a tooltip
- * and to a screen reader, and spells out its question ("Mark 5 tasks done?")
- * once armed, so the one thing that asks first is never hidden behind an
- * icon. It completes the goal's open tasks the list is showing, by id.
+ * What acts on the whole list, Add task, is in the page header, and what acts
+ * on the selected goal sits next to the goals (the owner's layout, 29 Sep
+ * 2026). It names itself in a tooltip and to a screen reader, and spells out
+ * its question ("Mark 5 tasks done?") once armed, so the one thing that asks
+ * first is never hidden behind an icon. It completes the goal's open tasks
+ * the list is showing, by id.
  *
- * Edit goal and Delete goal were icons here too; the owner asked for only Add
- * goal and Mark all done (29 Sep 2026). Both stay on the goal tab's own
- * menu (its ⋯, or a right-click), which is where they are reached now.
+ * Edit goal and Delete goal are on the goal tab's own menu (its ⋯, or a
+ * right-click), not here: the owner asked for only Add goal and Mark all
+ * done beside the tabs (29 Sep 2026).
  *
  * Nothing on All: there is no selected goal to act on.
  */

@@ -8,8 +8,7 @@
  *    moving it to another day places it directly below the last open task on
  *    that day of the same or a higher priority, or at the top if there is
  *    none: a new Critical goes to the top, under any other Criticals, and a
- *    High never lands below a Medium. It used to go to the end of the day, so
- *    High sat under Medium.
+ *    High never lands below a Medium.
  *
  *    "Below the last as important", not "above the first less important": on
  *    a clean day they are the same spot, but on a day the owner has arranged
@@ -38,54 +37,6 @@ export function sortTasksForDisplay<T extends Ordered>(taskList: readonly T[]): 
     if (orderDelta !== 0) return orderDelta;
     return a.created_at.localeCompare(b.created_at);
   });
-}
-
-/* A priority the four do not name (a null written by hand) goes last. */
-function rankOf(priority: Priority): number {
-  return PRIORITY_ORDER[priority] ?? Object.keys(PRIORITY_ORDER).length;
-}
-
-type Ranked = Ordered & Pick<Task, "priority">;
-
-/**
- * The calendar's order for a day: Critical, High, Medium, Low, whatever
- * order the day has on /tasks. Within one priority it keeps that page's
- * order (the stored number, then creation time), so two Highs arranged by
- * hand stay as arranged.
- *
- * The calendar shows the first four of a day and folds the rest into
- * "+N more", so this decides which tasks are seen there at all. It drew the
- * page's order, and a Low dragged to the top on /tasks put two Criticals out
- * of sight.
- */
-export function sortTasksByPriority<T extends Ranked>(taskList: readonly T[]): T[] {
-  return [...taskList].sort((a, b) => {
-    const rankDelta = rankOf(a.priority) - rankOf(b.priority);
-    if (rankDelta !== 0) return rankDelta;
-    const orderDelta = (a.display_order ?? 0) - (b.display_order ?? 0);
-    if (orderDelta !== 0) return orderDelta;
-    const createdDelta = (a.created_at ?? "").localeCompare(b.created_at ?? "");
-    if (createdDelta !== 0) return createdDelta;
-    return a.id.localeCompare(b.id);
-  });
-}
-
-/**
- * Each day's open tasks in the calendar's order, keyed by `YYYY-MM-DD`.
- * Done and undated tasks are left out: the calendar has nowhere to put them.
- */
-export function openTasksByDay<T extends Ranked & Pick<Task, "due_date" | "completed">>(
-  taskList: readonly T[],
-): Map<string, T[]> {
-  const byDay = new Map<string, T[]>();
-  for (const task of taskList) {
-    if (task.completed || !task.due_date) continue;
-    const day = byDay.get(task.due_date);
-    if (day) day.push(task);
-    else byDay.set(task.due_date, [task]);
-  }
-  for (const [day, dayTasks] of byDay) byDay.set(day, sortTasksByPriority(dayTasks));
-  return byDay;
 }
 
 export interface Placement {

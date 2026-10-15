@@ -44,9 +44,10 @@ function formatDueDate(date: string | null, time: string | null, timeFmt: "12h" 
  * full strength rather than green: green is "done" and, in two themes, the
  * accent that means "selected", and a task due today is neither. Against the
  * page's day rather than the clock's, so the colour moves on at midnight with
- * the headings instead of waiting for the row to be drawn again.
+ * the headings instead of waiting for the row to be drawn again. The task
+ * card's date follows the same rule.
  */
-function getDueDateStyle(date: string | null, todayKey: string): CSSProperties {
+export function getDueDateStyle(date: string | null, todayKey: string): CSSProperties {
   if (!date) return { color: "var(--c-text-3)" };
   if (date < todayKey) return { color: "var(--c-danger)", fontWeight: 600 };
   if (date === todayKey) return { color: "var(--c-text-1)", fontWeight: 600 };
@@ -92,14 +93,13 @@ export default function TaskItem({
   const category = categories.find((c) => c.id === task.category_id) ?? null;
 
   /*
-   * The whole row is tinted with its priority: red, orange, blue or grey. It
-   * was a plain surface with a bar down the left for two days, and the owner
-   * wanted the colour back across the row. How much hue each theme takes, and
-   * what it is mixed into, are the --priority-wash* variables in
-   * PriorityWash.module.css, which is where Light's pink and Nature's khaki
-   * were fixed; priorityFill and priorityLine carry Midnight's values as
+   * The whole row is tinted with its priority: red, orange, blue or grey, the
+   * colour across the row (the owner's call). How much hue each theme takes,
+   * and what it is mixed into, are the --priority-wash* variables in
+   * PriorityWash.module.css, which keep Light from pink and Nature from
+   * khaki; priorityFill and priorityLine carry Midnight's values as
    * fallbacks, so a stylesheet that arrives late leaves the row tinted, never
-   * transparent. The calendar's task pills are drawn from the same three.
+   * transparent.
    *
    * A done row is plain, the same rule its ring follows: done is done,
    * whatever its priority was. The row actions sit on the same colour.
@@ -125,14 +125,10 @@ export default function TaskItem({
 
   /*
    * Ticking a task off: the confetti and the circle answer the click at once,
-   * and the save follows once the tick has been seen.
-   *
-   * It used to wait on the database for everything: the confetti fired only
-   * after the write came back (a quarter of a second or more from here), and
-   * the row left the list the instant it was marked done, so there was never
-   * a tick to see. Now the circle pops and fills, the tick draws, the row
-   * fades, and then onUpdate saves it and the list drops it. If the save
-   * fails the page puts the task back and says so.
+   * and the save follows once the tick has been seen, rather than waiting a
+   * round trip on the database. The circle pops and fills, the tick draws,
+   * the row fades, and then onUpdate saves it and the list drops it. If the
+   * save fails the page puts the task back and says so.
    *
    * Unticking a done task (in Historical) is immediate: there is nothing to
    * celebrate and nothing to watch.
@@ -197,10 +193,9 @@ export default function TaskItem({
         </p>
       )}
       {/*
-        One line whatever the width. On a phone a long goal name used to wrap
-        onto a second line, squeeze the date into "29 / Sep" and run under the
-        row's action icons. The date never shrinks; the goal ends in an
-        ellipsis instead.
+        One line whatever the width, so on a phone a long goal name does not
+        wrap, squeeze the date or run under the row's action icons. The date
+        never shrinks; the goal ends in an ellipsis instead.
       */}
       <div className="mt-1 flex items-center gap-2.5" style={{ minWidth: 0 }}>
         {formattedDate && (

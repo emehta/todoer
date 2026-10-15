@@ -238,11 +238,10 @@ function detailText(items: OutlineItem[], depth: number): string[] {
  * The HTML, which Notes, Mail, Gmail and Messages paste, is real lists: a
  * task is a list item, and its description a list nested in it, so the app
  * draws its own bullets and sub-bullets and holds a wrapped line in under
- * its text. It was bullets typed as characters for a day (6 Oct 2026), and
- * the owner saw what that is: not a list, a long line running back under the
- * bullet. Every other line is a <div>, and a blank one is <div><br></div>:
- * the blank lines are lines, not a margin an app can drop, which is how the
- * one under the heading went missing before (5 Oct 2026).
+ * its text; bullets typed as characters are not a list but a long line
+ * running back under the bullet. Every other line is a <div>, and a blank
+ * one is <div><br></div>: the blank lines are lines, not a margin an app can
+ * drop, as one under the heading otherwise would be.
  */
 function sectionsHtml(dayHeading: string, sections: CopySection[]): string {
   let html = `<div><b>${htmlText(dayHeading)}</b></div>`;

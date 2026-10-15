@@ -168,7 +168,7 @@
  *
  * Animating `translate` and not `transform`: Modal already puts the dialog's
  * vertical offset in `transform`, and a transform keyframe would wipe it for
- * the length of the animation — the card would jump to the top of the screen
+ * the length of the animation: the card would jump to the top of the screen
  * and back. The individual transform properties compose with it instead.
  *
  * The prefers-reduced-motion block in globals.css flattens this to 0.01ms
@@ -194,7 +194,7 @@
  *
  * Wraps rather than overflows. On a phone the field's 200px floor plus three
  * pills is more than the column has, and the alternatives are both worse than
- * two lines — squeezing the field until a task title cannot be read in it, or
+ * two lines, squeezing the field until a task title cannot be read in it, or
  * a hidden-scrollbar row that ends somewhere off screen. When it does wrap the
  * pickers keep the left edge rather than staying pushed right, because right
  * alignment reads as "attached to the field" only while they are beside it.
@@ -217,7 +217,7 @@
  * The three pickers. One line beside the field on a desktop; below it on a
  * phone, where they scroll.
  *
- * They need 356px and a 375px phone's column is 343 — each picker is as wide
+ * They need 356px and a 375px phone's column is 343, so each picker is as wide
  * as its own longest option, which is what stops it resizing when you use it,
  * and that costs width. Scrolling rather than wrapping or squeezing: a fourth
  * line of one stranded pill is the ragged stack this row was pulled out of the
@@ -283,20 +283,15 @@
 /*
  * The category row: one line, always.
  *
- * It used to wrap. On a 375px phone the five starter categories became
- * *three* stacked rows 102px tall — 661px of pills folded into a 343px box —
- * and the touch gutter that keeps the manage button visible on a device with
- * no hover (see the `hover: none` block below) makes each pill 18px wider
- * there than on a desktop, so the phone is exactly where it folded worst.
- *
- * A row of filters is a single axis of choice and should read as one. It
- * scrolls sideways now instead of stacking, at every width: a row that wraps
- * on a laptop and scrolls on a phone is two different objects wearing the
- * same paint.
+ * A row of filters is a single axis of choice and should read as one, so it
+ * scrolls sideways rather than wrapping, at every width: a row that wraps on
+ * a laptop and scrolls on a phone is two different objects wearing the same
+ * paint. A phone is where wrapping would be worst, since the touch gutter
+ * that keeps the manage button visible with no hover (the `hover: none`
+ * block below) makes each pill 18px wider there.
  *
  * The `+` button is deliberately *outside* this scroller. It is not one of
- * the choices, it should not scroll away from you, and its create form is an
- * absolutely-positioned popover that an `overflow` ancestor would clip.
+ * the choices, and it should not scroll away from you.
  */
 .categoryBar {
   display: flex;
@@ -328,7 +323,7 @@
 }
 
 /*
- * The row is 30px of 30px-tall pills, so this never scrolls vertically — but
+ * The row is 30px of 30px-tall pills, so this never scrolls vertically, but
  * `overflow-x: auto` computes `overflow-y` from `visible` to `auto` whatever
  * is written here, so the block axis is a scroll container either way. It is
  * inert because there is nothing to scroll, and a gesture down the page
@@ -343,14 +338,14 @@
  *
  * Worn by both rows on this page that are one line at a desktop width and too
  * wide for a phone: the categories, and the filter group above them. The
- * scrollbar is hidden on each — a permanent grey bar under a 343px strip of
- * pills is worse than the problem — so the edge that has more behind it fades
+ * scrollbar is hidden on each (a permanent grey bar under a 343px strip of
+ * pills is worse than the problem), so the edge that has more behind it fades
  * out instead. Driven by a measured scroll position (`lib/use-scroll-edge`),
  * not left on permanently: a fade at an end you have already reached is a
  * promise of content that is not there, which is the same lie as clipping
  * silently.
  *
- * The `#000` stops are alpha, not colour — a mask reads its source's alpha
+ * The `#000` stops are alpha, not colour: a mask reads its source's alpha
  * channel, so opaque means "show this" and `transparent` means "hide it".
  * Nothing here is themed, and nothing here needs to be: the same two stops
  * fade the row into Midnight, Warm, Nature and Light alike.
@@ -385,18 +380,14 @@
 /*
  * A category pill and its manage button.
  *
- * The button used to appear whenever the pill was the active one, which put a
- * permanent second box next to it. It belongs to whichever pill is under the
- * cursor instead, absolutely placed inside the pill's own right padding, with
- * :focus-within keeping it reachable by keyboard.
+ * The button belongs to whichever pill is under the cursor, absolutely
+ * placed inside the pill's own right padding, with :focus-within keeping it
+ * reachable by keyboard, so no pill carries a second box at rest.
  *
- * That padding used to be reserved permanently, showing or not, so that
- * revealing the button could not reflow the row. It traded a reflow nobody
- * notices for a gap everybody does: every pill rested with 18px of empty
- * space inside its right edge and read as a pill missing its label rather
- * than one holding a hidden control. The gutter opens on hover instead, so a
- * resting pill is padded evenly — 6px/14px, the same as the All pill beside
- * it — and the row only moves while you are pointing at it.
+ * The gutter for it opens on hover, not reserved at rest: a pill resting with
+ * 18px of empty space inside its right edge reads as a pill missing its
+ * label. So a resting pill is padded evenly, 6px/14px, the same as the All
+ * pill beside it, and the row only moves while you are pointing at it.
  */
 .categoryChip {
   position: relative;
@@ -423,7 +414,7 @@
     opacity var(--motion-fast) var(--ease-out),
     transform var(--motion-fast) var(--ease-out),
     filter var(--motion-fast) var(--ease-out),
-    /* Closing waits for the dots to finish fading — see the sequencing note
+    /* Closing waits for the dots to finish fading: see the sequencing note
        on .categoryChipMenu. Opening cancels this delay. */
     padding-right var(--motion-fast) var(--ease-out) calc(var(--motion-fast) / 2);
 }
@@ -452,7 +443,7 @@
    *
    * Run together and they overlap: the gutter needs to reach 27px before it
    * clears the button, and on this easing that is two thirds of the way
-   * through — by which point the dots are at 0.66 opacity and sitting over
+   * through, by which point the dots are at 0.66 opacity and sitting over
    * the last letter of the name. Sampled every 8ms, that was a visible 25ms
    * of dots-on-top in both directions.
    *
@@ -476,7 +467,7 @@
 }
 
 /* Its own hover, so the dots read as a button rather than as decoration on
-   the pill — the pill under it already has a hover fill of its own. */
+   the pill: the pill under it already has a hover fill of its own. */
 .categoryChipMenu:is(:hover, :focus-visible) {
   color: var(--c-text-1) !important;
   background: var(--c-hover);
@@ -484,7 +475,7 @@
 
 /*
  * No hover on a touch screen, so the gutter stays open and the dots stay
- * visible — the same choice .rowActions makes below, for the same reason.
+ * visible: the same choice .rowActions makes below, for the same reason.
  */
 @media (hover: none) {
   .categoryChip .categoryChipLabel {
@@ -500,7 +491,7 @@
 /*
  * The global reduce block zeroes transition-duration but not
  * transition-delay, so without this the sequencing above survives as two
- * instant steps 60ms apart — a stutter, which is the one thing that block
+ * instant steps 60ms apart, a stutter, which is the one thing that block
  * exists to remove.
  */
 @media (prefers-reduced-motion: reduce) {

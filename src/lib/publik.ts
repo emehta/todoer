@@ -123,7 +123,7 @@ export async function provision(prior: PublikCredential | null): Promise<PublikC
         signal: AbortSignal.timeout(20_000),
       });
     } catch {
-      throw new Error("Couldn't reach publik. Check this computer is online.");
+      throw new Error("Could not reach publik. Check this computer is online.");
     }
     const body = (await response.json().catch(() => ({}))) as Record<string, unknown> & {
       error?: { type?: string; message?: string };

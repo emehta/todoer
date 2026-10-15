@@ -21,7 +21,7 @@ export default function Skeleton({
   return (
     <span
       aria-hidden="true"
-      className="vitae-skeleton"
+      className="ui-skeleton"
       style={{ width, height, borderRadius: radius, ...style }}
     />
   );
@@ -31,7 +31,7 @@ export default function Skeleton({
  * Wrapper for a whole screen of placeholders.
  *
  * The blocks themselves are aria-hidden, so something has to tell a screen
- * reader that the page is still loading — that is this, and it is why the
+ * reader that the page is still loading: that is this, and it is why the
  * label survived the move away from spinners.
  */
 export function SkeletonScreen({

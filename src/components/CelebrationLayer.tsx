@@ -50,7 +50,7 @@ const FADE_FROM = 0.72; // fraction of life at which a piece starts fading
 
 /* Festive colours are not a themed surface, but two of the five are pulled
    from the active theme so the burst still belongs to the palette it lands
-   on — the Nature theme's moss green reads very differently from Midnight's
+   on: the Nature theme's moss green reads very differently from Midnight's
    mint, and confetti that ignored both looked stuck on. */
 const FIXED_COLORS = ["#FFC83D", "#FF6B8A", "#4FC3F7"];
 
@@ -103,7 +103,7 @@ export default function CelebrationLayer() {
 
     // Captured once. The ref holds the array across renders; it is only ever
     // mutated in place, never reassigned, so this binding stays correct for
-    // the life of the effect — including in the cleanup.
+    // the life of the effect, including in the cleanup.
     const pieces = piecesRef.current;
     let disposed = false;
 
@@ -122,8 +122,8 @@ export default function CelebrationLayer() {
     }
     /*
      * Only while pieces fly. A screen-sized backing store at 2x is 20 to 33
-     * MB, and it was held by every signed-in tab between celebrations, which
-     * come a few times a day; with none it is let go.
+     * MB, too much for every signed-in tab to hold between celebrations,
+     * which come a few times a day; with none it is let go.
      */
     function release() {
       canvas!.width = 0;

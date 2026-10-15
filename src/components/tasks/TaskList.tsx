@@ -31,15 +31,8 @@ import { collapseEmptyDays, dragDayEntries, gapLabel, type DayEntry } from "@/li
 import type { TaskRowActionHandlers } from "./TaskRowActions";
 import controls from "./TaskControls.module.css";
 import { DAY_NAMES, MONTHS_SHORT, toDateStr } from "@/lib/date-utils";
+import { sortTasksForDisplay } from "@/lib/task-order";
 const NO_DATE_GROUP_KEY = "__no_date__";
-
-function sortByDisplayOrder(tasks: Task[]) {
-  return [...tasks].sort((a, b) => {
-    const orderDelta = (a.display_order ?? 0) - (b.display_order ?? 0);
-    if (orderDelta !== 0) return orderDelta;
-    return a.created_at.localeCompare(b.created_at);
-  });
-}
 
 function groupDateLabel(dateStr: string, today: Date, tomorrow: Date): string {
   const d = new Date(dateStr + "T00:00:00");
@@ -460,10 +453,10 @@ export default function TaskList({
     const groups: Record<string, string[]> = {};
 
     for (const date of displayDates) {
-      groups[date] = sortByDisplayOrder(byDate[date] ?? []).map((task) => task.id);
+      groups[date] = sortTasksForDisplay(byDate[date] ?? []).map((task) => task.id);
     }
 
-    const sortedNoDate = sortByDisplayOrder(noDate);
+    const sortedNoDate = sortTasksForDisplay(noDate);
     const hasNoDateGroup = sortedNoDate.length > 0;
 
     if (hasNoDateGroup) {
@@ -476,7 +469,7 @@ export default function TaskList({
     }
     const overdueDates = Object.keys(byOverdueDate).sort();
     for (const date of overdueDates) {
-      groups[overdueGroupKey(date)] = sortByDisplayOrder(byOverdueDate[date]).map((task) => task.id);
+      groups[overdueGroupKey(date)] = sortTasksForDisplay(byOverdueDate[date]).map((task) => task.id);
     }
 
     return {

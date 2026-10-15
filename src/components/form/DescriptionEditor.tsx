@@ -26,7 +26,7 @@ const Bullets = BulletList.extend({
 /*
  * Tab inside a list is the list's, as in Notes: it nests the item when it
  * can and otherwise does nothing, rather than jumping to the date field
- * from the first item of a list. Outside a list it moves on as before.
+ * from the first item of a list. Outside a list it moves on.
  */
 const TabStaysInLists = Extension.create({
   name: "tabStaysInLists",
@@ -43,7 +43,7 @@ const TabStaysInLists = Extension.create({
  * Backspace at the start of an item takes its bullet or number away, as in
  * Notes: a nested item comes out a level, a top one becomes a line of text
  * keeping what was written. Ahead of TipTap's own Backspace, which on a
- * bullet just made from "- " put the "- " back as text instead. Cmd+Z still
+ * bullet just made from "- " puts the "- " back as text instead. Cmd+Z still
  * undoes the bullet.
  */
 const BackspaceLeavesLists = Extension.create({
@@ -65,8 +65,8 @@ const BackspaceLeavesLists = Extension.create({
 /*
  * The card's own keys, given back to it. ProseMirror marks every Enter and
  * Escape as handled whether or not it does anything with them, and the card
- * leaves a handled key alone, so Cmd+Enter in the description did not save
- * and Escape did not close the card, as both do from the text box.
+ * leaves a handled key alone, so otherwise Cmd+Enter in the description
+ * would not save and Escape would not close the card.
  */
 const SUBMIT_EVENT = "description-submit";
 const ESCAPE_EVENT = "description-escape";
@@ -97,11 +97,10 @@ const LIST_LIKE = /\n|^\s*(?:[-*+•◦▪‣·]|\d{1,9}[.)])\s/;
  * next item, and Enter or Backspace on an empty one leaves the list; Tab
  * nests an item under the one above and Shift+Tab brings it back out; Cmd+Z
  * undoes. A long line wraps in under its own text. Tab outside a list, or on
- * a first item that has nothing to nest under, moves on to the next field as
- * it did in the text box.
+ * a first item that has nothing to nest under, moves on to the next field.
  *
  * What it holds is the description's plain lines (lib/description-lists),
- * so the database, search, the row and the day's Copy read it as before. It
+ * so the database, search, the row and the day's Copy read plain text. It
  * writes only once something is typed, so opening a task and saving it
  * leaves its description exactly as it was.
  *

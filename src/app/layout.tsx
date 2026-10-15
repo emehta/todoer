@@ -18,7 +18,8 @@ export const dynamic = "force-dynamic";
  * server component as references, not values. scripts/first-paint.test.mjs
  * keeps the two equal.
  */
-const THEME_KEY = "vitae-theme";
+const THEME_KEY = "theme";
+const LEGACY_KEYS = [["vitae-theme", THEME_KEY], ["vitae_week_start", "week-start"], ["vitae_time_format", "time-format"]];
 
 /**
  * Runs before first paint, so a reload never flashes the wrong theme: it
@@ -30,7 +31,15 @@ const themeInitializer = `
   (() => {
     try {
       const root = document.documentElement;
-      const theme = window.localStorage.getItem(${JSON.stringify(THEME_KEY)});
+      const store = window.localStorage;
+      // Todoer 1.0 and 1.1 kept these under the source app's names; each moves across once.
+      for (const [from, to] of ${JSON.stringify(LEGACY_KEYS)}) {
+        const value = store.getItem(from);
+        if (value === null) continue;
+        if (store.getItem(to) === null) store.setItem(to, value);
+        store.removeItem(from);
+      }
+      const theme = store.getItem(${JSON.stringify(THEME_KEY)});
       if (${JSON.stringify(THEME_VALUES.filter((value) => value !== "midnight"))}.includes(theme)) {
         root.setAttribute("data-theme", theme);
       } else {

@@ -17,13 +17,13 @@ const GAP = 2.5;
  * left, smoothly between bars rather than in steps, and fade out at the
  * left. A pause holds them where they are, dimmed; while the ramble is
  * read a light passes over the bars that were heard; before the
- * microphone answers there is only a row of dots. The colour is the
- * Ramble mark's ink, read from the canvas's CSS.
+ * microphone answers, or with no take at all, there is only a row of dots.
+ * The colour is the Ramble mark's ink, read from the canvas's CSS.
  */
-export default function RambleWaveform({ recorder, mode }: { recorder: Recorder; mode: WaveMode }) {
+export default function RambleWaveform({ recorder, mode }: { recorder: Recorder | null; mode: WaveMode }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   /* One take's bars, kept across modes and started afresh for a new take. */
-  const scrollRef = useRef<{ recorder: Recorder; scroll: WaveScroll } | null>(null);
+  const scrollRef = useRef<{ recorder: Recorder | null; scroll: WaveScroll } | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -74,7 +74,7 @@ export default function RambleWaveform({ recorder, mode }: { recorder: Recorder;
          tenth of a second at most, not by however long it was away. */
       const elapsed = Math.min(100, now - last);
       last = now;
-      if (mode === "live") advanceWave(scroll, voiceLevel(recorder.rms()), elapsed);
+      if (mode === "live" && recorder) advanceWave(scroll, voiceLevel(recorder.rms()), elapsed);
 
       context.setTransform(ratio, 0, 0, ratio, 0, 0);
       context.clearRect(0, 0, width, height);

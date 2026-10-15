@@ -30,6 +30,7 @@ import {
   detailsToDescription,
   digitsForNumbers,
   findDuplicate,
+  labelledDraftKey,
   priorityFromWords,
   rambleDrafts,
   resolveDate,
@@ -38,11 +39,14 @@ import {
 } from "@/lib/ramble/drafts";
 import {
   ASK_BEFORE_DISCARD_MS,
+  MAX_RECORDING_MS,
   MAX_UPLOAD_BYTES,
+  SEND_AT_BYTES,
   pauseClock,
   readClock,
   resumeClock,
   startClock,
+  takeLimitMs,
   formatRecordingTime,
   microphoneProblem,
   recordingFileName,
@@ -353,6 +357,12 @@ check("the model's priority stands when nothing was said about it",
 check("a duplicate the model missed is caught by its words",
   rambleDrafts(reply([answer({ title: "Clear Old Drives" })]).tasks, source)[0].duplicateOf?.title, "Old Drives Clear");
 
+/* A row already in the list shows no fields, so it cannot be the one naming them. */
+check("the first row to be added names the fields", labelledDraftKey(drafts), drafts[0].key);
+check("…not a row already in the list above it",
+  labelledDraftKey([{ key: "dup", include: false }, { key: "new", include: true }]), "new");
+check("…and none when nothing is to be added", labelledDraftKey([{ key: "dup", include: false }]), null);
+
 /* ── the waveform (8 Oct 2026: a take running right to left) ───────────── */
 
 check("a room's hum reads as silence", [0, 0.001, 0.0035].map(voiceLevel), [0, 0, 0]);
@@ -447,6 +457,13 @@ check("the file name tells Groq the format",
   ["ramble.webm", "ramble.mp4", "ramble.ogg", "ramble.webm"]);
 check("the timer reads minutes and seconds", [0, 7_400, 165_000].map(formatRecordingTime), ["0:00", "0:07", "2:45"]);
 check("three minutes at 32 kbps is far inside the upload limit", 180 * 32_000 / 8 < MAX_UPLOAD_BYTES, true);
+/* Safari may record AAC at its own rate, well over the 32 kbps asked for. */
+check("at 32 kbps a take runs its full three minutes", takeLimitMs(10 * 4_000, 10_000), MAX_RECORDING_MS);
+check("before anything is recorded the limit is three minutes", [takeLimitMs(0, 0), takeLimitMs(0, 5_000)], [MAX_RECORDING_MS, MAX_RECORDING_MS]);
+const at256 = takeLimitMs(10 * 32_000, 10_000);
+check("at 256 kbps a take ends early, when its bytes would reach the budget", at256 < MAX_RECORDING_MS && Math.abs(at256 / 1000 * 32_000 - SEND_AT_BYTES) < 32_000, true);
+check("the budget leaves room under the upload limit for the second still in the encoder, even at 320 kbps",
+  MAX_UPLOAD_BYTES - SEND_AT_BYTES > 2 * 40_000, true);
 check("a refused microphone says how to allow it",
   microphoneProblem(Object.assign(new Error("x"), { name: "NotAllowedError" })).startsWith("The microphone is blocked"), true);
 check("a missing one says so", microphoneProblem({ name: "NotFoundError" }), "No microphone was found.");

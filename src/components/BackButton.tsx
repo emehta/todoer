@@ -5,16 +5,14 @@ import Tooltip from "@/components/Tooltip";
 import { usePhone } from "@/lib/use-viewport-width";
 
 /**
- * The way back to a hub: a bare arrow on the page title's line (PageTitle
- * draws it there), boxed only while you point at it, with a label naming
- * where it goes. The one copy, for every tool, Finance view and Reflect
- * screen.
+ * The way back: a bare arrow on a title's line, boxed only while you point
+ * at it, with a label naming where it goes. Ramble's transcript has it, back
+ * to the tasks.
  *
- * 32px square on a desktop, the height of a page header row, so it never
- * makes the row taller. On a phone it is a 40px target, since it is pressed
- * with a thumb, and PageTitle lets it overhang the line rather than move it.
- * Colour and fill come from `ui-hover-control`, not inline, so the hover can
- * change them.
+ * 32px square on a desktop, the height of a header row, so it never makes
+ * the row taller. On a phone it is a 40px target, since it is pressed with a
+ * thumb. Colour and fill come from `ui-hover-control`, not inline, so the
+ * hover can change them.
  */
 export default function BackButton({ label, onBack }: { label: string; onBack: () => void }) {
   const phone = usePhone();

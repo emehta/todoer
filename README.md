@@ -78,7 +78,7 @@ The waves button beside **Add task**: talk, and Todoer writes it as tasks for yo
 - **Groq**: free, with your own key from [console.groq.com](https://console.groq.com/keys). Paste it and press **Save**; Todoer checks it first. The free plan has limits per minute and per day, and no bill.
 - **publik**: no key. Press **Accept and use publik**, then **Sign in with publik** to link this computer for $0.05 of free use. After that it's paid per use; a short ramble costs about a fifth of a cent.
 
-The recording goes to the one you chose to be written down and read. Todoer keeps neither the recording nor the words. The first time, allow the microphone for `localhost`.
+The recording goes to the one you chose to be written down and read, with your goals' names and the titles and dates of your open and recent tasks, so it can file each task under a goal and spot one you already have. Todoer keeps neither the recording nor the words. Ramble understands English only. The first time, allow the microphone for `localhost`.
 
 ## Open it again
 
