@@ -18,14 +18,15 @@
     "scripts/time-input.test.mjs",
     "scripts/time-format.test.mjs",
     "scripts/authed-fetch.test.mjs",
-    "scripts/touch-gestures.test.mjs",
     "scripts/readable-on.test.mjs",
     "scripts/ramble.test.mjs"
   ],
   "cuts": {
     "src/lib/use-url-target.ts": "Deep links for the source app's search, which Todoer doesn't have.",
     "src/types/habit.ts": "The source app's habits.",
-    "src/components/PageTitle.tsx": "Used only by the source app's other pages' loading screens."
+    "src/components/PageTitle.tsx": "Used only by the source app's other pages' loading screens.",
+    "src/lib/touch-gestures.ts": "Swipe gestures, which no Todoer screen uses.",
+    "src/lib/rich-text.ts": "Rich text on a view card, which CronCal draws and Todoer's cards don't."
   },
   "ignorePackages": []
 }

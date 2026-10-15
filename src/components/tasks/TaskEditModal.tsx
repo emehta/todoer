@@ -1,20 +1,20 @@
 "use client";
 
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
-import { CalendarBlank, Flag, PencilSimple, Tag, TextAlignLeft } from "@phosphor-icons/react";
+import { CalendarBlank, Flag, PencilSimple, TextAlignLeft } from "@phosphor-icons/react";
 import type { Task, Priority, NewTask } from "@/types/task";
 import { PRIORITIES, PRIORITY_COLORS, PRIORITY_LABELS } from "@/types/task";
 import { hueInk } from "@/lib/styles";
 import type { Category } from "@/types/category";
 import StatusBanner from "@/components/StatusBanner";
-import { formatTime, useTimeFormat } from "@/lib/time-format";
+import { useTimeFormat } from "@/lib/time-format";
 import CategoryIcon from "./CategoryIcon";
-import NewGoalField, { FieldAlert, NEW_GOAL, goalNamed } from "./NewGoalField";
-import { getDueDateStyle } from "./TaskItem";
+import NewGoalField, { FieldAlert, NEW_GOAL, NEW_GOAL_OPTION, goalNamed } from "./NewGoalField";
+import { formatDue, getDueDateStyle } from "./TaskItem";
 import { useNudge } from "./useNudge";
 import { useTaskQuickDates } from "./useTaskQuickDates";
 import controls from "./TaskControls.module.css";
-import { todayStr } from "@/lib/date-utils";
+import { useTodayKey } from "@/lib/use-today";
 import { usePhone } from "@/lib/use-viewport-width";
 import { DeleteAction, DialogButton, DialogCard, DialogFooter } from "@/components/form/Dialog";
 import {
@@ -28,7 +28,7 @@ import {
 import DescriptionText from "@/components/form/DescriptionText";
 import { DescriptionFieldLoading, DescriptionTextarea } from "@/components/form/DescriptionField";
 import SelectField from "@/components/form/SelectField";
-import DateField, { formatFieldDate } from "@/components/form/DateField";
+import DateField from "@/components/form/DateField";
 import TimeField from "@/components/form/TimeField";
 import { taskChanges, type TaskFields } from "@/lib/task-changes";
 import { getErrorMessage } from "@/lib/error-utils";
@@ -74,6 +74,9 @@ interface Props {
    */
   onCreateGoal?: (name: string) => Promise<Category>;
 }
+
+/** The date, time, priority and goal fields side by side on a desktop. Ramble's review rows share it. */
+export const GOAL_ROW_COLUMNS = "minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 0.9fr) minmax(0, 1.1fr)";
 
 /** What counts as "a control has focus" for the Enter-saves rule below. */
 const INTERACTIVE = "button, a, input, textarea, select, [role='option'], [role='menuitem'], [contenteditable='true']";
@@ -229,9 +232,11 @@ export default function TaskEditModal({ task, categories, onSave, onCreate, onDe
   /*
    * Whether closing would throw something away. A draft a failed save brought
    * back is unsaved from the start; otherwise, anything changed since the card
-   * opened. Reading a task changes nothing.
+   * opened, a name typed under New goal included. Reading a task changes
+   * nothing.
    */
-  const unsaved = editing && (Boolean(draft) || Object.keys(taskChanges(opened, fields)).length > 0);
+  const typingGoal = newGoalName !== null && newGoalName.trim() !== "";
+  const unsaved = editing && (Boolean(draft) || typingGoal || Object.keys(taskChanges(opened, fields)).length > 0);
 
   /*
    * Escape, a press outside the card and its X all come here. With nothing to
@@ -313,7 +318,7 @@ export default function TaskEditModal({ task, categories, onSave, onCreate, onDe
       }
       onClose();
     } catch (error) {
-      setActionError(getErrorMessage(error, isCreateMode ? "Could not add this task. Try again." : "Could not save this task. Try again."));
+      setActionError(getErrorMessage(error, isCreateMode ? "Could not add that task." : "Could not save that task."));
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -342,11 +347,6 @@ export default function TaskEditModal({ task, categories, onSave, onCreate, onDe
 
   const activeCat = categories.find((c) => c.id === categoryId) ?? null;
 
-  function formattedDueTime(value: string | null): string | null {
-    if (!value) return null;
-    return formatTime(new Date(`2000-01-01T${value.slice(0, 5)}:00`), timeFmt);
-  }
-
   /* The task picker's shortcuts, in the week order the owner set. */
   const quickDates = useTaskQuickDates();
 
@@ -363,6 +363,9 @@ export default function TaskEditModal({ task, categories, onSave, onCreate, onDe
   function cancelEditing() {
     setActionError("");
     setConfirmingDelete(false);
+    /* A goal name half typed under New goal goes with the rest of the edit. */
+    setNewGoalName(null);
+    setNewGoalError("");
     /* Opened straight into editing from the pencil, Cancel means "never mind"
        and closes, as a new task's does. */
     if (isCreateMode || startInEdit) {
@@ -429,9 +432,9 @@ export default function TaskEditModal({ task, categories, onSave, onCreate, onDe
     </DialogFooter>
   );
 
-  const dueLine = task?.due_date
-    ? `${formatFieldDate(task.due_date)}${task.due_time ? `, ${formattedDueTime(task.due_time)}` : ""}`
-    : null;
+  /* The row's own words for the day and time (formatDue), and its colour for them. */
+  const dueLine = task ? formatDue(task.due_date, task.due_time, timeFmt) : null;
+  const todayKey = useTodayKey();
 
   return (
     <DialogCard
@@ -441,7 +444,6 @@ export default function TaskEditModal({ task, categories, onSave, onCreate, onDe
       busy={saving}
       cardClassName={nudging ? controls.nudge : undefined}
       footer={footer}
-      closeLabel="Close task dialog"
       onKeyDown={(event) => {
         /*
          * Cmd/Ctrl+Enter saves from anywhere in the card, a focused picker or
@@ -461,7 +463,7 @@ export default function TaskEditModal({ task, categories, onSave, onCreate, onDe
             {dueLine && (
               <DetailRow icon={<CalendarBlank size={14} />}>
                 {/* The row's rule: red when overdue, full ink today. */}
-                <span style={getDueDateStyle(task.due_date, todayStr())}>{dueLine}</span>
+                <span style={getDueDateStyle(task.due_date, todayKey)}>{dueLine}</span>
               </DetailRow>
             )}
             <DetailRow icon={<Flag size={14} />}>
@@ -543,13 +545,15 @@ export default function TaskEditModal({ task, categories, onSave, onCreate, onDe
             When, how important, and which goal: one line, under the
             description, the owner's order (29 Sep 2026). Two by two on a
             phone, where four fields across would be too narrow to read.
+            Priority's words are the shortest, so it gives the goal the
+            room for "Choose a goal" whole.
           */}
           <div
             style={{
               display: "grid",
               gridTemplateColumns: phone
                 ? "repeat(2, minmax(0, 1fr))"
-                : "minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.05fr)",
+                : GOAL_ROW_COLUMNS,
               gap: phone ? 12 : 8,
             }}
           >
@@ -591,13 +595,12 @@ export default function TaskEditModal({ task, categories, onSave, onCreate, onDe
                   <SelectField
                     id={goalFieldId}
                     ariaLabel="Goal"
-                    icon={activeCat ? undefined : <Tag size={14} />}
                     placeholder={categories.length ? "Choose a goal" : "No goals yet"}
                     value={categoryId}
                     invalid={goalMissing}
                     options={[
                       ...categories.map((c) => ({ value: c.id, label: c.name, color: c.color })),
-                      ...(onCreateGoal ? [{ value: NEW_GOAL, label: "New goal" }] : []),
+                      ...(onCreateGoal ? [NEW_GOAL_OPTION] : []),
                     ]}
                     onChange={(next) => {
                       if (next === NEW_GOAL) {

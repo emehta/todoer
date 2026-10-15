@@ -46,9 +46,11 @@ export function readRambleReply(status: number, ok: boolean, body: ReplyBody): R
   return { ok: false, message, transcript, action, retry: status === 429 || status >= 500 };
 }
 
+/** `cancelled` is the card's Cancel: it ends the request, and the route stops the provider calls with it. */
 export async function requestRamble(
   input: { audio: Blob } | { text: string },
   context: RambleContext,
+  cancelled?: AbortSignal,
 ): Promise<RambleResult> {
   const form = new FormData();
   form.set("context", JSON.stringify(context));
@@ -56,7 +58,7 @@ export async function requestRamble(
   else form.set("text", input.text);
 
   try {
-    const response = await authedFetch("/api/tasks/ramble", { method: "POST", body: form });
+    const response = await authedFetch("/api/tasks/ramble", { method: "POST", body: form, signal: cancelled });
     const body = (await response.json().catch(() => null)) as ReplyBody;
     return readRambleReply(response.status, response.ok, body);
   } catch (error) {

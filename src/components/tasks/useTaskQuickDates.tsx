@@ -3,14 +3,21 @@
 import { useMemo } from "react";
 import { ArrowLineRight, CalendarBlank, CalendarDots, SunHorizon } from "@phosphor-icons/react";
 import type { QuickDate } from "@/components/form/DateField";
-import { DAYS_SHORT, addDays, fromDateStr, toDateStr, todayStr } from "@/lib/date-utils";
+import { DAYS_SHORT, addDays, fromDateStr, toDateStr } from "@/lib/date-utils";
+import { useTodayKey } from "@/lib/use-today";
 import { useWeekStart } from "@/lib/week-start";
 
-/** A task's date picker shortcuts, in the week order the owner set: the task card's and Ramble's. */
+/**
+ * A task's date shortcuts, in the week order the owner set: the task card's,
+ * the row's date picker's and Ramble's. Worked out from today's key
+ * (lib/use-today), so a card or picker left open past midnight moves its
+ * Today and Tomorrow on with the clock.
+ */
 export function useTaskQuickDates(): QuickDate[] {
   const weekStart = useWeekStart();
+  const todayKey = useTodayKey();
   return useMemo<QuickDate[]>(() => {
-    const today = fromDateStr(todayStr());
+    const today = fromDateStr(todayKey);
     const dow = today.getDay();
     const preferredStart = weekStart === "monday" ? 1 : 0;
     const nextWeek = addDays(today, (preferredStart - dow + 7) % 7 || 7);
@@ -23,5 +30,5 @@ export function useTaskQuickDates(): QuickDate[] {
       { label: "Next week", value: toDateStr(nextWeek), hint: short(nextWeek), icon: <ArrowLineRight size={14} /> },
       { label: "Next weekend", value: toDateStr(nextWeekend), hint: short(nextWeekend), icon: <CalendarDots size={14} /> },
     ];
-  }, [weekStart]);
+  }, [weekStart, todayKey]);
 }

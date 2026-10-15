@@ -6,6 +6,25 @@
 
 BEGIN;
 
+-- Stops here, changing nothing, when the project already has a table by one
+-- of Todoer's names that Todoer didn't make: the rules below would otherwise
+-- go onto another app's table. Every Todoer schema has written its row in
+-- schema_versions in the same transaction as its tables.
+DO $$
+DECLARE
+  recorded BOOLEAN := false;
+BEGIN
+  IF to_regclass('public.tasks') IS NULL AND to_regclass('public.categories') IS NULL THEN
+    RETURN;
+  END IF;
+  IF to_regclass('public.schema_versions') IS NOT NULL THEN
+    EXECUTE 'SELECT EXISTS (SELECT 1 FROM public.schema_versions WHERE app = $1)' INTO recorded USING 'todoer';
+  END IF;
+  IF NOT recorded THEN
+    RAISE EXCEPTION 'This project already has a tasks or categories table that Todoer did not make. Use a new Supabase project for Todoer.';
+  END IF;
+END $$;
+
 -- ─── Shared with CronCal ─────────────────────────────────────────────
 -- Created by whichever app is set up first, and never replaced by the other.
 

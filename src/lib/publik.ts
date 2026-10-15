@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { arch, homedir, hostname, platform } from "node:os";
 import path from "node:path";
+import { OFFLINE_MESSAGE } from "@/lib/error-utils";
 import { PUBLIK_BASE_URL } from "@/lib/ramble/providers";
 import { dataDir } from "@/selfhost/config";
 import { readPrivateJson, writePrivateJson } from "@/selfhost/private-file";
@@ -48,16 +49,20 @@ function appVersion(): string {
 
 /**
  * The app token: public by design (it only mints capped keys for this app),
- * committed as publik-app-token.txt at the repo root and read from where the
- * app runs. PUBLIK_APP_TOKEN in the environment wins.
+ * committed as publik-app-token.txt in the app's own folder, and read from
+ * that folder alone, never one above it, where any file of that name could
+ * sit. The folder is the one Next serves from: every way Todoer starts
+ * (scripts/start.mjs, scripts/dev.mjs, the download's server.js) runs it
+ * there, and Next itself takes it as the project's folder. PUBLIK_APP_TOKEN
+ * in the environment wins.
  */
 export function appToken(): string {
   const env = process.env.PUBLIK_APP_TOKEN?.trim();
   if (env) return env;
-  for (let dir = process.cwd(); ; dir = path.dirname(dir)) {
-    const file = path.join(dir, "publik-app-token.txt");
-    if (existsSync(file)) return readFileSync(file, "utf8").trim();
-    if (path.dirname(dir) === dir) return "";
+  try {
+    return readFileSync(path.join(process.cwd(), "publik-app-token.txt"), "utf8").trim();
+  } catch {
+    return "";
   }
 }
 
@@ -123,7 +128,7 @@ export async function provision(prior: PublikCredential | null): Promise<PublikC
         signal: AbortSignal.timeout(20_000),
       });
     } catch {
-      throw new Error("Could not reach publik. Check this computer is online.");
+      throw new Error(`Could not reach publik. ${OFFLINE_MESSAGE}`);
     }
     const body = (await response.json().catch(() => ({}))) as Record<string, unknown> & {
       error?: { type?: string; message?: string };
@@ -153,32 +158,45 @@ export async function provision(prior: PublikCredential | null): Promise<PublikC
   throw new Error("publik could not set up this computer. Use your own Groq key for now.");
 }
 
+/** What publik's wallet says about this computer's key. */
+export interface Wallet {
+  balanceMicros: number | null;
+  claimState: "anonymous" | "claimed" | null;
+  addCreditUrl: string | null;
+  /** publik refused the key (401 or 403): it has to be set up again. */
+  refused: boolean;
+}
+
+const UNKNOWN_WALLET: Wallet = { balanceMicros: null, claimState: null, addCreditUrl: null, refused: false };
+
 /** The balance and whether the install is linked, from publik's wallet. */
-export async function readWallet(credential: PublikCredential): Promise<{ balanceMicros: number | null; claimState: "anonymous" | "claimed" | null; addCreditUrl: string | null }> {
+export async function readWallet(credential: PublikCredential): Promise<Wallet> {
   try {
     const response = await fetch(`${credential.base_url || PUBLIK_BASE_URL}/wallet`, {
       headers: { Authorization: `Bearer ${credential.key}` },
       signal: AbortSignal.timeout(10_000),
       cache: "no-store",
     });
+    if (response.status === 401 || response.status === 403) return { ...UNKNOWN_WALLET, refused: true };
     const body = (await response.json().catch(() => ({}))) as Record<string, unknown> & { add_credit_url?: unknown };
-    if (!response.ok) return { balanceMicros: null, claimState: null, addCreditUrl: null };
+    if (!response.ok) return UNKNOWN_WALLET;
     const micros = body.balance_micros;
     return {
       balanceMicros: typeof micros === "number" ? micros : null,
       claimState: body.claim_state === "claimed" ? "claimed" : body.claim_state === "anonymous" ? "anonymous" : null,
       addCreditUrl: typeof body.add_credit_url === "string" ? body.add_credit_url : null,
+      refused: false,
     };
   } catch {
-    return { balanceMicros: null, claimState: null, addCreditUrl: null };
+    return UNKNOWN_WALLET;
   }
 }
 
 /**
  * A balance in dollars, never rounded up: $0.047794 is "$0.047", not "$0.05",
  * which would show money that isn't there. Under a dollar it keeps a tenth of
- * a cent, since a ramble costs about that and the free $0.05 is most of what
- * people have; from a dollar up, whole cents.
+ * a cent, since a ramble costs a fraction of a cent and the free $0.05 is
+ * most of what people have; from a dollar up, whole cents.
  */
 export function formatBalance(micros: number): string {
   const places = micros < 1_000_000 ? 3 : 2;

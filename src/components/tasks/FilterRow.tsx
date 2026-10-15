@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   CaretDown,
   CalendarBlank,
@@ -15,8 +14,9 @@ import {
 } from "@phosphor-icons/react";
 import type { Priority } from "@/types/task";
 import { PRIORITY_COLORS } from "@/types/task";
+import Popover from "@/components/Popover";
 import { searchFieldHeight } from "@/components/SearchField";
-import { MENU_PANEL } from "@/lib/styles";
+import { MENU_PANEL, SELECTED } from "@/lib/styles";
 import { useScrollEdge } from "@/lib/use-scroll-edge";
 import { usePhone } from "@/lib/use-viewport-width";
 import controls from "./TaskControls.module.css";
@@ -38,9 +38,6 @@ export type PriorityFilter = "all" | Priority;
  */
 export type ViewFilter = "all" | "overdue" | "historical";
 
-/** How close an open menu may come to the edge of the window. */
-const MENU_VIEWPORT_MARGIN = 8;
-
 interface FilterOption<T extends string> {
   value: T;
   label: string;
@@ -53,7 +50,7 @@ interface FilterOption<T extends string> {
 const VIEW_OPTIONS: FilterOption<ViewFilter>[] = [
   { value: "all",        label: "Current",    Icon: ListBullets },
   { value: "overdue",    label: "Overdue",    Icon: WarningCircle },
-  { value: "historical", label: "Historical", Icon: ClockCounterClockwise },
+  { value: "historical", label: "Done",       Icon: ClockCounterClockwise },
 ];
 
 const DATE_OPTIONS: FilterOption<DateFilter>[] = [
@@ -80,6 +77,14 @@ const PILL_STYLE: React.CSSProperties = {
   borderRadius: "var(--ui-radius-md)",
 };
 
+/** An option at rest: the same box as the selected one, so choosing never moves a line. */
+const OPTION_AT_REST: React.CSSProperties = {
+  background: "transparent",
+  border: "1px solid transparent",
+  color: "var(--c-text-2)",
+  fontWeight: 400,
+};
+
 /** The leading glyph or dot, in a slot every option fills the same way. */
 function OptionMark({ option, dim }: { option: FilterOption<string>; dim: boolean }) {
   if (option.Icon) {
@@ -96,16 +101,18 @@ function OptionMark({ option, dim }: { option: FilterOption<string>; dim: boolea
   return null;
 }
 
-/** Where an open menu sits, in viewport coordinates. */
-interface MenuPosition {
-  top: number;
-  left: number;
-}
-
 /**
  * One narrowing filter: a button stating the current answer, which opens the
  * rest. The view, date and priority filters are all this one control, so the
  * three cannot drift apart.
+ *
+ * The menu is the app's Popover, portalled to the body: the row these sit in
+ * scrolls sideways on a phone under a mask, and a mask hides anything drawn
+ * inside it, a menu included. The Popover also places it against the window,
+ * closes it on a press outside or Escape, and keeps Tab inside it. From the
+ * keyboard: Down or Up on the button opens it on the current answer, the
+ * arrows, Home and End move, Enter or Space picks, and focus comes back to
+ * the button.
  */
 function FilterDropdown<T extends string>({
   label,
@@ -121,167 +128,57 @@ function FilterDropdown<T extends string>({
   onChange: (next: T) => void;
   menuWidth?: number;
 }) {
-  const [position, setPosition] = useState<MenuPosition | null>(null);
+  const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const listId = useId();
   const phone = usePhone();
-  const open = position !== null;
 
   const current = options.find((option) => option.value === value) ?? options[0];
 
-  /*
-   * Placed against the viewport and portalled to the body, not absolutely
-   * positioned inside the row.
-   *
-   * The row these triggers sit in scrolls sideways on a phone and carries a
-   * mask to show it, and a mask applies to everything the element paints,
-   * including an absolutely positioned child outside its box. The menu was
-   * laid out at its full height and drew nothing at all: present to the
-   * measuring code, invisible on screen, which is the worst version of broken.
-   *
-   * Right edge against the trigger's, then clamped into the viewport, so the
-   * one at the end of the row cannot hang off the page.
-   */
-  function place() {
-    const trigger = triggerRef.current;
-    if (!trigger) return;
-    const bounds = trigger.getBoundingClientRect();
-    const left = Math.min(
-      Math.max(MENU_VIEWPORT_MARGIN, bounds.right - menuWidth),
-      window.innerWidth - menuWidth - MENU_VIEWPORT_MARGIN,
-    );
-    setPosition({ top: bounds.bottom + 6, left });
+  function choose(next: T) {
+    onChange(next);
+    setOpen(false);
+    triggerRef.current?.focus({ preventScroll: true });
   }
 
-  /*
-   * Flip above the trigger when there is not room below it. Measured after the
-   * menu is in the DOM rather than estimated from the option count, because
-   * the estimate is wrong the moment someone adds a longer list or the reader
-   * scales their text up.
-   */
-  useLayoutEffect(() => {
-    const menu = menuRef.current;
-    const trigger = triggerRef.current;
-    if (!menu || !trigger || !position) return;
-
-    const height = menu.getBoundingClientRect().height;
-    if (position.top + height <= window.innerHeight - MENU_VIEWPORT_MARGIN) return;
-
-    const above = trigger.getBoundingClientRect().top - height - 6;
-    if (above < MENU_VIEWPORT_MARGIN) return;
-    setPosition((previous) => (previous ? { ...previous, top: above } : previous));
-  }, [position]);
-
-  /*
-   * Close on a click outside, on Escape, and on anything that moves the
-   * trigger out from under the menu. A fixed menu does not travel with the
-   * page, and a picker left floating over a scrolled list is worse than one
-   * that closes.
-   */
+  /* Opens on the current answer, focused, so the arrows start from it. The
+     menu is hidden for its first frames while it is placed, and a hidden
+     option can't take focus, so it is asked again until it has it. */
   useEffect(() => {
     if (!open) return;
-
-    function onPointerDown(event: MouseEvent) {
-      const target = event.target as Node;
-      /* The menu is portalled, so it is not inside the trigger's wrapper:
-         without this, choosing an option counts as an outside click and
-         unmounts the button before its own handler can run. */
-      if (triggerRef.current?.contains(target)) return;
-      if (menuRef.current?.contains(target)) return;
-      setPosition(null);
-    }
-    /* Closed when focus leaves it, so tabbing on to the next filter and
-       opening it does not leave this one open beside it. */
-    function onFocusIn(event: FocusEvent) {
-      const target = event.target as Node;
-      if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return;
-      setPosition(null);
-    }
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key !== "Escape") return;
-      setPosition(null);
-      triggerRef.current?.focus();
-    }
-    function dismiss() {
-      setPosition(null);
-    }
-
-    document.addEventListener("mousedown", onPointerDown);
-    document.addEventListener("focusin", onFocusIn, true);
-    document.addEventListener("keydown", onKeyDown);
-    /* Capture: the list scrolls in its own container, not on the window. */
-    window.addEventListener("scroll", dismiss, true);
-    window.addEventListener("resize", dismiss);
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-      document.removeEventListener("focusin", onFocusIn, true);
-      document.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("scroll", dismiss, true);
-      window.removeEventListener("resize", dismiss);
+    let frame = 0;
+    let tries = 0;
+    const focusCurrent = () => {
+      const selected = listRef.current?.querySelector<HTMLElement>('[aria-selected="true"]');
+      selected?.focus({ preventScroll: true });
+      if (document.activeElement !== selected && (tries += 1) < 10) frame = requestAnimationFrame(focusCurrent);
     };
+    frame = requestAnimationFrame(focusCurrent);
+    return () => cancelAnimationFrame(frame);
   }, [open]);
 
-  const menu = open && position && (
-    <div
-      ref={menuRef}
-      id={listId}
-      role="listbox"
-      aria-label={label}
-      style={{
-        ...MENU_PANEL,
-        position: "fixed",
-        top: position.top,
-        left: position.left,
-        zIndex: 60,
-        width: menuWidth,
-        overflow: "hidden",
-        padding: "4px 0",
-      }}
-    >
-      {options.map((option) => {
-        const selected = option.value === value;
-        return (
-          <button
-            type="button"
-            role="option"
-            aria-selected={selected}
-            key={option.value}
-            onClick={() => {
-              onChange(option.value);
-              setPosition(null);
-            }}
-            className={controls.action}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              width: "100%",
-              padding: "6px 12px",
-              textAlign: "left",
-              background: selected ? "var(--c-hover)" : "transparent",
-              border: "none",
-              color: selected ? "var(--c-text-1)" : "var(--c-text-2)",
-              fontSize: "var(--ui-type-label)",
-              fontWeight: selected ? 600 : 400,
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-            }}
-          >
-            <OptionMark option={option} dim />
-            {option.label}
-          </button>
-        );
-      })}
-    </div>
-  );
+  function onListKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    const items = Array.from(listRef.current?.querySelectorAll<HTMLElement>('[role="option"]') ?? []);
+    const index = items.indexOf(document.activeElement as HTMLElement);
+    const move = (to: number) => items[Math.max(0, Math.min(items.length - 1, to))]?.focus({ preventScroll: true });
+    if (event.key === "ArrowDown") { event.preventDefault(); move(index + 1); }
+    else if (event.key === "ArrowUp") { event.preventDefault(); move(index - 1); }
+    else if (event.key === "Home") { event.preventDefault(); move(0); }
+    else if (event.key === "End") { event.preventDefault(); move(items.length - 1); }
+  }
 
   return (
     <>
       <button
         ref={triggerRef}
         type="button"
-        onClick={() => (open ? setPosition(null) : place())}
+        onClick={() => setOpen((was) => !was)}
+        onKeyDown={(event) => {
+          if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+          event.preventDefault();
+          setOpen(true);
+        }}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
@@ -331,7 +228,51 @@ function FilterDropdown<T extends string>({
         </span>
         <CaretDown size={10} style={{ opacity: 0.4, flexShrink: 0 }} />
       </button>
-      {menu && createPortal(menu, document.body)}
+
+      {open && (
+        <Popover
+          anchorRef={triggerRef}
+          onClose={() => setOpen(false)}
+          preferredPlacement="bottom"
+          align="right"
+          ariaLabel={label}
+          style={{ ...MENU_PANEL, width: menuWidth, padding: 4 }}
+        >
+          <div ref={listRef} id={listId} role="listbox" aria-label={label} onKeyDown={onListKeyDown}>
+            {options.map((option) => {
+              const selected = option.value === value;
+              return (
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={selected}
+                  key={option.value}
+                  onClick={() => choose(option.value)}
+                  /* The hover is for the others: the chosen one keeps its look. */
+                  className={selected ? undefined : controls.action}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    width: "100%",
+                    minHeight: 32,
+                    padding: "0 10px",
+                    textAlign: "left",
+                    borderRadius: "var(--ui-radius-md)",
+                    fontSize: "var(--ui-type-label)",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    ...(selected ? SELECTED : OPTION_AT_REST),
+                  }}
+                >
+                  <OptionMark option={option} dim />
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+        </Popover>
+      )}
     </>
   );
 }

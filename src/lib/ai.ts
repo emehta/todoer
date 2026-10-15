@@ -1,4 +1,5 @@
-import { describeFailure, type ProviderSpec } from "@/lib/ramble/providers";
+import { OFFLINE_MESSAGE } from "@/lib/error-utils";
+import { BAD_ANSWER, describeFailure, type ProviderSpec } from "@/lib/ramble/providers";
 
 /**
  * Ramble's two calls, to whichever provider the user chose: speech to text,
@@ -37,6 +38,19 @@ function timedOut(error: unknown): boolean {
   return error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
 }
 
+/* The provider's own time limit, and the ramble's: the page that sent it
+   cancelled (Ramble's Cancel), so nothing is left running for no one. */
+function within(ms: number, cancelled?: AbortSignal): AbortSignal {
+  return cancelled ? AbortSignal.any([cancelled, AbortSignal.timeout(ms)]) : AbortSignal.timeout(ms);
+}
+
+/* A call that could not be made: cancelled by the page, which is passed on
+   as it is, or too slow, or no network. */
+function unreached(caller: Caller, error: unknown, slow: string, cancelled?: AbortSignal): unknown {
+  if (cancelled?.aborted) return error;
+  return new AiError(timedOut(error) ? slow : `Could not reach ${caller.spec.label}. ${OFFLINE_MESSAGE}`, 504);
+}
+
 async function failure(caller: Caller, response: Response, step: string): Promise<AiError> {
   const body = await response.json().catch(() => null);
   const retry = Number(response.headers.get("retry-after"));
@@ -44,8 +58,8 @@ async function failure(caller: Caller, response: Response, step: string): Promis
   return new AiError(info.message, info.status, info.topUpUrl ?? null, info.code ?? null);
 }
 
-/** What was said in `audio`, as Whisper writes it. */
-export async function transcribe(caller: Caller, audio: Blob, fileName: string, prompt: string): Promise<string> {
+/** What was said in `audio`, as Whisper writes it. `cancelled` is the page's request going away. */
+export async function transcribe(caller: Caller, audio: Blob, fileName: string, prompt: string, cancelled?: AbortSignal): Promise<string> {
   const form = new FormData();
   form.set("file", audio, fileName);
   form.set("model", caller.spec.transcribeModel);
@@ -60,10 +74,10 @@ export async function transcribe(caller: Caller, audio: Blob, fileName: string, 
       method: "POST",
       headers: { Authorization: `Bearer ${caller.apiKey}` },
       body: form,
-      signal: AbortSignal.timeout(TRANSCRIBE_TIMEOUT_MS),
+      signal: within(TRANSCRIBE_TIMEOUT_MS, cancelled),
     });
   } catch (error) {
-    throw new AiError(timedOut(error) ? `${caller.spec.label} took too long to write that down.` : `${caller.spec.label} could not be reached.`, 504);
+    throw unreached(caller, error, `${caller.spec.label} took too long to write that down.`, cancelled);
   }
   if (!response.ok) throw await failure(caller, response, "write that down");
   const body = (await response.json().catch(() => null)) as { text?: unknown } | null;
@@ -77,7 +91,13 @@ export async function transcribe(caller: Caller, audio: Blob, fileName: string, 
  * into the instructions and plain JSON mode, which every OpenAI-compatible
  * model accepts. The route checks the shape either way (checkRambleReply).
  */
-export async function chatJson(caller: Caller, system: string, user: string, schema: Record<string, unknown>): Promise<unknown> {
+export async function chatJson(
+  caller: Caller,
+  system: string,
+  user: string,
+  schema: Record<string, unknown>,
+  cancelled?: AbortSignal,
+): Promise<unknown> {
   const deadline = Date.now() + CHAT_TIMEOUT_MS;
   const request = (strict: boolean) =>
     fetch(`${caller.spec.baseUrl}/chat/completions`, {
@@ -97,7 +117,7 @@ export async function chatJson(caller: Caller, system: string, user: string, sch
           : { type: "json_object" },
         ...caller.spec.chatOptions,
       }),
-      signal: AbortSignal.timeout(Math.max(1, deadline - Date.now())),
+      signal: within(Math.max(1, deadline - Date.now()), cancelled),
     });
 
   let strict = caller.spec.strictSchema;
@@ -106,7 +126,7 @@ export async function chatJson(caller: Caller, system: string, user: string, sch
     try {
       response = await request(strict);
     } catch (error) {
-      throw new AiError(timedOut(error) ? `${caller.spec.label} took too long to read that.` : `${caller.spec.label} could not be reached.`, 504);
+      throw unreached(caller, error, `${caller.spec.label} took too long to read that.`, cancelled);
     }
     if (response.status === 400 && attempt === 0) {
       const body = (await response.clone().json().catch(() => null)) as { error?: { code?: unknown; message?: unknown } } | null;
@@ -124,7 +144,7 @@ export async function chatJson(caller: Caller, system: string, user: string, sch
         strict = false;
         continue;
       }
-      throw new AiError(`${caller.spec.label} answered with nothing.`, 502);
+      throw new AiError(BAD_ANSWER, 502);
     }
     try {
       return JSON.parse(content.replace(/^```(?:json)?\s*|\s*```$/g, ""));
@@ -133,14 +153,18 @@ export async function chatJson(caller: Caller, system: string, user: string, sch
         strict = false;
         continue;
       }
-      throw new AiError(`${caller.spec.label}'s answer was not readable.`, 502);
+      throw new AiError(BAD_ANSWER, 502);
     }
   }
-  throw new AiError(`${caller.spec.label}'s answer didn't fit the task list.`, 502);
+  throw new AiError(BAD_ANSWER, 502);
 }
 
-/** Whether Groq accepts a key, without spending any of its limit: it lists the models. */
-export async function checkGroqKey(baseUrl: string, key: string): Promise<"ok" | "refused" | "unreachable"> {
+/**
+ * Whether Groq accepts a key, without spending any of its limit: it lists
+ * the models. "busy" is its rate limit (429), "down" anything else that is
+ * not an answer (a 5xx), "unreachable" no network at all.
+ */
+export async function checkGroqKey(baseUrl: string, key: string): Promise<"ok" | "refused" | "busy" | "down" | "unreachable"> {
   try {
     const response = await fetch(`${baseUrl}/models`, {
       headers: { Authorization: `Bearer ${key}` },
@@ -148,7 +172,8 @@ export async function checkGroqKey(baseUrl: string, key: string): Promise<"ok" |
       cache: "no-store",
     });
     if (response.ok) return "ok";
-    return response.status === 401 || response.status === 403 ? "refused" : "unreachable";
+    if (response.status === 401 || response.status === 403) return "refused";
+    return response.status === 429 ? "busy" : "down";
   } catch {
     return "unreachable";
   }

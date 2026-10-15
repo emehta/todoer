@@ -6,7 +6,7 @@
  * No framework: `npm test -- task-share`.
  */
 
-import { completedOnDay, dayClipboardHeading, dayCopyTasks, descriptionLines, formatDayForClipboard } from "@/lib/task-clipboard";
+import { completedOnDay, dayClipboardHeading, dayCopyTasks, descriptionLines, descriptionText, formatDayForClipboard, formatTaskForClipboard } from "@/lib/task-clipboard";
 
 const failures = [];
 let passed = 0;
@@ -287,31 +287,31 @@ check("No date is its own day",
 check("a day with nothing done has none", completedOnDay(pool, "2026-10-02", () => true), []);
 ok("and the tasks handed in are left as they were", JSON.stringify(pool) === poolBefore);
 
-/* ─── What Current and Historical each hand a day's Copy ─── */
+/* ─── What Current and Done each hand a day's Copy ─── */
 
 const done5 = october5.filter((t) => t.completed);
 check("Current: the open tasks it lists, then every done task of the day",
   titles(dayCopyTasks(open5, october5, "2026-10-05", () => true)),
   [...titles(open5), "Kitchen Tidy", "Bike Repairs", "Front Door Handle fix", "Garden Shed Paint Touch-up", "Photo Album - Print + Sort"]);
 
-check("Historical: the done tasks it lists and nothing added, so no task twice",
+check("Done: the done tasks it lists and nothing added, so no task twice",
   titles(dayCopyTasks(done5, october5, "2026-10-05", () => true)),
   titles(done5));
 
 const withOverdue = [...pool, task("Still open on a past day", { due_date: "2026-09-30" })];
 const pastDone = completedOnDay(withOverdue, "2026-09-30", () => true);
-check("Historical on a past day never brings in that day's open tasks, which are overdue",
+check("Done on a past day never brings in that day's open tasks, which are overdue",
   titles(dayCopyTasks(pastDone, withOverdue, "2026-09-30", () => true)),
   ["Done yesterday"]);
 
-check("a goal tab: Historical lists only its done tasks, and only those are copied",
+check("a goal tab: Done lists only its done tasks, and only those are copied",
   titles(dayCopyTasks(pool.filter((t) => t.completed && t.due_date === "2026-10-01" && t.category_id === "c-website"), pool, "2026-10-01", (t) => t.category_id === "c-website")),
   ["Done today, other goal"]);
 
 const ids = dayCopyTasks([...open5, done5[0]], october5, "2026-10-05", () => true).map((t) => t.id);
 ok("a done task already listed is not added again", ids.length === new Set(ids).size && ids.length === october5.length);
 
-check("a Historical day copies as its heading, then Completed",
+check("a Done day copies as its heading, then Completed",
   formatDayForClipboard("2026-10-01", dayCopyTasks(
     [task("Torches Charge", { completed: true, description: "Pens + Paper Pads", category_id: "c-personal" }), task("Budget Sheet Update", { completed: true, category_id: "c-website" })],
     [], "2026-10-01", () => true), categories, "12h", MONDAY).text.split("\n"),
@@ -345,6 +345,15 @@ check("no description, or only blank lines, means no bullets under the task",
 check("Windows line endings split the same way",
   descriptionLines("a\r\nb"),
   ["a", "b"]);
+
+/* ─── One task, as text ─── */
+
+check("a task's list is written as a list, not as the dashes it is stored as",
+  formatTaskForClipboard(task("Call the bank", { due_date: null, description: "Before Friday\n- ask about the card\n  - the new one\n1. Book the room" }), "12h").split("\n"),
+  ["Call the bank", "Before Friday", "• ask about the card", "    ◦ the new one", "1. Book the room"]);
+check("a list pasted from WhatsApp too, its word joiners gone",
+  descriptionText("•⁠  ⁠Desk\n•⁠  ⁠Lamp"), ["• Desk", "• Lamp"]);
+check("no description is no lines", [descriptionText(null), descriptionText(" \n ")], [[], []]);
 
 /* ─── Times ─── */
 
@@ -390,7 +399,7 @@ check("categories in the order they first appear, tasks in the list's order, no 
     "Personal",
     "- Other Personal",
     "",
-    "No category",
+    "No goal",
     "- Loose one",
     "- Gone category",
     "",
@@ -405,7 +414,7 @@ ok("an overdue task is never in today's copy unless it is handed in", !shared.in
 
 check("titles are trimmed",
   formatDayForClipboard(null, [task("  Spaced  ", { due_date: null })], categories, "12h", TODAY).text.split("\n"),
-  ["No date", "", "No category", "- Spaced"]);
+  ["No date", "", "No goal", "- Spaced"]);
 
 /* ─── One blank line under the heading, and between sections ─── */
 

@@ -20,6 +20,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import net from "node:net";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
@@ -41,6 +42,8 @@ const STAMP = path.join(ROOT, ".next", "todoer-build-stamp");
 /* The release download carries Next's own server in place of the sources. */
 const SERVER = path.join(ROOT, "server.js");
 const PREBUILT = existsSync(SERVER);
+const VERSION = JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8")).version;
+const PORT_TAKEN = `Another program is using port ${PORT}. Close it, or start Todoer on another port: npm start -- --port ${PORT + 4}`;
 
 function stop(message) {
   console.error(`\n${message}\n`);
@@ -52,6 +55,7 @@ if (major < 22 || (major === 22 && minor < 18)) {
   stop(`Todoer needs Node 22.18 or newer, and this computer has ${process.versions.node}. Install the current LTS from nodejs.org, then run npm start again.`);
 }
 if (!Number.isInteger(PORT) || PORT < 1024 || PORT > 65535) stop("The port must be a number from 1024 to 65535.");
+if (!PREBUILT && !existsSync(path.join(ROOT, "src"))) stop("This copy of Todoer is incomplete. Download it again, as the README says.");
 if (!PREBUILT && !existsSync(NEXT)) stop("Todoer's packages are not installed yet. Run npm install in this folder, then npm start.");
 
 /** A fingerprint of everything a build depends on: each file's path, size and time. */
@@ -80,7 +84,7 @@ function buildStamp() {
   return hash.digest("hex");
 }
 
-/** Who answers on the port: Todoer, another program, or nobody. */
+/** Who answers on the port: Todoer (with its version, if it says), another program, or nobody. */
 async function answering() {
   let response;
   try {
@@ -89,7 +93,53 @@ async function answering() {
     return null;
   }
   const body = await response.json().catch(() => null);
-  return body?.app === "todoer" ? "todoer" : "other";
+  return body?.app === "todoer" ? { app: "todoer", version: typeof body.version === "string" ? body.version : null } : { app: "other" };
+}
+
+/** Whether `a` is an older version than `b`. One that doesn't say (before 1.1.2) is older. */
+function older(a, b) {
+  if (!a) return true;
+  const [x, y] = [a, b].map((v) => v.split(".").map((part) => Number.parseInt(part, 10) || 0));
+  for (let i = 0; i < 3; i += 1) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) < (y[i] ?? 0);
+  return false;
+}
+
+/*
+ * A browser asks for localhost on [::1] first and on 127.0.0.1 only when
+ * nothing answers there, while the server listens on 127.0.0.1 alone. So a
+ * program on [::1] at this port would get the page instead: it is refused
+ * before starting, and while Todoer runs this script holds [::1] itself and
+ * passes each connection on. A computer with IPv6 off has no [::1] at all.
+ */
+function ipv6Taken() {
+  return new Promise((resolve) => {
+    const socket = net.connect({ host: "::1", port: PORT });
+    const done = (taken) => {
+      socket.destroy();
+      resolve(taken);
+    };
+    socket.setTimeout(1500, () => done(false));
+    socket.once("connect", () => done(true));
+    socket.once("error", () => done(false));
+  });
+}
+
+function holdIpv6() {
+  return new Promise((resolve) => {
+    const relay = net.createServer((client) => {
+      const upstream = net.connect({ host: HOST, port: PORT });
+      client.on("error", () => upstream.destroy());
+      upstream.on("error", () => client.destroy());
+      client.pipe(upstream).pipe(client);
+    });
+    relay.on("error", (error) => {
+      if (relay.listening) return;
+      if (error.code === "EADDRINUSE") stop(PORT_TAKEN);
+      // EADDRNOTAVAIL or EAFNOSUPPORT: IPv6 is off, and 127.0.0.1 alone serves.
+      resolve();
+    });
+    relay.listen({ host: "::1", port: PORT }, resolve);
+  });
 }
 
 function openBrowser() {
@@ -106,18 +156,22 @@ function openBrowser() {
 
 const already = await answering();
 /* PUBLIK_SELF_TEST=1 npm start is publik's check that the built app reaches
-   publik's AI (src/instrumentation.ts): it needs the port to itself. */
-if (already === "todoer" && process.env.PUBLIK_SELF_TEST) {
+   publik's AI (src/instrumentation-node.ts): it needs the port to itself. */
+if (already?.app === "todoer" && process.env.PUBLIK_SELF_TEST) {
   stop("Todoer is already running. Close its window, then run the self-test again.");
 }
-if (already === "todoer") {
+if (already?.app === "todoer" && already.version !== VERSION) {
+  stop(older(already.version, VERSION)
+    ? "An older copy of Todoer is still running. Close its window, then run npm start again."
+    : `A newer copy of Todoer (${already.version}) is running. Close its window, then run npm start again.`);
+}
+if (already?.app === "todoer") {
   console.log(`Todoer is already running at ${APP_URL}.`);
   openBrowser();
   process.exit(0);
 }
-if (already === "other") {
-  stop(`Another program is using port ${PORT}. Close it, or start Todoer on another port: npm start -- --port ${PORT + 4}`);
-}
+if (already?.app === "other" || (await ipv6Taken())) stop(PORT_TAKEN);
+await holdIpv6();
 
 if (!PREBUILT) {
   const stamp = buildStamp();
@@ -133,17 +187,31 @@ if (!PREBUILT) {
 }
 
 const server = PREBUILT
-  ? spawn(process.execPath, [SERVER], { stdio: ["ignore", "pipe", "inherit"], env: { ...process.env, HOSTNAME: HOST, PORT: String(PORT) } })
-  : spawn(process.execPath, [NEXT, "start", "-H", HOST, "-p", String(PORT)], { stdio: ["ignore", "pipe", "inherit"] });
+  ? spawn(process.execPath, [SERVER], { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, HOSTNAME: HOST, PORT: String(PORT) } })
+  : spawn(process.execPath, [NEXT, "start", "-H", HOST, "-p", String(PORT)], { stdio: ["ignore", "pipe", "pipe"] });
+let ready = false;
+/* Watched for a taken port, to tell it from any other failure. */
+let portInUse = false;
 server.stdout.on("data", (chunk) => {
   const text = chunk.toString();
+  if (text.includes("EADDRINUSE")) portInUse = true;
   // Errors, and publik's self-test line (PUBLIK_SELF_TEST=1 npm start), reach the terminal.
   if (/error|publik self-test/i.test(text)) process.stdout.write(text);
 });
-let ready = false;
+/* Held until the server answers: a taken port then shows one sentence, not
+   Node's stack trace, and any other failure shows what the server said. */
+let early = "";
+server.stderr.on("data", (chunk) => {
+  const text = chunk.toString();
+  if (text.includes("EADDRINUSE")) portInUse = true;
+  if (ready) process.stderr.write(text);
+  else early += text;
+});
 server.on("exit", (code) => {
   if (!ready && code) {
-    stop(`Todoer stopped while starting. If another program is using port ${PORT}, close it, or start Todoer on another port: npm start -- --port ${PORT + 4}`);
+    if (portInUse) stop(PORT_TAKEN);
+    process.stderr.write(early);
+    stop("Todoer stopped while starting, with the error above. Run npm start again.");
   }
   process.exit(code ?? 0);
 });
@@ -155,8 +223,9 @@ const startedAt = Date.now();
 let toldSlow = false;
 while (!ready) {
   await new Promise((resolve) => setTimeout(resolve, 500));
-  if ((await answering()) === "todoer") {
+  if ((await answering())?.app === "todoer") {
     ready = true;
+    process.stderr.write(early);
     console.log(`\nTodoer is running at ${APP_URL}\nKeep this window open: closing it stops Todoer.\n`);
     openBrowser();
   } else if (!toldSlow && Date.now() - startedAt > 30_000) {

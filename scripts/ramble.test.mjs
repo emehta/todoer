@@ -8,7 +8,7 @@
  * copy of a task already open, an em dash the user never wrote.
  */
 
-import { buildRambleSource, checkRambleContext, isDateKey, localClock, LIMITS } from "@/lib/ramble/context";
+import { buildRambleSource, checkRambleContext, isDateKey, localClock, LIMITS, withClock } from "@/lib/ramble/context";
 import {
   CALENDAR_DAYS,
   MAX_TASKS,
@@ -31,6 +31,7 @@ import {
   digitsForNumbers,
   findDuplicate,
   labelledDraftKey,
+  MAX_YEARS_AHEAD,
   priorityFromWords,
   rambleDrafts,
   resolveDate,
@@ -112,6 +113,14 @@ const taskRef = (id) => [...source.openTaskByRef].find(([, value]) => value.id =
 
 check("the local clock is the user's own day and minute",
   localClock(new Date(2026, 9, 7, 15, 42)), { today: "2026-10-07", nowMinutes: 942 });
+{
+  /* A card opened before midnight and sent after it. */
+  const opened = buildRambleSource([], categories, { today: "2026-10-07", nowMinutes: 1435, weekStart: "monday" });
+  const sent = withClock(opened, new Date(2026, 9, 8, 0, 3));
+  check("a ramble is sent with the clock as it is then, not as the card opened",
+    [sent.context.today, sent.context.nowMinutes, opened.context.today], ["2026-10-08", 3, "2026-10-07"]);
+  check("and with everything else the card opened with", [sent.context.goals.length, sent.goalIdByRef === opened.goalIdByRef], [opened.context.goals.length, true]);
+}
 check("every goal goes out under a short key, in the tabs' order",
   context.goals.map((g) => `${g.ref} ${g.name}`),
   ["g1 Work", "g2 Personal", "g3 Academic", "g4 Social", "g5 Career", "g6 Brand", "g7 Website"]);
@@ -274,6 +283,9 @@ check("no day said is today", resolveDate(null, TODAY), TODAY);
 check("a day said is kept", resolveDate("2026-10-16", TODAY), "2026-10-16");
 check("a day that does not exist is today", resolveDate("2026-02-30", TODAY), TODAY);
 check("a day already gone is today", resolveDate("2026-10-01", TODAY), TODAY);
+check("a day a few years ahead is kept", resolveDate("2031-10-07", TODAY), "2031-10-07");
+check(`a day more than ${MAX_YEARS_AHEAD} years ahead is a mishearing, and today`, resolveDate("2031-10-08", TODAY), TODAY);
+check("so is a year far out", resolveDate("2126-10-07", TODAY), TODAY);
 
 /* ── priority words ───────────────────────────────────────────────────── */
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo, type ReactNode, type RefObject } from "react";
 import dynamic from "next/dynamic";
-import { CaretDown, CaretRight, Lightbulb, Plus, X } from "@phosphor-icons/react";
+import { CaretDown, CaretRight, Lightbulb, Plus } from "@phosphor-icons/react";
 import { supabase } from "@/lib/supabase";
 import { Task, NewTask, Priority } from "@/types/task";
 import type { TaskDraft } from "@/components/tasks/TaskEditModal";
@@ -22,7 +22,8 @@ import StatusBanner from "@/components/StatusBanner";
 import SearchField from "@/components/SearchField";
 import { HighlightScope } from "@/components/Highlight";
 import { matchesWords, searchWords } from "@/lib/text-match";
-import Modal from "@/components/Modal";
+import { DialogCard } from "@/components/form/Dialog";
+import Toast, { ToastStack } from "@/components/Toast";
 import { TasksSkeleton } from "@/components/skeletons/PageSkeletons";
 import controls from "@/components/tasks/TaskControls.module.css";
 import type { TaskPatch, TaskRowActionHandlers } from "@/components/tasks/TaskRowActions";
@@ -39,6 +40,7 @@ import { fetchAllRows } from "@/lib/supabase-paging";
 import { assertDeleted } from "@/lib/supabase-delete";
 import { DISPLAY_ORDER_STEP, placeByPriority, placeManyByPriority, sortTasksForDisplay } from "@/lib/task-order";
 import type { GoalFields } from "@/lib/task-changes";
+import { DELETED_ELSEWHERE, createRowSync, putBack, updateOutcome } from "@/lib/row-sync";
 import LoadingState from "@/components/LoadingState";
 import { preloadDescriptionEditor } from "@/components/form/DescriptionField";
 
@@ -112,31 +114,6 @@ function tracked<T>(sync: RefObject<WriteSync>, work: PromiseLike<T>): Promise<T
 }
 
 /*
- * Tasks a placement had to move to make room: shown at once, written in the
- * background, and a failure only reported, because the order on screen is
- * still right.
- */
-function saveRenumber(
-  sync: RefObject<WriteSync>,
-  setTasks: (update: (prev: Task[]) => Task[]) => void,
-  setPersistenceError: (message: string) => void,
-  renumber: Array<{ id: string; display_order: number }>,
-) {
-  if (renumber.length === 0) return;
-  const moved = new Map(renumber.map((r) => [r.id, r.display_order]));
-  setTasks((prev) => prev.map((t) => {
-    const order = moved.get(t.id);
-    return order === undefined ? t : { ...t, display_order: order };
-  }));
-  void Promise.all(
-    renumber.map((r) => tracked(sync, supabase.from("tasks").update({ display_order: r.display_order }).eq("id", r.id))),
-  ).then((results) => {
-    const failed = results.find((result) => result.error);
-    if (failed?.error) setPersistenceError(getErrorMessage(failed.error, "Could not save the order of that day."));
-  });
-}
-
-/*
  * The least time between two reloads on coming back to the tab. Focus and
  * visibility arrive together, and flicking between windows should not ask
  * Supabase for the list every time.
@@ -145,6 +122,12 @@ const RELOAD_GAP_MS = 5000;
 
 /** Ids per request in Mark all done: 100 uuids is about 3.7 KB of address. */
 const MARK_DONE_BATCH = 100;
+
+/** How long a ticked task offers Undo. */
+const UNDO_MS = 5000;
+
+/** An update's answer: the rows it changed, or why it did not. */
+type Saved = { data: Task[] | null; error: { code?: string; message?: string } | null };
 
 /** A save that failed in the background, with what was typed, to retry. */
 type FailedSave =
@@ -300,6 +283,13 @@ export default function TasksPage() {
   const [overdueClosedFor, setOverdueClosedFor] = useState<string | null>(null);
   const overdueShown = search ? overdueClosedFor !== search : overdueOpen;
   const [persistenceError, setPersistenceError] = useState("");
+  /* The task just ticked off, which a toast offers to put back for a few seconds. */
+  const [undoable, setUndoable] = useState<{ id: string } | null>(null);
+  useEffect(() => {
+    if (!undoable) return;
+    const timer = window.setTimeout(() => setUndoable(null), UNDO_MS);
+    return () => window.clearTimeout(timer);
+  }, [undoable]);
 
   /*
    * The task card's description editor, fetched once the page is idle, so a
@@ -347,7 +337,7 @@ export default function TasksPage() {
          * Paged, not a bare select. PostgREST stops at 1000 rows without
          * saying so, and a task list that has run for a few years reaches
          * that, when the oldest completed tasks would quietly vanish from
-         * Historical.
+         * Done.
          */
         const [taskRows, catRes] = await Promise.all([
           fetchAllRows<Task>(() =>
@@ -426,26 +416,94 @@ export default function TasksPage() {
 
   /* ─── task CRUD ─── */
 
+  /* Each task row's saves, in order behind its insert, and which of their
+     answers still speak for the row (lib/row-sync). */
+  const [rows] = useState(createRowSync);
+
+  /*
+   * One task's update, after the row's earlier saves, asking for the row
+   * back: no rows back is a task deleted elsewhere. Null when the row's
+   * insert failed, which has taken it off the list already.
+   */
+  const updateTask = useCallback(
+    (id: string, fields: Partial<Task>): Promise<Saved | null> =>
+      tracked(sync, rows.queue([id], async ([savedId]) => {
+        if (savedId === null) return null;
+        try {
+          const { data, error } = await supabase.from("tasks").update(fields).eq("id", savedId).select();
+          return { data: (data ?? null) as Task[] | null, error };
+        } catch (error) {
+          return { data: null, error: { message: getErrorMessage(error, "Could not save that task.") } };
+        }
+      })),
+    [rows],
+  );
+
+  /* A task the database no longer has, deleted on another device: off the
+     list, and said so. No failed-save card, as there is nothing to save to. */
+  const dropDeleted = useCallback(
+    (id: string) => {
+      rows.touch(id);
+      setTasks((prev) => prev.filter((t) => t.id !== id));
+      setUndoable((current) => (current?.id === id ? null : current));
+      setPersistenceError(DELETED_ELSEWHERE);
+    },
+    [rows],
+  );
+
+  /*
+   * Tasks a placement had to move to make room: shown at once, written in
+   * the background, and a failure only reported, because the order on
+   * screen is still right.
+   */
+  const saveRenumber = useCallback(
+    (renumber: Array<{ id: string; display_order: number }>) => {
+      if (renumber.length === 0) return;
+      const moved = new Map(renumber.map((r) => [r.id, r.display_order]));
+      for (const id of moved.keys()) rows.touch(id);
+      setTasks((prev) => prev.map((t) => {
+        const order = moved.get(t.id);
+        return order === undefined ? t : { ...t, display_order: order };
+      }));
+      void Promise.all(renumber.map((r) => updateTask(r.id, { display_order: r.display_order }))).then((results) => {
+        let failure: Saved["error"] = null;
+        results.forEach((result, index) => {
+          if (!result) return;
+          const outcome = updateOutcome(result.data, result.error);
+          if (outcome === "gone") dropDeleted(renumber[index].id);
+          else if (outcome === "failed") failure ??= result.error;
+        });
+        if (failure) setPersistenceError(getErrorMessage(failure, "Could not save the order of that day."));
+      });
+    },
+    [rows, updateTask, dropDeleted],
+  );
+
   const handleToggle = useCallback(
     /*
      * The confetti is the row's: TaskItem fires it on the click, pops the
      * circle and draws the tick, and calls this about half a second later to
-     * save, so nothing waits on the write. A failed save puts the task back
-     * and says so; the burst it already had is the price of answering at
-     * once.
+     * save, so nothing waits on the write. A tick offers Undo for a few
+     * seconds. A failed save puts the task back and says so; the burst it
+     * already had is the price of answering at once.
      */
     async (id: string, completed: boolean) => {
       setPersistenceError("");
+      rows.touch(id);
       setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, completed } : t)));
-      try {
-        const { error } = await tracked(sync, supabase.from("tasks").update({ completed }).eq("id", id));
-        if (error) throw error;
-      } catch (error) {
-        setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, completed: !completed } : t)));
-        setPersistenceError(getErrorMessage(error, "Could not save that task update."));
+      setUndoable((current) => (completed ? { id } : current?.id === id ? null : current));
+      const result = await updateTask(id, { completed });
+      if (!result) return;
+      const outcome = updateOutcome(result.data, result.error);
+      if (outcome === "gone") {
+        dropDeleted(id);
+      } else if (outcome === "failed") {
+        setTasks((prev) => prev.map((t) => (t.id === id ? putBack(t, { completed }, { completed: !completed }) : t)));
+        setUndoable((current) => (current?.id === id ? null : current));
+        setPersistenceError(getErrorMessage(result.error, "Could not save that task update."));
       }
     },
-    [],
+    [rows, updateTask, dropDeleted],
   );
 
   /**
@@ -462,10 +520,52 @@ export default function TasksPage() {
   const placeTask = useCallback(
     (dueDate: string | null, priority: Priority, excludeId?: string) => {
       const { displayOrder, renumber } = placeByPriority(tasks, { dueDate, priority, excludeId });
-      saveRenumber(sync, setTasks, setPersistenceError, renumber);
+      saveRenumber(renumber);
       return displayOrder;
     },
-    [tasks],
+    [tasks, saveRenumber],
+  );
+
+  /*
+   * New rows, already on screen, written in one insert. The insert's answer
+   * does not replace them: they may have been ticked or edited while it was
+   * on its way, and those saves follow it (lib/row-sync). A failure takes
+   * them off and brings each back as its own card, with what was typed,
+   * once no other card is open, never in place of the one being typed in.
+   */
+  const insertRows = useCallback(
+    (newRows: Task[], drafts: NewTask[], failedMessage: string) => {
+      const ids = newRows.map((row) => row.id);
+      void tracked(sync, rows.insert(
+        ids,
+        async () => {
+          const { data, error } = await supabase.from("tasks").insert(newRows).select("id");
+          if (error) throw error;
+          return (data ?? []) as { id: string }[];
+        },
+        (saved, id) => saved[ids.indexOf(id)]?.id ?? id,
+      )).then(
+        (saved) => {
+          /* An id the database gave in place of the row's own is the one the row goes by from now. */
+          const renamed = new Map(ids.flatMap((id, index) => {
+            const real = saved[index]?.id;
+            return real && real !== id ? [[id, real] as const] : [];
+          }));
+          if (renamed.size > 0) setTasks((prev) => prev.map((t) => ({ ...t, id: renamed.get(t.id) ?? t.id })));
+        },
+        (error: unknown) => {
+          const failed = new Set(ids);
+          setTasks((prev) => prev.filter((t) => !failed.has(t.id)));
+          setUndoable((current) => (current && failed.has(current.id) ? null : current));
+          const message = getErrorMessage(error, failedMessage);
+          setFailedSaves((prev) => [
+            ...prev,
+            ...drafts.map((draft) => ({ id: crypto.randomUUID(), kind: "create" as const, draft, error: message })),
+          ]);
+        },
+      );
+    },
+    [rows],
   );
 
   /**
@@ -473,10 +573,10 @@ export default function TasksPage() {
    * returns the row is a round trip to the user's Supabase region, often a
    * quarter of a second, before anything would appear.
    *
-   * The id is generated here rather than by the default, which is what makes
-   * this safe: the row rendered optimistically carries the id it will really
-   * have, so completing or dragging it in the meantime addresses the right
-   * row instead of one that does not exist yet.
+   * The id is generated here rather than by the default, so the row on
+   * screen carries the id it will have. A tick, an edit or a drag made
+   * before the insert has answered waits for it (lib/row-sync), rather than
+   * updating a row that is not there yet.
    */
   const handleAdd = useCallback(
     async (task: NewTask) => {
@@ -488,33 +588,11 @@ export default function TasksPage() {
         created_at: new Date().toISOString(),
         display_order: placeTask(task.due_date, task.priority),
       };
-
+      rows.touch(optimistic.id);
       setTasks((prev) => [...prev, optimistic]);
-
-      void (async () => {
-        const { data, error } = await tracked(sync, supabase
-          .from("tasks")
-          .insert([optimistic])
-          .select()
-          .single());
-
-        if (error) {
-          setTasks((prev) => prev.filter((t) => t.id !== optimistic.id));
-          /* Comes back as its own card once no other is open, never in place
-             of the one being typed in. */
-          setFailedSaves((prev) => [...prev, {
-            id: crypto.randomUUID(),
-            kind: "create",
-            draft: task,
-            error: getErrorMessage(error, "Could not create that task."),
-          }]);
-          return;
-        }
-        // Take the server's row, which carries the columns it filled in.
-        if (data) setTasks((prev) => prev.map((t) => (t.id === optimistic.id ? data : t)));
-      })();
+      insertRows([optimistic], [task], "Could not add that task.");
     },
-    [placeTask],
+    [rows, placeTask, insertRows],
   );
 
   /**
@@ -534,35 +612,19 @@ export default function TasksPage() {
         tasks,
         withIds.map(({ task, id }) => ({ id, dueDate: task.due_date, priority: task.priority })),
       );
-      saveRenumber(sync, setTasks, setPersistenceError, renumber);
-      const rows: Task[] = withIds.map(({ task, id }) => ({
+      saveRenumber(renumber);
+      const newRows: Task[] = withIds.map(({ task, id }) => ({
         ...task,
         id,
         completed: false,
         created_at: createdAt,
         display_order: displayOrders.get(id) ?? DISPLAY_ORDER_STEP,
       }));
-      const ids = new Set(rows.map((row) => row.id));
-
-      setTasks((prev) => [...prev, ...rows]);
-
-      void (async () => {
-        const { data, error } = await tracked(sync, supabase.from("tasks").insert(rows).select());
-        if (error) {
-          setTasks((prev) => prev.filter((t) => !ids.has(t.id)));
-          const message = getErrorMessage(error, "Could not add those tasks.");
-          setFailedSaves((prev) => [
-            ...prev,
-            ...newTasks.map((draft) => ({ id: crypto.randomUUID(), kind: "create" as const, draft, error: message })),
-          ]);
-          return;
-        }
-        /* The server's rows, which carry the columns it filled in. */
-        const saved = new Map(((data ?? []) as Task[]).map((row) => [row.id, row]));
-        setTasks((prev) => prev.map((t) => saved.get(t.id) ?? t));
-      })();
+      for (const row of newRows) rows.touch(row.id);
+      setTasks((prev) => [...prev, ...newRows]);
+      insertRows(newRows, newTasks, "Could not add those tasks.");
     },
-    [tasks],
+    [tasks, rows, saveRenumber, insertRows],
   );
 
   const handleEditSave = useCallback(
@@ -579,7 +641,7 @@ export default function TasksPage() {
       /* Gone since the card opened, deleted on another device and taken off
          by a reload: said in the card, which stays open, rather than closed
          as if saved. */
-      if (!existingTask) throw new Error("This task was deleted, so the change could not be saved.");
+      if (!existingTask) throw new Error(DELETED_ELSEWHERE);
 
       /* A new day or a new priority is a new place in the list. Any other
          edit leaves the task where it is, including where it was dragged. */
@@ -604,55 +666,63 @@ export default function TasksPage() {
        * Show the edit and close the dialog now, write in the background, so
        * the card does not sit on "Saving…" for the round trip of a change
        * that is almost never rejected. A failure puts those fields back as
-       * they were and brings the card back with the edit in it, once no
-       * other card is open.
+       * they were, where nothing has changed them since, and brings the card
+       * back with the edit in it, once no other card is open.
        */
+      const version = rows.touch(taskId);
       setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, ...payload } : t)));
       setEditingTask(null);
 
       void (async () => {
-        const { data, error } = await tracked(sync, supabase
-          .from("tasks")
-          .update(payload)
-          .eq("id", taskId)
-          .select()
-          .single());
-
-        if (error) {
-          setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, ...undo } : t)));
+        const result = await updateTask(taskId, payload);
+        if (!result) return;
+        const outcome = updateOutcome(result.data, result.error);
+        if (outcome === "gone") {
+          dropDeleted(taskId);
+          return;
+        }
+        if (outcome === "failed") {
+          setTasks((prev) => prev.map((t) => (t.id === taskId ? putBack(t, payload, undo) : t)));
           setFailedSaves((prev) => [...prev, {
             id: crypto.randomUUID(),
             kind: "edit",
             task: base,
             draft,
-            error: getErrorMessage(error, "Could not save that task."),
+            error: getErrorMessage(result.error, "Could not save that task."),
           }]);
           return;
         }
-        if (data) setTasks((prev) => prev.map((t) => (t.id === taskId ? data : t)));
+        /* The saved row, unless the task has changed on screen since: a
+           newer save is carrying that, and this answer would undo it. */
+        const saved = result.data?.[0];
+        if (saved && rows.current(taskId, version)) setTasks((prev) => prev.map((t) => (t.id === taskId ? saved : t)));
       })();
     },
-    [tasks, placeTask],
+    [tasks, rows, placeTask, updateTask, dropDeleted],
   );
 
   /* Throws on a failure, for the caller to say: the task card in itself, the
-     row's menu in the page's banner. */
+     row's menu in the page's banner. A task still being added is deleted
+     once its insert has answered. */
   const handleDelete = useCallback(async (id: string) => {
     setPersistenceError("");
-    const { data, error } = await tracked(sync, supabase.from("tasks").delete().eq("id", id).select("id"));
+    const result = await tracked(sync, rows.queue([id], async ([savedId]) =>
+      savedId === null ? null : await supabase.from("tasks").delete().eq("id", savedId).select("id")));
     /* A delete RLS refused matches no rows and reports success; this makes
        it a failure, so the row does not vanish and come back on the next load. */
-    assertDeleted(data, error, "task");
+    if (result) assertDeleted(result.data, result.error, "task");
+    rows.touch(id);
     setTasks((prev) => prev.filter((t) => t.id !== id));
-  }, []);
+    setUndoable((current) => (current?.id === id ? null : current));
+  }, [rows]);
 
   /**
    * A change made from the row rather than from the dialog.
    *
    * Optimistic, because setting a date or a priority should feel instant and
-   * there is nothing to review. Moving a task to a different day also moves it
-   * to the end of that day's group, the same rule handleEditSave follows, or it
-   * would land wherever its old order happened to put it.
+   * there is nothing to review. A new day or priority places the task by its
+   * priority in its day (placeTask), the same rule handleEditSave follows,
+   * or it would land wherever its old order happened to put it.
    */
   const handlePatchTask = useCallback(
     async (taskId: string, patch: TaskPatch) => {
@@ -662,7 +732,7 @@ export default function TasksPage() {
 
       const movingDay = patch.due_date !== undefined && patch.due_date !== previous.due_date;
       const newPriority = patch.priority !== undefined && patch.priority !== previous.priority;
-      const payload = movingDay || newPriority
+      const payload: Partial<Task> = movingDay || newPriority
         ? {
             ...patch,
             display_order: placeTask(
@@ -673,27 +743,28 @@ export default function TasksPage() {
           }
         : patch;
 
+      const version = rows.touch(taskId);
       setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, ...payload } : task)));
 
-      const { data, error } = await tracked(sync, supabase
-        .from("tasks")
-        .update(payload)
-        .eq("id", taskId)
-        .select()
-        .single());
-
-      if (error) {
-        setTasks((prev) => prev.map((task) => (task.id === taskId ? previous : task)));
-        setPersistenceError(getErrorMessage(error, "Could not save that task."));
+      const result = await updateTask(taskId, payload);
+      if (!result) return;
+      const outcome = updateOutcome(result.data, result.error);
+      if (outcome === "gone") {
+        dropDeleted(taskId);
         return;
       }
-
-      if (data) setTasks((prev) => prev.map((task) => (task.id === taskId ? data : task)));
+      if (outcome === "failed") {
+        setTasks((prev) => prev.map((task) => (task.id === taskId ? putBack(task, payload, previous) : task)));
+        setPersistenceError(getErrorMessage(result.error, "Could not save that task."));
+        return;
+      }
+      const saved = result.data?.[0];
+      if (saved && rows.current(taskId, version)) setTasks((prev) => prev.map((task) => (task.id === taskId ? saved : task)));
     },
-    [tasks, placeTask],
+    [tasks, rows, placeTask, updateTask, dropDeleted],
   );
 
-  /** A verbatim copy, placed at the end of the same day so it is easy to find. */
+  /** A copy, on the same day, placed by its priority as a new task is (placeTask). */
   const handleDuplicateTask = useCallback(
     async (task: Task) => {
       setPersistenceError("");
@@ -726,16 +797,17 @@ export default function TasksPage() {
    * Plain text on the clipboard, for pasting into a message.
    *
    * writeText needs a secure context and a user gesture; it has both here, but
-   * a denied clipboard permission still rejects, and saying nothing would look
-   * exactly like a successful copy.
+   * a browser can have no clipboard to write to at all, or refuse the write,
+   * and saying nothing would look exactly like a successful copy.
    */
   const handleCopyTask = useCallback(
     async (task: Task) => {
       setPersistenceError("");
       try {
+        if (!navigator.clipboard) throw new Error("No clipboard");
         await navigator.clipboard.writeText(formatTaskForClipboard(task, timeFormat));
       } catch {
-        setPersistenceError("Could not copy that task to the clipboard.");
+        setPersistenceError("Could not copy that task: the browser didn't allow it.");
       }
     },
     [timeFormat],
@@ -745,7 +817,7 @@ export default function TasksPage() {
    * A day on the clipboard, from the Copy on its heading: the tasks the list
    * hands over, then the day's completed ones under Completed. Current and
    * Overdue never hold a done task, so those come from every task, narrowed
-   * the same way as the list; Historical's list is the done tasks, so a day
+   * the same way as the list; Done's list is the done tasks, so a day
    * there copies as Completed alone (dayCopyTasks). Plain text for WhatsApp
    * or Messages, and the same lines as HTML for an app that pastes that
    * instead.
@@ -753,8 +825,8 @@ export default function TasksPage() {
    * The ClipboardItem is built and written inside the click, with nothing
    * awaited first, because Safari refuses a clipboard write that is not. A
    * browser with no ClipboardItem, or one that refuses the pair, gets the
-   * plain text alone; one that refuses that too is told so in the banner
-   * rather than shown "Copied".
+   * plain text alone; one that refuses that too, or has no clipboard at all,
+   * is told so rather than shown "Copied".
    */
   const handleCopyDay = useCallback(
     async (dateKey: string | null, listed: Task[]): Promise<boolean> => {
@@ -762,6 +834,10 @@ export default function TasksPage() {
       const narrowing = { categoryId: activeCategoryId, words: searchWords(taskQuery), priority: priorityFilter };
       const dayTasks = dayCopyTasks(listed, tasks, dateKey, (task) => matchesNarrowing(task, narrowing));
       const { text, html } = formatDayForClipboard(dateKey, dayTasks, categories, timeFormat, startOfToday());
+      if (!navigator.clipboard) {
+        setPersistenceError("Could not copy that day: the browser didn't allow it.");
+        return false;
+      }
       try {
         if (typeof ClipboardItem === "undefined") throw new Error("No ClipboardItem");
         await navigator.clipboard.write([
@@ -776,7 +852,7 @@ export default function TasksPage() {
           await navigator.clipboard.writeText(text);
           return true;
         } catch {
-          setPersistenceError("Could not copy that day's tasks to the clipboard.");
+          setPersistenceError("Could not copy that day: the browser didn't allow it.");
           return false;
         }
       }
@@ -817,42 +893,32 @@ export default function TasksPage() {
       const prevTask = prevTaskId ? snapshot.find((task) => task.id === prevTaskId) ?? null : null;
       const nextTask = nextTaskId ? snapshot.find((task) => task.id === nextTaskId) ?? null : null;
 
-      /* A write that failed puts back what it changed, as before the drag:
-         the moved task's day and place, a neighbour's place. The writes that
-         landed stay, as does anything else changed meanwhile, so the screen
-         shows what the database holds. */
-      const putBack = (ids: Set<string>) => {
-        const before = new Map(snapshot.filter((task) => ids.has(task.id)).map((task) => [task.id, task]));
-        setTasks((prev) => prev.map((task) => {
-          const was = before.get(task.id);
-          if (!was) return task;
-          return { ...task, display_order: was.display_order, ...(task.id === taskId ? { due_date: was.due_date } : {}) };
-        }));
+      /* A write that found its task gone takes it off the list. One that
+         failed puts back what it changed, as before the drag, where nothing
+         has changed it since: the writes that landed stay, as does anything
+         else changed meanwhile, so the screen shows what the database holds. */
+      const settle = (updates: Array<{ id: string; fields: Partial<Task> }>, results: (Saved | null)[]) => {
+        let failure: Saved["error"] = null;
+        results.forEach((result, index) => {
+          if (!result) return;
+          const { id, fields } = updates[index];
+          const outcome = updateOutcome(result.data, result.error);
+          if (outcome === "gone") {
+            dropDeleted(id);
+          } else if (outcome === "failed") {
+            const was = snapshot.find((task) => task.id === id);
+            if (was) setTasks((prev) => prev.map((task) => (task.id === id ? putBack(task, fields, was) : task)));
+            failure ??= result.error;
+          }
+        });
+        if (failure) setPersistenceError(getErrorMessage(failure, "Could not move that task."));
       };
 
       const persistSingleMove = async (displayOrder: number) => {
-        const optimistic = applyTaskUpdates(snapshot, [
-          {
-            id: taskId,
-            due_date: dueDate,
-            display_order: displayOrder,
-          },
-        ]);
-
-        setTasks(optimistic);
-
-        const { error } = await tracked(sync, supabase
-          .from("tasks")
-          .update({
-            due_date: dueDate,
-            display_order: displayOrder,
-          })
-          .eq("id", taskId));
-
-        if (error) {
-          putBack(new Set([taskId]));
-          setPersistenceError(getErrorMessage(error, "Could not move that task."));
-        }
+        const fields = { due_date: dueDate, display_order: displayOrder };
+        rows.touch(taskId);
+        setTasks((prev) => applyTaskUpdates(prev, [{ id: taskId, ...fields }]));
+        settle([{ id: taskId, fields }], [await updateTask(taskId, fields)]);
       };
 
       if (prevTask && nextTask) {
@@ -901,22 +967,12 @@ export default function TasksPage() {
         display_order: (index + 1) * DISPLAY_ORDER_STEP,
       }));
 
-      const optimistic = applyTaskUpdates(snapshot, normalizedUpdates);
-      setTasks(optimistic);
-
-      const results = await Promise.all(
-        normalizedUpdates.map(({ id, ...fields }) =>
-          tracked(sync, supabase.from("tasks").update(fields).eq("id", id)),
-        ),
-      );
-
-      const failed = results.find((result) => result.error);
-      if (failed?.error) {
-        putBack(new Set(normalizedUpdates.filter((_, index) => results[index].error).map((update) => update.id)));
-        setPersistenceError(getErrorMessage(failed.error, "Could not move that task."));
-      }
+      for (const update of normalizedUpdates) rows.touch(update.id);
+      setTasks((prev) => applyTaskUpdates(prev, normalizedUpdates));
+      const updates = normalizedUpdates.map(({ id, ...fields }) => ({ id, fields }));
+      settle(updates, await Promise.all(updates.map(({ id, fields }) => updateTask(id, fields))));
     },
-    [tasks],
+    [tasks, rows, updateTask, dropDeleted],
   );
 
   /* ─── category CRUD ─── */
@@ -991,46 +1047,59 @@ export default function TasksPage() {
 
   /*
    * Mark all done, beside the goals: the open tasks of the goal that the list
-   * is showing, by id, so a task a filter is hiding is left alone, as the
-   * count on the button says.
+   * is showing, by id, so a task a filter or the shut Overdue box is hiding
+   * is left alone, as the count on the button says. After each one's own
+   * saves, so a task still being added is done once it is there.
    */
   const handleMarkDone = useCallback(
     async (ids: string[]) => {
       if (ids.length === 0) return;
       setPersistenceError("");
-      /* The ids travel in the request's address, which Supabase's gateway caps
-         at a few kilobytes: a goal with a few hundred open tasks would be
-         refused whole. So a hundred at a time, and whatever was written
-         before a failure still shows as done. */
       const changed = new Set<string>();
+      let asked = 0;
       let failure: unknown = null;
-      for (let start = 0; start < ids.length; start += MARK_DONE_BATCH) {
-        /* Every one asked for, already done or not: one ticked on another
-           device since still comes back, rather than reading as a failure. */
-        const { data, error } = await tracked(sync, supabase
-          .from("tasks")
-          .update({ completed: true })
-          .in("id", ids.slice(start, start + MARK_DONE_BATCH))
-          .select("id"));
-        if (error) {
-          failure = error;
-          break;
+      await tracked(sync, rows.queue(ids, async (savedIds) => {
+        /* The row on screen for each id the database knows it by; one whose insert failed is gone already. */
+        const shownAs = new Map<string, string>();
+        savedIds.forEach((saved, index) => { if (saved !== null) shownAs.set(saved, ids[index]); });
+        const toSave = [...shownAs.keys()];
+        asked = toSave.length;
+        /* The ids travel in the request's address, which Supabase's gateway
+           caps at a few kilobytes: a goal with a few hundred open tasks would
+           be refused whole. So a hundred at a time, and whatever was written
+           before a failure still shows as done. */
+        for (let start = 0; start < toSave.length; start += MARK_DONE_BATCH) {
+          /* Every one asked for, already done or not: one ticked on another
+             device since still comes back, rather than reading as a failure. */
+          const { data, error } = await supabase
+            .from("tasks")
+            .update({ completed: true })
+            .in("id", toSave.slice(start, start + MARK_DONE_BATCH))
+            .select("id");
+          if (error) {
+            failure = error;
+            break;
+          }
+          /* Only the rows the database answers with, so a write RLS refused
+             does not show as done. */
+          for (const row of (data ?? []) as { id: string }[]) {
+            const id = shownAs.get(row.id);
+            if (id) changed.add(id);
+          }
         }
-        /* Only the rows the database answers with, so a write RLS refused
-           does not show as done. */
-        for (const row of (data ?? []) as { id: string }[]) changed.add(row.id);
-      }
+      }));
 
+      for (const id of changed) rows.touch(id);
       if (changed.size > 0) setTasks((prev) => prev.map((t) => (changed.has(t.id) ? { ...t, completed: true } : t)));
       if (failure) {
         setPersistenceError(getErrorMessage(failure, "Could not mark those tasks as done."));
         throw failure;
       }
-      if (changed.size < ids.length) {
+      if (changed.size < asked) {
         setPersistenceError("Some of those tasks could not be marked done. Reload and try again.");
       }
     },
-    [],
+    [rows],
   );
 
   /**
@@ -1117,9 +1186,8 @@ export default function TasksPage() {
           break;
       }
 
-      if (activeView === "all" && !matchesDateFilter(t, dateFilter, weekStart)) return false;
-
-      return true;
+      /* In every view: Overdue this week, or done this month, as well as what is due. */
+      return matchesDateFilter(t, dateFilter, weekStart);
     });
   }, [tasks, activeCategoryId, activeView, dateFilter, priorityFilter, taskQuery, todayKey, weekStart]);
 
@@ -1150,7 +1218,7 @@ export default function TasksPage() {
    * every open task in the Overdue box above it (which is checked first, as
    * the box shows matches too), or a view with nothing in it yet.
    */
-  const narrowed = search !== "" || priorityFilter !== "all" || (activeView === "all" && dateFilter !== "all");
+  const narrowed = search !== "" || priorityFilter !== "all" || dateFilter !== "all";
   const emptyListMessage = overdueTasks.length > 0
     ? narrowed
       ? "Everything that matches is in Overdue above."
@@ -1231,6 +1299,13 @@ export default function TasksPage() {
       )}
     </div>
   );
+
+  /* The open tasks on screen, for Mark all done: the Overdue box's only
+     while it is open, so it never reaches a task out of sight in the box. */
+  const shownOpenIds = useMemo(() => {
+    const hidden = overdueShown ? null : new Set(overdueTasks.map((t) => t.id));
+    return filteredTasks.filter((t) => !t.completed && !hidden?.has(t.id)).map((t) => t.id);
+  }, [filteredTasks, overdueTasks, overdueShown]);
 
   /* The open category, for its header */
   const activeCategory = useMemo(
@@ -1348,6 +1423,9 @@ export default function TasksPage() {
           flex: 1,
           minWidth: 0,
           overflowY: "auto",
+          /* The scrollbar's room kept whether or not the list is long enough
+             to need one, so opening Overdue never moves the page sideways. */
+          scrollbarGutter: "stable",
           /* Gutters belong inside the scroller, so the scrollbar stays outside
              them and against the screen. */
           padding: phone
@@ -1404,16 +1482,8 @@ export default function TasksPage() {
               setCreateInitialDueDate(todayStr());
               setCreateModalOpen(true);
             }}
-            className={`${controls.primary} flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold`}
-            style={{
-              marginLeft: -8,
-              flexShrink: 0,
-              borderRadius: "var(--ui-radius-item)",
-              border: "1px solid transparent",
-              background: "var(--c-accent-strong)",
-              color: "var(--c-on-accent)",
-              cursor: "pointer",
-            }}
+            className={controls.addTask}
+            style={{ marginLeft: -8 }}
           >
             <Plus size={14} weight="bold" aria-hidden="true" />
             Add task
@@ -1424,10 +1494,11 @@ export default function TasksPage() {
             onClick={() => setInsightsOpen(true)}
             aria-haspopup="dialog"
             aria-expanded={insightsOpen}
-            className="insights-frost flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold"
+            className="insights-frost flex items-center gap-1.5 px-3.5 text-xs font-semibold"
             style={{
               marginLeft: -8,
               flexShrink: 0,
+              height: 32,
               borderRadius: "var(--ui-radius-item)",
               cursor: "pointer",
               transition: "background var(--motion-base) var(--ease-out), border-color var(--motion-base) var(--ease-out)",
@@ -1463,14 +1534,6 @@ export default function TasksPage() {
           />
         </div>
 
-        {persistenceError && (
-          <StatusBanner
-            message={persistenceError}
-            onDismiss={() => setPersistenceError("")}
-            style={{ marginBottom: 16 }}
-          />
-        )}
-
         <Separator phone={phone} />
 
         {/*
@@ -1491,7 +1554,7 @@ export default function TasksPage() {
             trailing={activeCategory ? (
               <GoalActions
                 category={activeCategory}
-                shownOpenIds={filteredTasks.filter((t) => !t.completed).map((t) => t.id)}
+                shownOpenIds={shownOpenIds}
                 onMarkDone={handleMarkDone}
               />
             ) : undefined}
@@ -1589,34 +1652,39 @@ export default function TasksPage() {
         back untouched.
       */}
       {insightsOpen && (
-        <Modal onClose={() => setInsightsOpen(false)} maxWidth={760} label="Task insights">
-          <div style={{ padding: "18px 20px 20px" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
-              <h2 style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "var(--ui-type-title-sm)", fontWeight: 700, color: "var(--c-text-1)" }}>
-                <Lightbulb size={17} weight="fill" style={{ color: "var(--c-electric)" }} />
-                Insights
-              </h2>
-              <button
-                type="button"
-                className="ui-hover-tag"
-                onClick={() => setInsightsOpen(false)}
-                aria-label="Close insights"
-                data-autofocus
-                style={{
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  width: 28, height: 28, background: "transparent", border: "none",
-                  cursor: "pointer", color: "var(--c-text-3)",
-                  transition: "background var(--motion-base) var(--ease-out)",
-                }}
-              >
-                <X size={15} />
-              </button>
-            </div>
-            <StatsPanel tasks={tasks} categories={categories} />
-          </div>
-        </Modal>
+        <DialogCard
+          label="Insights"
+          heading={(
+            <>
+              <Lightbulb size={13} weight="fill" style={{ color: "var(--c-electric)" }} aria-hidden="true" />
+              Insights
+            </>
+          )}
+          onClose={() => setInsightsOpen(false)}
+          maxWidth={760}
+          fit
+        >
+          <StatsPanel tasks={tasks} categories={categories} />
+        </DialogCard>
       )}
 
+      {/* What went wrong, and Undo for a tick: over the page, at its foot, wherever the list is scrolled. */}
+      <ToastStack>
+        {undoable && (
+          <Toast
+            message="Done"
+            action={{
+              label: "Undo",
+              onClick: () => {
+                const { id } = undoable;
+                setUndoable(null);
+                void handleToggle(id, false);
+              },
+            }}
+          />
+        )}
+        {persistenceError && <Toast tone="error" message={persistenceError} onClose={() => setPersistenceError("")} />}
+      </ToastStack>
     </div>
   );
 }

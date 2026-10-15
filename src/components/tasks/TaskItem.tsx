@@ -2,7 +2,8 @@
 
 import { ButtonHTMLAttributes, CSSProperties, MouseEvent, useEffect, useRef, useState } from "react";
 import { DotsSixVertical } from "@phosphor-icons/react";
-import { useTimeFormat, formatTime } from "@/lib/time-format";
+import { useTimeFormat, formatTime, type TimeFormatPref } from "@/lib/time-format";
+import { formatFieldDate } from "@/components/form/DateField";
 import { priorityFill, priorityLine } from "@/lib/styles";
 import { Task, PRIORITY_COLORS } from "@/types/task";
 import { Category } from "@/types/category";
@@ -25,18 +26,20 @@ import { matchesWords } from "@/lib/text-match";
 const COMPLETE_MS = 520;
 const COMPLETE_MS_REDUCED = 120;
 
-function formatDueDate(date: string | null, time: string | null, timeFmt: "12h" | "24h"): string | null {
+/**
+ * A task's due day and time as the row and the task card both write it:
+ * "Thu 15 Oct, 9:00 AM", with the year only when it is not this one
+ * ("Mon 4 Jan 2027"), as the card's date field writes the day.
+ */
+export function formatDue(date: string | null, time: string | null, timeFmt: TimeFormatPref): string | null {
   if (!date) return null;
-  const d = new Date(date + "T00:00:00");
-  const day = d.getDate();
-  const month = d.toLocaleString("en-US", { month: "short" });
-  if (time) {
-    const parts = time.split(":");
-    const timeDate = new Date(date + "T00:00:00");
-    timeDate.setHours(parseInt(parts[0], 10), parseInt(parts[1], 10), 0, 0);
-    return `${day} ${month} ${formatTime(timeDate, timeFmt)}`;
-  }
-  return `${day} ${month}`;
+  const day = formatFieldDate(date);
+  if (!time) return day;
+  const [hours, minutes] = time.split(":").map(Number);
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return day;
+  const at = new Date(`${date}T00:00:00`);
+  at.setHours(hours, minutes, 0, 0);
+  return `${day}, ${formatTime(at, timeFmt)}`;
 }
 
 /*
@@ -88,7 +91,7 @@ export default function TaskItem({
   const timeFmt = useTimeFormat();
   const completed = task.completed;
   const color = PRIORITY_COLORS[task.priority];
-  const formattedDate = formatDueDate(task.due_date, task.due_time, timeFmt);
+  const formattedDate = formatDue(task.due_date, task.due_time, timeFmt);
   const dateStyle = getDueDateStyle(task.due_date, todayKey);
   const category = categories.find((c) => c.id === task.category_id) ?? null;
 
@@ -130,7 +133,7 @@ export default function TaskItem({
    * the row fades, and then onUpdate saves it and the list drops it. If the
    * save fails the page puts the task back and says so.
    *
-   * Unticking a done task (in Historical) is immediate: there is nothing to
+   * Unticking a done task (in Done) is immediate: there is nothing to
    * celebrate and nothing to watch.
    */
   const [completing, setCompleting] = useState(false);
@@ -149,7 +152,7 @@ export default function TaskItem({
     }
   }, []);
 
-  function toggleComplete(e: MouseEvent) {
+  function toggleComplete(e: MouseEvent<HTMLButtonElement>) {
     e.stopPropagation();
     if (completing) return;
     if (task.completed) {
@@ -157,7 +160,9 @@ export default function TaskItem({
       return;
     }
     setCompleting(true);
-    celebrate({ x: e.clientX, y: e.clientY });
+    /* From the keyboard a click has no pointer: the burst comes from the circle. */
+    const box = e.currentTarget.getBoundingClientRect();
+    celebrate(e.detail === 0 ? { x: box.left + box.width / 2, y: box.top + box.height / 2 } : { x: e.clientX, y: e.clientY });
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     pending.current = setTimeout(() => {
       pending.current = null;
@@ -249,10 +254,12 @@ export default function TaskItem({
               {...dragAttributes}
               {...dragListeners}
               aria-label={`Reorder ${task.title}`}
+              /* 32px square for a thumb, drawn in the 16px the grip had. */
               style={{
-                width: 24,
+                width: 32,
                 height: 32,
-                marginLeft: -8,
+                marginLeft: -12,
+                marginRight: -4,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -273,13 +280,15 @@ export default function TaskItem({
           Priority circle checkbox. The button is 38px square and pulled back
           to the circle's 18px footprint by its margin, so the row lays out
           exactly as before while a thumb gets a target it can hit: the bare
-          circle was an 18px target, the smallest control on a phone.
+          circle was an 18px target, the smallest control on a phone. A
+          checkbox to a screen reader, ticked or not, named for its task.
         */}
         <button
           type="button"
+          role="checkbox"
           onClick={toggleComplete}
-          aria-label={completed ? `Mark ${task.title} incomplete` : `Mark ${task.title} complete`}
-          aria-pressed={shownDone}
+          aria-label={`Done: ${task.title}`}
+          aria-checked={shownDone}
           className={`${controls.checkButton} flex-shrink-0 flex items-center justify-center`}
           style={{ width: 38, height: 38, margin: -10, padding: 0, border: "none", background: "transparent" }}
         >

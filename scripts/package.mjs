@@ -45,6 +45,8 @@ cpSync(path.join(ROOT, ".next", "static"), path.join(APP, ".next", "static"), { 
 for (const file of ["scripts/start.mjs", "Start Todoer.command", "Start Todoer.cmd", "README.md", "LICENSE.md"]) {
   cpSync(path.join(ROOT, file), path.join(APP, file));
 }
+// publik's app token reaches the download only through next.config.ts's tracing; a change there must not drop it unseen.
+if (!existsSync(path.join(APP, "publik-app-token.txt"))) stop("the download would have no publik-app-token.txt (next.config.ts, outputFileTracingIncludes).");
 // Copied beside the server by Next, read by nothing that runs.
 for (const file of ["tsconfig.json", "extract.config.json"]) rmSync(path.join(APP, file), { force: true });
 

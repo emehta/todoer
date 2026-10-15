@@ -5,8 +5,8 @@ import { NextResponse, type NextRequest } from "next/server";
  *
  * - A request whose Host is not this computer's own loopback name is a page
  *   elsewhere pointing a name of its own at it (DNS rebinding): refused.
- * - The app has one address, http://localhost:PORT, the one Publik's guides
- *   open: a page opened on 127.0.0.1 or [::1] is moved there, so there is one
+ * - The app has one address, http://localhost:PORT, the one npm start
+ *   opens: a page opened on 127.0.0.1 or [::1] is moved there, so there is one
  *   sign-in and one saved session (the browser keeps them per address). Not
  *   with an HTTP redirect: Next reads every loopback name as "localhost",
  *   takes a redirect between them for one to its own origin, and cuts its

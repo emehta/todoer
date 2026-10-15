@@ -9,9 +9,13 @@
  * that defaulted to publik would spend someone's money without asking.
  */
 
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { AiError, chatJson, checkGroqKey, transcribe } from "@/lib/ai";
-import { GROQ, describeFailure, keyHint, looksLikeGroqKey, publikSpec, resolveProvider } from "@/lib/ramble/providers";
-import { balanceLine, formatBalance } from "@/lib/publik";
+import { BAD_ANSWER, GROQ, describeFailure, keyHint, looksLikeGroqKey, publikSpec, resolveProvider } from "@/lib/ramble/providers";
+import { appToken, balanceLine, formatBalance, readWallet } from "@/lib/publik";
+import { checkRambleReply } from "@/lib/ramble/prompt";
 import { readRambleReply, readRambleSetup } from "@/lib/ramble/request";
 
 const failures = [];
@@ -100,6 +104,8 @@ script = [reply("not json"), reply("still not json")];
 let thrown = null;
 try { await chatJson(caller, "system", "user", schema); } catch (error) { thrown = error; }
 check("two unreadable answers fail with words, not a crash", thrown instanceof AiError && thrown.status === 502, true);
+check("in one plain line, the same for every answer that cannot be read",
+  [thrown?.message, checkRambleReply(null, { goals: [], openTasks: [] }).message], [BAD_ANSWER, BAD_ANSWER]);
 
 script = [{ status: 402, body: { error: { message: "Out of credit.", top_up_url: "https://publikhq.com/add" } } }];
 thrown = null;
@@ -114,7 +120,25 @@ check("a 429 says when to try again", thrown?.message, "Groq's free limit is use
 script = [new TypeError("fetch failed")];
 thrown = null;
 try { await chatJson(caller, "s", "u", schema); } catch (error) { thrown = error; }
-check("no network is a 504 that names the provider", [thrown?.status, thrown?.message], [504, "Groq could not be reached."]);
+check("no network is a 504 that names the provider", [thrown?.status, thrown?.message], [504, "Could not reach Groq. Check you're online, then try again."]);
+
+{
+  /* Ramble's Cancel: the page's request is gone, and the provider call stops with it. */
+  const cancel = new AbortController();
+  let seen = null;
+  const before = globalThis.fetch;
+  globalThis.fetch = (_url, init) => new Promise((_resolve, reject) => {
+    seen = init.signal;
+    init.signal.addEventListener("abort", () => reject(init.signal.reason));
+  });
+  const pending = chatJson(caller, "s", "u", schema, cancel.signal).catch((error) => error);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  cancel.abort();
+  const cancelled = await pending;
+  globalThis.fetch = before;
+  check("a cancelled ramble stops the provider's call", seen?.aborted, true);
+  check("and is passed on as the cancel, not as a provider failure", cancelled instanceof AiError, false);
+}
 
 calls.length = 0;
 script = [{ body: { text: "Buy milk." } }];
@@ -135,6 +159,44 @@ script = [{ status: 401, body: {} }];
 check("checking a refused Groq key", await checkGroqKey(GROQ.baseUrl, "gsk_x"), "refused");
 script = [new TypeError("fetch failed")];
 check("checking with no network", await checkGroqKey(GROQ.baseUrl, "gsk_x"), "unreachable");
+script = [{ status: 429, body: {} }, { status: 503, body: {} }];
+check("Groq's rate limit and its own failures are told apart from no network",
+  [await checkGroqKey(GROQ.baseUrl, "gsk_x"), await checkGroqKey(GROQ.baseUrl, "gsk_x")], ["busy", "down"]);
+
+// ─── publik's wallet ───
+const credential = { key: "pk_test", base_url: "https://example.test/v1", install_id: "i", claim_url: null, claim_state: "anonymous", add_credit_url: null, cost_sentence: null, balance_micros: null };
+script = [{ status: 200, body: { balance_micros: 47_794, claim_state: "claimed" } }];
+check("a wallet that answers gives the balance", await readWallet(credential), { balanceMicros: 47_794, claimState: "claimed", addCreditUrl: null, refused: false });
+script = [{ status: 401, body: {} }, { status: 403, body: {} }];
+check("a key publik refuses is its own state, for Set up again",
+  [(await readWallet(credential)).refused, (await readWallet(credential)).refused], [true, true]);
+script = [{ status: 500, body: {} }, new TypeError("fetch failed")];
+check("a wallet that fails otherwise is only unknown",
+  [(await readWallet(credential)).refused, (await readWallet(credential)).refused], [false, false]);
+
+// ─── publik's app token: the app's own folder, never one above it ───
+{
+  const top = mkdtempSync(path.join(tmpdir(), "todoer-token-"));
+  const app = path.join(top, "todoer");
+  mkdirSync(app);
+  const cwd = process.cwd();
+  const envToken = process.env.PUBLIK_APP_TOKEN;
+  delete process.env.PUBLIK_APP_TOKEN;
+  try {
+    writeFileSync(path.join(top, "publik-app-token.txt"), "pat_above\n");
+    process.chdir(app);
+    check("a token in a folder above the app is not read", appToken(), "");
+    writeFileSync(path.join(app, "publik-app-token.txt"), "pat_own\n");
+    check("the app's own token is", appToken(), "pat_own");
+    process.env.PUBLIK_APP_TOKEN = "pat_env";
+    check("PUBLIK_APP_TOKEN wins", appToken(), "pat_env");
+  } finally {
+    process.chdir(cwd);
+    if (envToken === undefined) delete process.env.PUBLIK_APP_TOKEN;
+    else process.env.PUBLIK_APP_TOKEN = envToken;
+    rmSync(top, { recursive: true, force: true });
+  }
+}
 
 // ─── What the card does with the route's answer ───
 const answer = (status, body) => readRambleReply(status, status < 400, body);
@@ -161,7 +223,7 @@ check("nor can Ramble not set up, or a balance run out",
 /* Asked before the microphone is: whether a ramble would run. */
 check("set up, a ramble runs", readRambleSetup(true, { ready: true }), null);
 check("not set up, the route's own words for it",
-  readRambleSetup(true, { ready: false, error: "Choose how Ramble listens in Settings.", code: "choose" }), "Choose how Ramble listens in Settings.");
+  readRambleSetup(true, { ready: false, error: "Choose what Ramble runs on in Settings.", code: "choose" }), "Choose what Ramble runs on in Settings.");
 check("a failed question says neither, so a take is tried as usual",
   [readRambleSetup(false, { error: "Sign in first." }), readRambleSetup(true, null), readRambleSetup(true, { ready: false })], [undefined, undefined, undefined]);
 

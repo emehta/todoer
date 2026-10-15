@@ -17,18 +17,13 @@ import { CSS } from "@dnd-kit/utilities";
 import type { Category } from "@/types/category";
 import GoalForm, { type GoalFormValues } from "./GoalForm";
 import DeleteGoalDialog from "./DeleteGoalDialog";
+import Popover from "@/components/Popover";
 import Tooltip from "@/components/Tooltip";
 import { useScrollEdge } from "@/lib/use-scroll-edge";
-import { SELECTED } from "@/lib/styles";
+import { MENU_PANEL, SELECTED } from "@/lib/styles";
 import { goalChanges, type GoalFields } from "@/lib/task-changes";
 import controls from "./TaskControls.module.css";
 import { contentColor } from "@/lib/content-palette";
-
-interface ContextMenu {
-  x: number;
-  y: number;
-  category: Category;
-}
 
 interface Props {
   categories: Category[];
@@ -103,7 +98,11 @@ export default function CategoryTabs({
   onReorder,
   trailing,
 }: Props) {
-  const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
+  /* The goal whose menu is open, from its ⋯, a right-click or the menu key. */
+  const [menuFor, setMenuFor] = useState<Category | null>(null);
+  /* What the menu hangs from, and where focus goes back to when it closes:
+     the ⋯, or the tab itself for a right-click or the menu key. */
+  const menuAnchor = useRef<HTMLElement | null>(null);
   /* Which goal form is open: a new goal from +, or one goal from its ⋯. */
   const [goalForm, setGoalForm] = useState<{ mode: "new" } | { mode: "edit"; category: Category } | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Category | null>(null);
@@ -164,36 +163,33 @@ export default function CategoryTabs({
     selected?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [active]);
 
-  // Close context menu on any click
-  useEffect(() => {
-    if (!contextMenu) return;
-    function close() { setContextMenu(null); }
-    document.addEventListener("click", close);
-    return () => document.removeEventListener("click", close);
-  }, [contextMenu]);
-
-  /* GoalForm closes itself on Escape; this is the tab menu's. */
-  useEffect(() => {
-    if (!contextMenu) return;
-
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key !== "Escape") return;
-      setContextMenu(null);
-    }
-
-    document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
-  }, [contextMenu]);
-
-  function openEdit(cat: Category) {
-    setGoalForm({ mode: "edit", category: cat });
-    setContextMenu(null);
+  function openMenu(category: Category, anchor: HTMLElement) {
+    menuAnchor.current = anchor;
+    setMenuFor(category);
   }
 
-  function handleContextMenu(e: React.MouseEvent, category: Category) {
+  /* Focus back on what the menu hung from first, so the card it opens hands
+     focus back there when it closes, not to the page. */
+  function fromMenu(open: () => void) {
+    menuAnchor.current?.focus({ preventScroll: true });
+    setMenuFor(null);
+    open();
+  }
+
+  function handleContextMenu(e: React.MouseEvent<HTMLButtonElement>, category: Category) {
     e.preventDefault();
     if (dragInProgress.current) return;
-    setContextMenu({ x: e.clientX, y: e.clientY, category });
+    openMenu(category, e.currentTarget);
+  }
+
+  /* Up and down the menu's items, as a menu does. */
+  function onMenuKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+    event.preventDefault();
+    const items = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]'));
+    const index = items.indexOf(document.activeElement as HTMLElement);
+    const step = event.key === "ArrowDown" ? 1 : -1;
+    items[(index + step + items.length) % items.length]?.focus();
   }
 
   function handleCategoryKeyDown(e: React.KeyboardEvent<HTMLButtonElement>, category: Category) {
@@ -219,8 +215,7 @@ export default function CategoryTabs({
     }
     if (e.key !== "ContextMenu" && !(e.shiftKey && e.key === "F10")) return;
     e.preventDefault();
-    const bounds = e.currentTarget.getBoundingClientRect();
-    setContextMenu({ x: bounds.left, y: bounds.bottom + 4, category });
+    openMenu(category, e.currentTarget);
   }
 
   return (
@@ -236,7 +231,7 @@ export default function CategoryTabs({
           type="button"
           onClick={() => onChange(null)}
           aria-pressed={active === null}
-          className={`${controls.tab} ${active === null ? controls.active : ""} rounded-lg px-3.5 py-1.5 text-xs font-medium`}
+          className={`${controls.tab} ${active === null ? controls.active : ""} rounded-lg px-3.5 py-[7px] text-xs font-medium`}
           style={active === null
             ? SELECTED
             : { background: "transparent", color: "var(--c-text-3)", border: "1px solid var(--c-border-sub)" }}
@@ -287,14 +282,14 @@ export default function CategoryTabs({
               type="button"
               aria-label={`Manage the ${cat.name} goal`}
               aria-haspopup="menu"
-              aria-expanded={contextMenu?.category.id === cat.id}
+              aria-expanded={menuFor?.id === cat.id}
               onClick={(event) => {
                 event.stopPropagation();
                 /* A drag can start on these dots too; its mouseup is not a
                    request for the menu. */
                 if (justDragged.current) return;
-                const bounds = event.currentTarget.getBoundingClientRect();
-                setContextMenu({ x: bounds.left, y: bounds.bottom + 8, category: cat });
+                if (menuFor?.id === cat.id) setMenuFor(null);
+                else openMenu(cat, event.currentTarget);
               }}
               className={`${controls.categoryChipMenu} flex items-center justify-center`}
               /*
@@ -330,8 +325,8 @@ export default function CategoryTabs({
             aria-expanded={goalForm?.mode === "new"}
             className={`${controls.iconButton} flex items-center justify-center`}
             style={{
-              width: 30,
-              height: 30,
+              width: 32,
+              height: 32,
               color: "var(--c-text-4)",
               borderRadius: "var(--ui-radius-md)",
               border: "1px solid var(--c-border-sub)",
@@ -343,44 +338,38 @@ export default function CategoryTabs({
         </div>
       </div>
 
-      {/* Right-click context menu */}
-      {contextMenu && (
-        <div
-          role="menu"
-          aria-label={`${contextMenu.category.name} goal actions`}
-          style={{
-            position: "fixed",
-            left: Math.max(8, Math.min(contextMenu.x, window.innerWidth - 168)),
-            top: Math.max(8, Math.min(contextMenu.y, window.innerHeight - 96)),
-            background: "var(--page-bg)",
-            border: "1px solid var(--c-border)",
-          }}
-          className="z-[200] w-40 rounded-lg py-1 shadow-xl"
+      {/* The goal's menu: Edit goal and Delete goal. */}
+      {menuFor && (
+        <Popover
+          anchorRef={menuAnchor}
+          onClose={() => setMenuFor(null)}
+          preferredPlacement="bottom"
+          ariaLabel={`${menuFor.name} goal actions`}
+          style={{ ...MENU_PANEL, width: 160, padding: "4px 0" }}
         >
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => openEdit(contextMenu.category)}
-            className={`${controls.action} flex w-full items-center gap-2 px-3 py-2 text-left text-sm`}
-            style={{ color: "var(--c-text-2)" }}
-          >
-            <PencilSimple size={13} />
-            Edit goal
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              setPendingDelete(contextMenu.category);
-              setContextMenu(null);
-            }}
-            className={`${controls.action} ${controls.danger} flex w-full items-center gap-2 px-3 py-2 text-left text-sm`}
-            style={{ color: "var(--c-danger)" }}
-          >
-            <Trash size={13} />
-            Delete goal
-          </button>
-        </div>
+          <div role="menu" aria-label={`${menuFor.name} goal actions`} onKeyDown={onMenuKeyDown}>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => { const goal = menuFor; fromMenu(() => setGoalForm({ mode: "edit", category: goal })); }}
+              className={`${controls.action} flex w-full items-center gap-2 px-3 py-2 text-left text-sm`}
+              style={{ color: "var(--c-text-2)" }}
+            >
+              <PencilSimple size={13} />
+              Edit goal
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => { const goal = menuFor; fromMenu(() => setPendingDelete(goal)); }}
+              className={`${controls.action} ${controls.danger} flex w-full items-center gap-2 px-3 py-2 text-left text-sm`}
+              style={{ color: "var(--c-danger)" }}
+            >
+              <Trash size={13} />
+              Delete goal
+            </button>
+          </div>
+        </Popover>
       )}
 
       {pendingDelete && (

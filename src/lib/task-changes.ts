@@ -2,11 +2,11 @@
  * What an edit to a task, or to a goal, actually changed.
  *
  * A card saves only the fields that differ from the task or goal as it
- * opened, so a tab left open since the morning never writes its old
- * description back over one changed on the phone since, when all it was
- * asked to change was the priority. The task card also asks before Escape or
- * a press outside throws away a card that differs from what it opened with.
- * Both questions are this one.
+ * opened, so a card left open while the task is changed on the phone never
+ * writes its old description back over the phone's, when all it was asked
+ * to change was the priority. The task and goal cards also ask before
+ * Escape, the X or a press outside throws away a card that differs from
+ * what it opened with. Both questions are this one.
  *
  * Pure and exported so `scripts/task-changes.test.mjs` can hold it to that.
  */

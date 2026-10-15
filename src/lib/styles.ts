@@ -1,5 +1,4 @@
 import type { CSSProperties } from "react";
-import { contentColor } from "@/lib/content-palette";
 
 /**
  * Flatter inset card, for cards nested inside another card where a second drop
@@ -134,21 +133,6 @@ export const UNDER_DOCK_MARGIN = `calc(-1 * ${DOCK_ROOM})`;
  * its own scroller's content below it.
  */
 export const HEADER_ROOM = "var(--app-header-height, 56px)";
-
-/**
- * An event's block: a tint of its colour over the surface. A finished event
- * takes half the tint. See --event-fill in globals.css. The colour is the
- * theme's version of it (lib/content-palette), so these take the stored one.
- */
-export function eventFill(color: string, past = false): string {
-  const share = past ? "var(--event-fill-past, 15%)" : "var(--event-fill, 30%)";
-  return `color-mix(in srgb, ${contentColor(color)} ${share}, var(--c-surface))`;
-}
-
-/** Text on an event block: its colour mixed with the theme's own ink. */
-export function eventInk(color: string): string {
-  return `color-mix(in srgb, ${contentColor(color)} var(--event-ink, 14%), var(--c-text-1))`;
-}
 
 /*
  * An open task in its priority's colour (`PRIORITY_COLORS`): the fill and

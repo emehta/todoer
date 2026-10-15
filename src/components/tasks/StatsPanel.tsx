@@ -12,7 +12,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Task, PRIORITIES, PRIORITY_COLORS, PRIORITY_LABELS } from "@/types/task";
-import { GLASS_CARD_INSET } from "@/lib/styles";
+import { GLASS_CARD_INSET, SELECTED } from "@/lib/styles";
 import { usePhone } from "@/lib/use-viewport-width";
 import { Category } from "@/types/category";
 import controls from "./TaskControls.module.css";
@@ -30,7 +30,7 @@ const emptySubscribe = () => () => {};
 const RANGES = [
   { id: "week", label: "Week", short: "Week" },
   { id: "month", label: "Month", short: "Month" },
-  { id: "ytd", label: "YTD", short: "YTD" },
+  { id: "ytd", label: "This year", short: "This year" },
   { id: "1y", label: "1 year", short: "1Y" },
   { id: "3y", label: "3 years", short: "3Y" },
   { id: "5y", label: "5 years", short: "5Y" },
@@ -114,8 +114,9 @@ function getChartData(tasks: Task[], categories: Category[], range: RangeId): Bu
       const month = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const key = `${month.getFullYear()}-${month.getMonth()}`;
       order.push(key);
+      /* January carries its year, "Jan '26", where a new year starts on the axis. */
       const label = month.getMonth() === 0
-        ? `${MONTHS_SHORT[month.getMonth()]} ${String(month.getFullYear()).slice(2)}`
+        ? `${MONTHS_SHORT[month.getMonth()]} '${String(month.getFullYear()).slice(2)}`
         : MONTHS_SHORT[month.getMonth()];
       buckets.set(key, emptyBucket(label));
     }
@@ -326,12 +327,13 @@ export default function StatsPanel({ tasks, categories }: Props) {
                 onClick={() => setRange(option.id)}
                 aria-pressed={range === option.id}
                 aria-label={phone ? option.label : undefined}
-                className={`${controls.rangeButton} ${range === option.id ? controls.active : ""} rounded-md px-2 py-1 text-xs font-medium whitespace-nowrap`}
-                style={
-                  range === option.id
-                    ? { background: "var(--c-border)", color: "var(--c-text-1)" }
-                    : { color: "var(--c-text-3)" }
-                }
+                className={`${controls.rangeButton} ${range === option.id ? controls.active : ""} rounded-md px-2 text-xs font-medium whitespace-nowrap`}
+                style={{
+                  minHeight: 32,
+                  ...(range === option.id
+                    ? SELECTED
+                    : { background: "transparent", border: "1px solid transparent", color: "var(--c-text-3)" }),
+                }}
               >
                 {phone ? option.short : option.label}
               </button>
@@ -340,7 +342,7 @@ export default function StatsPanel({ tasks, categories }: Props) {
         </div>
 
         {chartReady ? (
-          <div role="img" aria-label={`Tasks added per period over the selected ${range} range, split by goal`}>
+          <div role="img" aria-label={`Tasks added by goal, ${RANGES.find((option) => option.id === range)?.label.toLowerCase()}`}>
             <ResponsiveContainer width="100%" height={220} minWidth={0} minHeight={220}>
               <BarChart
                 data={viewData}
@@ -417,16 +419,21 @@ export default function StatsPanel({ tasks, categories }: Props) {
                     key={entry.key}
                     onClick={() => togglePick(entry.key)}
                     aria-pressed={filtering && activePicks.includes(entry.key)}
-                    className="ui-hover-control flex items-center gap-2 text-xs font-medium"
+                    className="ui-choice flex items-center gap-2 text-xs font-medium"
                     style={{
-                      padding: "4px 8px",
-                      border: "1px solid transparent",
+                      minHeight: 32,
+                      padding: "0 8px",
                       borderRadius: "var(--ui-radius-sm)",
-                      background: "transparent",
-                      color: on ? "var(--c-text-2)" : "var(--c-text-4)",
-                      opacity: on ? 1 : 0.55,
                       cursor: "pointer",
                       transition: "opacity var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out)",
+                      ...(filtering && activePicks.includes(entry.key)
+                        ? SELECTED
+                        : {
+                            background: "transparent",
+                            border: "1px solid transparent",
+                            color: on ? "var(--c-text-2)" : "var(--c-text-4)",
+                            opacity: on ? 1 : 0.55,
+                          }),
                     }}
                   >
                     <span className="rounded-full" style={{ width: 10, height: 10, background: contentColor(entry.color), display: "inline-block", flexShrink: 0 }} />
@@ -440,7 +447,7 @@ export default function StatsPanel({ tasks, categories }: Props) {
                   type="button"
                   onClick={() => setPicked([])}
                   className="ui-hover-control text-xs font-medium"
-                  style={{ padding: "4px 8px", border: "1px solid var(--c-border-sub)", borderRadius: "var(--ui-radius-sm)", background: "transparent", color: "var(--c-text-3)", cursor: "pointer" }}
+                  style={{ minHeight: 32, padding: "0 8px", border: "1px solid var(--c-border-sub)", borderRadius: "var(--ui-radius-sm)", background: "transparent", color: "var(--c-text-3)", cursor: "pointer" }}
                 >
                   Show all
                 </button>
@@ -452,9 +459,8 @@ export default function StatsPanel({ tasks, categories }: Props) {
 
       {/* Priority breakdown */}
       <div className="mb-4 rounded-xl p-4" style={GLASS_CARD_INSET}>
-        <p className="mb-3 font-semibold uppercase tracking-wider" style={{ color: "var(--c-text-4)", fontSize: "var(--ui-type-caption)" }}>
-          By Priority
-        </p>
+        {/* Named as the chart's card is: a quiet line, in words. */}
+        <p className="mb-3 text-xs" style={{ color: "var(--c-text-3)" }}>By priority</p>
         {/*
           Four across rather than four rows. A 120px minimum lands all four on
           one line at the panel's full width and folds to two by two on a

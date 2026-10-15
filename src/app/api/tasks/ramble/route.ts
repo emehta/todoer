@@ -58,7 +58,8 @@ export async function GET(request: Request) {
  * It runs on the AI the owner chose in Settings: their own Groq key, or
  * publik. With none chosen, it says so with `code`, and the card links to
  * Settings. A publik balance that has run out comes back as a 402 with its
- * one link, `topUpUrl`.
+ * one link, `topUpUrl`. Cancel on the card ends the request, and the
+ * provider calls are passed its signal, so they stop with it.
  */
 export async function POST(request: Request) {
   try {
@@ -89,7 +90,7 @@ export async function POST(request: Request) {
     if (audio instanceof Blob) {
       if (audio.size === 0) return fail("The recording is empty.");
       if (audio.size > MAX_UPLOAD_BYTES) return fail("The recording is too long. Keep a ramble under three minutes.");
-      transcript = cleanTranscript(await transcribe(caller, audio, recordingFileName(audio.type), whisperPrompt(context)));
+      transcript = cleanTranscript(await transcribe(caller, audio, recordingFileName(audio.type), whisperPrompt(context), request.signal));
     } else if (typeof text === "string") {
       if (text.length > LIMITS.transcript) return fail("That is too much text for one ramble.");
       transcript = cleanTranscript(text);
@@ -103,7 +104,7 @@ export async function POST(request: Request) {
 
     let raw: unknown;
     try {
-      raw = await chatJson(caller, rambleSystemPrompt(context), transcript, rambleSchema(context));
+      raw = await chatJson(caller, rambleSystemPrompt(context), transcript, rambleSchema(context), request.signal);
     } catch (error) {
       if (error instanceof AiError) return aiFailure(error, transcript);
       throw error;
@@ -113,6 +114,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ transcript, tasks: reply.tasks }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
+    /* Cancelled on the card: the provider calls were stopped with it, and no one is waiting for an answer. */
+    if (request.signal.aborted) return new Response(null, { status: 499 });
     if (error instanceof AiError) return aiFailure(error, null);
     return fromError(error);
   }

@@ -72,8 +72,28 @@ export async function saveProvider(owner: Owner, provider: ProviderName | null):
   await writeSecret(owner, PROVIDER, provider);
 }
 
-export async function saveGroqKey(owner: Owner, key: string | null): Promise<void> {
-  await writeSecret(owner, GROQ_KEY, key);
+/**
+ * A change from Settings, the Groq key and the choice together, saved whole
+ * or not at all: should the second write fail, the first is put back.
+ */
+export async function saveRambleChange(
+  owner: Owner,
+  change: { groqKey?: string | null; provider?: ProviderName | null },
+): Promise<void> {
+  const writes: [string, unknown][] = [];
+  if ("groqKey" in change) writes.push([GROQ_KEY, change.groqKey ?? null]);
+  if ("provider" in change) writes.push([PROVIDER, change.provider ?? null]);
+  const before = await Promise.all(writes.map(([key]) => readSecret<unknown>(owner, key)));
+  let written = 0;
+  try {
+    for (const [key, value] of writes) {
+      await writeSecret(owner, key, value);
+      written += 1;
+    }
+  } catch (error) {
+    await Promise.all(writes.slice(0, written).map(([key], index) => writeSecret(owner, key, before[index]).catch(() => undefined)));
+    throw error;
+  }
 }
 
 /** What Settings shows. Never a key: only whether one is saved, and its last four characters. */
@@ -88,6 +108,8 @@ export interface RambleStatus {
     claimState: "anonymous" | "claimed" | null;
     claimUrl: string | null;
     addCreditUrl: string | null;
+    /** publik refused this computer's key: Settings offers to set it up again. */
+    refused: boolean;
   };
   disclosure: string;
 }
@@ -114,6 +136,7 @@ export async function rambleStatus(owner: Owner): Promise<RambleStatus> {
       claimState,
       claimUrl: credential?.claim_url ?? null,
       addCreditUrl: wallet?.addCreditUrl ?? credential?.add_credit_url ?? null,
+      refused: Boolean(wallet?.refused),
     },
     disclosure: DISCLOSURE,
   };

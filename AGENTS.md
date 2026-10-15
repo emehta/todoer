@@ -11,7 +11,7 @@ Todoer is a Next.js 16 app (App Router, TypeScript strict, Tailwind v4) that run
 ## publik API
 - Base URL: https://publikhq.com/api/v1 (OpenAI Chat Completions, Responses, Anthropic Messages)
 - Models: publik-fast, publik-balanced, publik-smart only; never a vendor model name
-- Transcription (POST /audio/transcriptions) takes model "whisper-1" (measured 14 Oct 2026); chat takes only the publik-* names
+- Transcription (POST /audio/transcriptions) takes model "whisper-1"; chat takes only the publik-* names
 - Key: per-install `pk_` from POST /installs, stored at the publik credential path; env PUBLIK_API_KEY / PUBLIK_API_BASE_URL override
 - App token: publik-app-token.txt (public by design, committed) or PUBLIK_APP_TOKEN
 - 402: show error.message plus error.top_up_url only

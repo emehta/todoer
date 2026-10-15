@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useRef, useState, type CSSProperties } from "react";
-import { Tag, TextAlignLeft, X } from "@phosphor-icons/react";
+import { TextAlignLeft, X } from "@phosphor-icons/react";
 import type { Category } from "@/types/category";
 import type { NewTask, Priority } from "@/types/task";
 import { PRIORITIES, PRIORITY_COLORS, PRIORITY_LABELS } from "@/types/task";
@@ -16,17 +16,17 @@ import Tooltip from "@/components/Tooltip";
 import formStyles from "@/components/form/form.module.css";
 import controls from "./TaskControls.module.css";
 import styles from "./Ramble.module.css";
-import NewGoalField, { FieldAlert, NEW_GOAL, goalNamed } from "./NewGoalField";
+import NewGoalField, { FieldAlert, NEW_GOAL, NEW_GOAL_OPTION, goalNamed } from "./NewGoalField";
 import RambleIcon from "./RambleIcon";
 import RambleWaveform, { type WaveMode } from "./RambleWaveform";
-import { DescriptionEditor } from "./TaskEditModal";
+import { DescriptionEditor, GOAL_ROW_COLUMNS } from "./TaskEditModal";
 import { MORPH, morph } from "./ramble-morph";
 import { useNudge } from "./useNudge";
 import { useTaskQuickDates } from "./useTaskQuickDates";
 import { usePhone } from "@/lib/use-viewport-width";
 import { useTimeFormat } from "@/lib/time-format";
 import { getErrorMessage } from "@/lib/error-utils";
-import type { RambleSource } from "@/lib/ramble/context";
+import { withClock, type RambleSource } from "@/lib/ramble/context";
 import { labelledDraftKey, rambleDrafts, type RambleDraft } from "@/lib/ramble/drafts";
 import { transcriptSentences } from "@/lib/ramble/prompt";
 import { startRecorder, type Recorder } from "@/lib/ramble/recorder";
@@ -67,6 +67,12 @@ interface Props {
   recorder: Recorder | null;
   /** Why Ramble cannot listen yet: the card opens on it, with Settings, and records nothing. */
   setupMessage: string | null;
+  /**
+   * Whether Ramble can listen, when the button was pressed before Todoer had
+   * said: the card waits for the answer before it says Listening, and opens
+   * on Settings instead should the answer be no.
+   */
+  setupCheck?: Promise<string | null | undefined>;
   source: RambleSource;
   categories: Category[];
   /** The goal the page is showing, for a task the model filed nowhere. */
@@ -92,7 +98,7 @@ interface Props {
  * card to what was heard, a sentence a line, the way back on its title line.
  * With Ramble not set up it opens on what to do in Settings instead.
  */
-export default function RambleCard({ recorder: firstRecorder, setupMessage, source, categories, fallbackGoalId, onAdd, onCreateGoal, onClose }: Props) {
+export default function RambleCard({ recorder: firstRecorder, setupMessage, setupCheck, source, categories, fallbackGoalId, onAdd, onCreateGoal, onClose }: Props) {
   const phone = usePhone();
   const timeFormat = useTimeFormat();
   const quickDates = useTaskQuickDates();
@@ -122,6 +128,8 @@ export default function RambleCard({ recorder: firstRecorder, setupMessage, sour
   const finishing = useRef(false);
   /* Closed while a ramble was being read: its answer, when it comes, is dropped. */
   const closed = useRef(false);
+  /* The ramble being read, which Cancel ends, on the server too. */
+  const reading = useRef<AbortController | null>(null);
   const cancelTimer = useRef<{ recorder: Recorder; timer: number } | null>(null);
   /* The latest send, for the timer's own at the take's limit. */
   const sendLatest = useRef<() => void>(() => {});
@@ -129,13 +137,30 @@ export default function RambleCard({ recorder: firstRecorder, setupMessage, sour
     sendLatest.current = () => { void send(); };
   });
 
-  /* Recording once the microphone says yes, or why it would not. */
+  /*
+   * Recording once the microphone says yes, or why it would not. A first
+   * take started before Todoer had said whether Ramble can listen is held,
+   * not Listening, until it has: a no lets the microphone go and opens on
+   * what to set up instead.
+   */
   useEffect(() => {
     if (!recorder) return;
     let live = true;
+    const check = recorder === firstRecorder ? setupCheck : undefined;
     recorder.ready.then(
-      () => {
+      async () => {
         if (!live) return;
+        if (check) {
+          recorder.pause();
+          const message = await check;
+          if (!live) return;
+          if (typeof message === "string") {
+            recorder.cancel();
+            setPhase({ kind: "failed", message, canRetry: false, action: { kind: "settings" } });
+            return;
+          }
+          recorder.resume();
+        }
         clock.current = startClock(monotonicNow());
         setElapsed(0);
         setPhase({ kind: "recording" });
@@ -145,7 +170,10 @@ export default function RambleCard({ recorder: firstRecorder, setupMessage, sour
       },
     );
     return () => { live = false; };
-  }, [recorder]);
+  }, [recorder, firstRecorder, setupCheck]);
+
+  /* A ramble still being read when the card goes is ended with it. */
+  useEffect(() => () => reading.current?.abort(), []);
 
   /*
    * The microphone is let go when the card goes, by any route. A tick late,
@@ -184,6 +212,9 @@ export default function RambleCard({ recorder: firstRecorder, setupMessage, sour
     return () => window.clearInterval(interval);
   }, [taking, recorder]);
 
+  /* What a failure offers, so focus moves when Settings turns it into Try again. */
+  const offered = phase.kind === "failed" ? phase.action?.kind ?? (phase.canRetry ? "retry" : "close") : null;
+
   /*
    * Where focus goes as the card changes: Send while recording, so Enter
    * sends; Keep while it asks, so Enter is the safe answer; otherwise the
@@ -202,7 +233,7 @@ export default function RambleCard({ recorder: firstRecorder, setupMessage, sour
     if (taking || phase.kind === "starting" || phase.kind === "reading") return;
     const card = document.querySelector<HTMLElement>(`[role="dialog"][aria-label="Ramble"]`);
     card?.querySelector<HTMLElement>("[data-autofocus]")?.focus({ preventScroll: true });
-  }, [phase.kind, view, recording, taking, askingDiscard]);
+  }, [phase.kind, offered, view, recording, taking, askingDiscard]);
 
   function pause() {
     if (!recording || !recorder) return;
@@ -221,14 +252,21 @@ export default function RambleCard({ recorder: firstRecorder, setupMessage, sour
 
   async function read(input: { audio: Blob } | { text: string }) {
     setPhase({ kind: "reading" });
-    const result = await requestRamble(input, source.context);
-    if (closed.current) return;
+    /* The clock as it is now, not as it was when the card opened: past
+       midnight is the next day, and "at 7" is read against now. */
+    const sent = withClock(source);
+    reading.current?.abort();
+    const cancel = new AbortController();
+    reading.current = cancel;
+    const result = await requestRamble(input, sent.context, cancel.signal);
+    if (reading.current === cancel) reading.current = null;
+    if (closed.current || cancel.signal.aborted) return;
     if (!result.ok) {
       if (result.transcript) setTranscript(result.transcript);
       setPhase({ kind: "failed", message: result.message, canRetry: result.retry && !result.action, action: result.action });
       return;
     }
-    const found = rambleDrafts(result.tasks, source, fallbackGoalId);
+    const found = rambleDrafts(result.tasks, sent, fallbackGoalId);
     if (found.length === 0) {
       setTranscript(result.transcript);
       setPhase({ kind: "failed", message: "No tasks were heard in that. Try saying what needs doing.", canRetry: false });
@@ -290,8 +328,20 @@ export default function RambleCard({ recorder: firstRecorder, setupMessage, sour
 
   function close() {
     closed.current = true;
+    reading.current?.abort();
     recorder?.cancel();
     onClose();
+  }
+
+  /*
+   * Settings, over the card rather than in place of it: the recording is
+   * kept, and once Ramble is set up there, Try again sends it (Record again
+   * when nothing was recorded yet).
+   */
+  function setUp() {
+    openSettings("ramble");
+    if (phase.kind !== "failed") return;
+    setPhase({ kind: "failed", message: phase.message, canRetry: true });
   }
 
   /*
@@ -462,7 +512,6 @@ export default function RambleCard({ recorder: firstRecorder, setupMessage, sour
       busy={phase.kind === "reading"}
       cardClassName={nudging ? controls.nudge : undefined}
       footer={footer}
-      closeLabel="Close Ramble"
       maxWidth={reviewing ? DIALOG_MAX_WIDTH : LISTENING_WIDTH}
       fit
       fadeEdges={reviewing}
@@ -548,7 +597,7 @@ export default function RambleCard({ recorder: firstRecorder, setupMessage, sour
               <>
                 <DialogButton variant="secondary" className={styles.tall} onClick={close}>Close</DialogButton>
                 {phase.action.kind === "settings" ? (
-                  <DialogButton variant="primary" className={styles.tall} data-autofocus onClick={() => { close(); openSettings("ramble"); }}>
+                  <DialogButton variant="primary" className={styles.tall} data-autofocus onClick={setUp}>
                     Open Settings
                   </DialogButton>
                 ) : (
@@ -669,7 +718,6 @@ function DraftRow({
   onSubmit: () => void;
   onEscape: () => void;
 }) {
-  const goal = categories.find((category) => category.id === draft.category_id) ?? null;
   const question = draft.timeQuestion;
   const goalMissing = attempted && !draft.category_id;
   /* The name typed under the picker's New goal, while it is open. */
@@ -736,7 +784,7 @@ function DraftRow({
           display: "grid",
           gridTemplateColumns: phone
             ? "repeat(2, minmax(0, 1fr))"
-            : "minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.05fr)",
+            : GOAL_ROW_COLUMNS,
           gap: phone ? 12 : 8,
         }}
       >
@@ -795,13 +843,12 @@ function DraftRow({
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <SelectField
                 ariaLabel="Goal"
-                icon={goal ? undefined : <Tag size={14} />}
                 placeholder={categories.length ? "Choose a goal" : "No goals yet"}
                 value={draft.category_id}
                 invalid={goalMissing}
                 options={[
                   ...categories.map((c) => ({ value: c.id, label: c.name, color: c.color })),
-                  { value: NEW_GOAL, label: "New goal" },
+                  NEW_GOAL_OPTION,
                 ]}
                 onChange={(next) => {
                   if (next === NEW_GOAL) setNewGoal({ name: "", busy: false, error: "" });

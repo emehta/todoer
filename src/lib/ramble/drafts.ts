@@ -204,9 +204,18 @@ export function resolveSpokenTime(
   return { time: null, question: { am: clock(am), pm: clock(pm) } };
 }
 
-/** The day a task is for: the one said when it is real and not past, else today. */
+/**
+ * How far ahead a day from the model may be. Further than this is a year
+ * misheard or made up, and the task is for today, as one with no day said
+ * is, rather than years out of sight.
+ */
+export const MAX_YEARS_AHEAD = 5;
+
+/** The day a task is for: the one said when it is real, not past and not too far ahead, else today. */
 export function resolveDate(date: string | null, today: string): string {
-  return date && isDateKey(date) && date >= today ? date : today;
+  if (!date || !isDateKey(date) || date < today) return today;
+  const [year, rest] = [Number(today.slice(0, 4)), today.slice(4)];
+  return date <= `${year + MAX_YEARS_AHEAD}${rest}` ? date : today;
 }
 
 /* ─── duplicates ─── */

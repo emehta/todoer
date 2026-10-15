@@ -23,6 +23,9 @@ const version = sql.match(/VALUES\s*\('todoer',\s*(\d+)\)/)?.[1];
 check("the version the SQL writes is the one the app asks for", Number(version), SCHEMA_VERSION);
 check("it runs as one transaction", [/^\s*BEGIN;/m.test(sql), /COMMIT;\s*$/.test(sql)], [true, true]);
 check("the version is written last, so a row there means everything ran", /INSERT INTO public\.schema_versions[\s\S]*COMMIT;\s*$/.test(sql) && !/INSERT INTO public\.schema_versions[\s\S]*CREATE /.test(sql), true);
+const guard = sql.slice(0, sql.indexOf("CREATE TABLE"));
+check("before it makes anything, it stops if a table by its names is another app's",
+  ["tasks", "categories"].every((name) => guard.includes(`to_regclass('public.${name}')`)) && /USING 'todoer'/.test(guard) && /RAISE EXCEPTION/.test(guard), true);
 check("it never drops, truncates or deletes anything", /\b(DROP\s+(TABLE|POLICY|INDEX|FUNCTION|SCHEMA|COLUMN|TRIGGER|VIEW)|TRUNCATE\s|DELETE\s+FROM|ALTER\s+TABLE\s+\S+\s+DROP)\b/i.test(sql), false);
 
 const tables = [...sql.matchAll(/CREATE TABLE (IF NOT EXISTS )?public\.(\w+)/g)];

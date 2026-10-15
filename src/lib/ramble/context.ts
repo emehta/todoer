@@ -71,6 +71,15 @@ export function localClock(now: Date = new Date()): Pick<RambleContext, "today" 
   return { today, nowMinutes: now.getHours() * 60 + now.getMinutes() };
 }
 
+/**
+ * The source with the clock read again, at the moment a ramble is sent: a
+ * card opened before midnight and sent after it is for the new day, and a
+ * bare "at 7" is read against the time it was said, not when the card opened.
+ */
+export function withClock(source: RambleSource, now: Date = new Date()): RambleSource {
+  return { ...source, context: { ...source.context, ...localClock(now) } };
+}
+
 function newestFirst<T extends Pick<Task, "created_at">>(list: readonly T[]): T[] {
   return [...list].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
 }

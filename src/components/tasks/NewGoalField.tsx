@@ -1,12 +1,16 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { Plus } from "@phosphor-icons/react";
 import type { Category } from "@/types/category";
 import { DialogButton } from "@/components/form/Dialog";
 import { TextField } from "@/components/form/fields";
 
 /** The goal picker's last option, which turns the field into a name box. */
 export const NEW_GOAL = "__new_goal__";
+
+/* With a plus, so it reads as an action and not as a goal of that name. */
+export const NEW_GOAL_OPTION = { value: NEW_GOAL, label: "New goal", icon: <Plus size={14} weight="bold" /> };
 
 /** The goal called `name`: the one already so named, or one made for it. Answers its id. */
 export async function goalNamed(
@@ -18,10 +22,10 @@ export async function goalNamed(
   return existing ? existing.id : (await create(name)).id;
 }
 
-/** A line under a field saying what is wrong with it. */
+/** A line under a field saying what is wrong with it, at the size of a label. */
 export function FieldAlert({ id, children }: { id?: string; children: ReactNode }) {
   return (
-    <span id={id} role="alert" style={{ color: "var(--c-danger)", fontSize: "var(--ui-type-micro)" }}>
+    <span id={id} role="alert" style={{ color: "var(--c-danger)", fontSize: "var(--ui-type-label)" }}>
       {children}
     </span>
   );

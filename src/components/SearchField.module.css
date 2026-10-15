@@ -1,15 +1,12 @@
 /*
- * The app's one search field, at the filter row's size or at the large size
- * where a page leads with search.
+ * The task list's search field, at the filter row's size.
  *
  * It is a field like every other, so it takes the edit cards' field look
  * (components/form): the surface, the field-weight border, square corners,
- * a border that firms on hover and goes to the theme's ink on focus. Before
- * this there were five search fields at 32, 36, 38 and 44px, two focus styles
- * (an accent border on three, a 2px accent ring on two) and four icon sizes.
+ * a border that firms on hover and goes to the theme's ink on focus.
  *
  * Here and not in globals.css, so the field ships with the component
- * (CLAUDE.md, Known Pitfalls: a stale globals.css chunk in production).
+ * (CONTRIBUTING.md: a stylesheet can arrive older than the page).
  */
 
 .field {
@@ -27,20 +24,9 @@
   transition: border-color var(--motion-fast, 120ms) var(--ease-out, ease-out);
 }
 
-/* A filter row's field: the height of the pickers beside it. A thumb's on a phone. */
-.field[data-size="md"] {
-  --search-height: 32px;
-}
-
-.field[data-size="md"][data-phone="true"] {
+/* The height of the pickers beside it (searchFieldHeight). A thumb's on a phone. */
+.field[data-phone="true"] {
   --search-height: 40px;
-}
-
-/* The page's own search, where it is the main control: Home. */
-.field[data-size="lg"] {
-  --search-height: 44px;
-  gap: 10px;
-  padding: 0 8px 0 14px;
 }
 
 @media (hover: hover) {
@@ -49,25 +35,8 @@
   }
 }
 
-/* Open holds the focus look while a panel hangs off the field (Home's results). */
-.field:focus-within,
-.field[data-open="true"] {
+.field:focus-within {
   --search-border: var(--c-text-3);
-}
-
-/* A control inside the field, before the glass, ruled off from it. */
-.leading {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-  margin-left: -4px;
-}
-
-.rule {
-  flex-shrink: 0;
-  width: 1px;
-  height: 16px;
-  background: var(--c-border);
 }
 
 .glass {
@@ -92,10 +61,6 @@
   font-size: var(--ui-type-body-sm);
   text-overflow: ellipsis;
   appearance: none;
-}
-
-.field[data-size="lg"] .input {
-  font-size: var(--ui-type-body);
 }
 
 .input::placeholder {
@@ -153,11 +118,6 @@
   }
 }
 
-.field[data-size="lg"] .clear {
-  width: 26px;
-  height: 26px;
-}
-
 /*
  * The "/" that says the key reaches this field. Only where there is a
  * keyboard to press it on, and gone the moment the field is in use.
@@ -189,10 +149,4 @@
 
 .field:focus-within .hint {
   display: none;
-}
-
-.field[data-size="lg"] .hint {
-  min-width: 20px;
-  height: 20px;
-  margin-right: 4px;
 }

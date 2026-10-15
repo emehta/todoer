@@ -1,8 +1,7 @@
 .tab,
 .iconButton,
 .action,
-.rangeButton,
-.swatch {
+.rangeButton {
   transition:
     color var(--motion-fast) var(--ease-out),
     background var(--motion-fast) var(--ease-out),
@@ -30,31 +29,42 @@
   filter: brightness(1.08);
 }
 
-.swatch:is(:hover, :focus-visible) {
-  transform: scale(1.14);
-}
-
 .danger:is(:hover, :focus-visible) {
   color: var(--c-danger) !important;
   background: color-mix(in srgb, var(--c-danger) 10%, transparent) !important;
 }
 
-.primary:is(:hover, :focus-visible):not(:disabled) {
+/*
+ * Add task: one look wherever it is, in the page header and under the list.
+ * The height and shape of Insights beside it in the header, so the two read
+ * as a pair, and 32px, which a thumb can hit.
+ */
+.addTask {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: var(--ui-radius-item);
+  background: var(--c-accent-strong);
+  color: var(--c-on-accent);
+  font-size: var(--ui-type-label);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: filter var(--motion-fast) var(--ease-out);
+}
+
+.addTask:is(:hover, :focus-visible) {
   filter: brightness(1.08);
-}
-
-.accentAction:is(:hover, :focus-visible) {
-  background: color-mix(in srgb, var(--c-accent) 15%, transparent) !important;
-}
-
-.primary:disabled {
-  cursor: not-allowed;
 }
 
 /*
  * How much of its priority's hue a row takes is PriorityWash.module.css,
- * which the row carries beside this class: the calendar's task pills read the
- * same values, so a Critical is one red on both pages.
+ * which the row carries beside this class.
  */
 
 /* Stronger in the row's own hue: a neutral border here would strip the
@@ -226,6 +236,11 @@
  * below already does, so the page has one answer for a row of controls wider
  * than the screen. Fits whole from 390px up.
  */
+/*
+ * A row that scrolls sideways clips what is drawn outside it, the focus ring
+ * included, so it keeps the ring's room (2px, 3px out) inside its edges and
+ * takes the same back outside them.
+ */
 .filterGroup {
   display: flex;
   align-items: center;
@@ -234,6 +249,8 @@
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
+  padding: 5px;
+  margin: -5px;
 }
 
 .filterGroup::-webkit-scrollbar {
@@ -308,13 +325,14 @@
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
+  /* The focus ring's room, as in .filterGroup. */
+  padding: 5px;
+  margin: -5px;
   /*
-   * Deliberately no scroll snapping. It is the obvious thing to reach for on
-   * a row of pills, and this app has already been bitten by it: `x proximity`
-   * on the calendar's week strip pulled the view from nearly half a column
-   * away, about a second after the last wheel event and unanimated, and read
-   * as the page moving on its own. The pills are 44-121px wide, so free
-   * scrolling lands somewhere sensible without being dragged there.
+   * Deliberately no scroll snapping: a snap pulls the row on its own a
+   * moment after the last wheel event, unanimated, which reads as the page
+   * moving by itself. The pills are 44-121px wide, so free scrolling lands
+   * somewhere sensible without being dragged there.
    */
 }
 
@@ -386,8 +404,9 @@
  *
  * The gutter for it opens on hover, not reserved at rest: a pill resting with
  * 18px of empty space inside its right edge reads as a pill missing its
- * label. So a resting pill is padded evenly, 6px/14px, the same as the All
- * pill beside it, and the row only moves while you are pointing at it.
+ * label. So a resting pill is padded evenly, 7px/14px, the same as the All
+ * pill beside it (32px tall, which a thumb can hit), and the row only moves
+ * while you are pointing at it.
  */
 .categoryChip {
   position: relative;
@@ -406,7 +425,7 @@
  * beats .tab regardless of order.
  */
 .categoryChip .categoryChipLabel {
-  padding: 6px 14px;
+  padding: 7px 14px;
   transition:
     color var(--motion-fast) var(--ease-out),
     background var(--motion-fast) var(--ease-out),
@@ -464,6 +483,15 @@
     opacity calc(var(--motion-fast) / 2) var(--ease-out) calc(var(--motion-fast) / 2),
     background var(--motion-fast) var(--ease-out) 0s,
     color var(--motion-fast) var(--ease-out) 0s;
+}
+
+/* A finger needs more than the 22px the dots are drawn at: 32, unseen. */
+@media (pointer: coarse) {
+  .categoryChipMenu::after {
+    content: "";
+    position: absolute;
+    inset: -5px;
+  }
 }
 
 /* Its own hover, so the dots read as a button rather than as decoration on

@@ -27,7 +27,7 @@ Open [Todoer on publik](https://publikhq.com/todoer) and follow its steps.
 
 ### Download
 
-Paste one line into **Terminal** (Mac or Linux) or **Command Prompt** (Windows, not PowerShell). It downloads 6 MB, makes a `todoer` folder where you are, and opens Todoer in your browser a few seconds later.
+Paste one line into **Terminal** (Mac or Linux) or **Command Prompt** (Windows: press Start, type `cmd`, press Enter; not PowerShell). It downloads 6 MB, makes a `todoer` folder where you are, and opens Todoer in your browser a few seconds later.
 
 Mac and Linux:
 
@@ -60,6 +60,8 @@ Todoer's first screen, **Set up Todoer**, walks you through it:
 3. **Copy both keys** from **API Keys**: the **Publishable key** (`sb_publishable_`) and the one under **Secret keys** (`sb_secret_`; press the eye to show it). Press **Connect**.
 4. **Add the tables.** Press **Copy the setup**, open the **SQL Editor** (if Supabase shows a note about snippets, press **Understood**), paste, press **Run**, then **Check again** in Todoer.
 5. **Make your account.** You start with two goals, Personal and Work.
+
+Already use [CronCal](https://github.com/emehta/croncal)? Give Todoer the same project: after step 4 it asks you to sign in with your CronCal account instead, and you start with no goals.
 
 Then switch off sign-ups, so the project stays yours: in Supabase, **Authentication**, **Sign In / Providers**, switch off **Allow new users to sign up**, then **Save changes**. Strangers could see none of your tasks anyway; Settings reminds you until it's off.
 
@@ -97,7 +99,7 @@ To open it like an app: Safari's **File → Add to Dock**, or Chrome's **Install
 Close Todoer's window first. Your tasks and settings are kept.
 
 - **Downloaded:** delete the `todoer` folder (`rm -rf todoer` on Mac or Linux, `rmdir /s /q todoer` on Windows), then run the download line again.
-- **With publik or Git:** in the `todoer` folder, run `git checkout main && git pull && npm install && npm start`.
+- **With publik or Git:** in the `todoer` folder, in Terminal (Command Prompt on Windows), run `git checkout main && git pull && npm install && npm start`.
 
 If an update changes the tables, Todoer asks you to run the setup again. Nothing is lost.
 
@@ -112,9 +114,9 @@ If an update changes the tables, Todoer asks you to run the setup again. Nothing
 
 ## Remove it
 
-1. Delete the `todoer` folder, and the settings folder [above](#connect-supabase). If you used publik, also delete its key for Todoer, `publik/apps/todoer.json`, in the same place as that folder (Application Support, `%LOCALAPPDATA%` or `~/.config`).
+1. Delete the `todoer` folder, and the settings folder [above](#connect-supabase). If Ramble used publik, also delete its key for Todoer, `publik/apps/todoer.json`, in the same place as that folder (Application Support, `%LOCALAPPDATA%` or `~/.config`).
 2. If you added it like an app: delete Safari's from the **Applications** folder in your home folder, or open Chrome's and choose **Uninstall Todoer** from its ⋮ menu.
-3. If you're done with Supabase, delete the project there.
+3. If you're done with Supabase, and CronCal doesn't use the same project, delete the project there.
 
 ## Licence
 

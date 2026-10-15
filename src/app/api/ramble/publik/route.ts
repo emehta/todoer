@@ -10,6 +10,10 @@ export const dynamic = "force-dynamic";
  * in Settings (`{ accept: true }`, sent by the button under the text): mints
  * this computer's key with the app's public token, keeps it in publik's own
  * credential file, and makes publik Ramble's choice.
+ *
+ * `{ accept: true, again: true }` is Set up again, for a key publik has
+ * refused: the install is asked for a new key, and the refused one is never
+ * taken back from a replay that comes without one.
  */
 export async function POST(request: Request) {
   try {
@@ -18,7 +22,8 @@ export async function POST(request: Request) {
     if (body?.accept !== true) return fail("Accept publik's terms first.");
     let credential;
     try {
-      credential = await provision(await readPublikCredential(owner));
+      const prior = await readPublikCredential(owner);
+      credential = await provision(body.again === true && prior ? { ...prior, key: "" } : prior);
     } catch (error) {
       return fail(error instanceof Error ? error.message : "publik could not set up this computer.", 502);
     }

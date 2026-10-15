@@ -14,6 +14,7 @@
 import { DAY_NAMES, DAYS_SHORT, MONTH_NAMES, MONTHS_SHORT, monthKeyEnd, shiftDateStr, toMonthKey, weekdayOfDateStr } from "@/lib/date-utils";
 import { PRIORITIES, type Priority } from "@/types/task";
 import type { RambleContext } from "./context";
+import { BAD_ANSWER } from "./providers";
 
 /* Whisper reads at most 224 tokens of prompt; this many characters stays
    well inside that. */
@@ -281,7 +282,7 @@ function asText(value: unknown): string {
  */
 export function checkRambleReply(raw: unknown, context: RambleContext): ReplyCheck {
   if (raw === null || typeof raw !== "object" || !Array.isArray((raw as { tasks?: unknown }).tasks)) {
-    return { ok: false, message: "The model's answer was not a list of tasks." };
+    return { ok: false, message: BAD_ANSWER };
   }
   const goalRefs = new Set(context.goals.map((goal) => goal.ref));
   const taskRefs = new Set(context.openTasks.map((task) => task.ref));

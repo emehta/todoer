@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowSquareOut, Microphone } from "@phosphor-icons/react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Microphone } from "@phosphor-icons/react";
+import ExternalLink from "@/components/ExternalLink";
 import { SettingsRow, TogglePill, settingsNote } from "@/components/SettingsControls";
 import StatusBanner from "@/components/StatusBanner";
 import { DialogButton } from "@/components/form/Dialog";
@@ -21,7 +22,8 @@ import type { RambleStatus } from "@/selfhost/ramble-settings";
  * - publik: no key to paste. publik's disclosure is shown word for word and
  *   agreed to with the button under it; then the balance and its one button,
  *   Sign in with publik until this computer is linked, Add a plan or pack
- *   after, with publik's cost sentence folded under it.
+ *   after, with publik's cost sentence folded under it. A key publik has
+ *   refused since is said so, with Set up again.
  *
  * A copy without publik offers Groq alone: no choice to make, just the key.
  */
@@ -51,15 +53,6 @@ async function call(method: "GET" | "PUT" | "POST", path: string, body?: unknown
   return answer;
 }
 
-function Link({ href, children }: { href: string; children: ReactNode }) {
-  return (
-    <a href={href} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, color: "var(--c-accent)", fontWeight: 600, fontSize: "var(--ui-type-label)" }}>
-      {children}
-      <ArrowSquareOut size={13} weight="bold" aria-hidden="true" />
-    </a>
-  );
-}
-
 const row = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 } as const;
 
 const OPTIONS = [
@@ -72,6 +65,8 @@ export default function RambleSettings() {
   const [pending, setPending] = useState<Action | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [groqKey, setGroqKey] = useState("");
+  /* Remove takes two presses: the first arms it. */
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
 
   const busyRef = useRef(false);
   /* Every button waits while anything is under way. */
@@ -121,7 +116,7 @@ export default function RambleSettings() {
   if (!status) {
     return (
       <>
-        <SettingsRow icon={Microphone} label="Listens with">
+        <SettingsRow icon={Microphone} label="Runs on">
           <TogglePill options={OPTIONS} value={null} onChange={() => {}} ariaLabel="Ramble's AI" disabled />
         </SettingsRow>
         {error && (
@@ -157,7 +152,7 @@ export default function RambleSettings() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: 8 }}>
-      <SettingsRow icon={Microphone} label="Listens with">
+      <SettingsRow icon={Microphone} label="Runs on">
         {groqOnly
           ? <span style={{ color: "var(--c-text-2)", fontSize: "var(--ui-type-body-sm)" }}>Groq</span>
           : <TogglePill options={OPTIONS} value={status.provider} onChange={choose} ariaLabel="Ramble's AI" disabled={busy} />}
@@ -170,9 +165,26 @@ export default function RambleSettings() {
           <div style={row}>
             <span style={settingsNote}>{keyLine}</span>
             {!status.groq.fromEnv && (
-              <DialogButton variant="ghost" disabled={busy} onClick={() => void run("remove", () => call("PUT", "/api/ramble/settings", { groqKey: null }))}>
-                {pending === "remove" ? "Removing…" : "Remove"}
-              </DialogButton>
+              <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                <DialogButton
+                  variant="danger"
+                  armed={confirmingRemove}
+                  busy={pending === "remove"}
+                  disabled={busy}
+                  onClick={() => {
+                    if (!confirmingRemove) {
+                      setConfirmingRemove(true);
+                      return;
+                    }
+                    void run("remove", () => call("PUT", "/api/ramble/settings", { groqKey: null })).then(() => setConfirmingRemove(false));
+                  }}
+                >
+                  {pending === "remove" ? "Removing…" : confirmingRemove ? "Confirm remove" : "Remove"}
+                </DialogButton>
+                {confirmingRemove && pending !== "remove" && (
+                  <DialogButton variant="ghost" onClick={() => setConfirmingRemove(false)}>Keep</DialogButton>
+                )}
+              </div>
             )}
           </div>
         ) : status.groq.saved ? (
@@ -202,7 +214,7 @@ export default function RambleSettings() {
                 {pending === "key" ? "Checking…" : "Save"}
               </DialogButton>
             </div>
-            <div><Link href="https://console.groq.com/keys">Get a free key</Link></div>
+            <div style={{ fontSize: "var(--ui-type-label)" }}><ExternalLink href="https://console.groq.com/keys">Get a free key</ExternalLink></div>
           </form>
         )
       )}
@@ -219,6 +231,14 @@ export default function RambleSettings() {
               </DialogButton>
             </div>
           </>
+        ) : status.publik.refused ? (
+          /* publik no longer takes this computer's key: a new one, from the same install. */
+          <div style={row}>
+            <span style={settingsNote}>publik refused this computer&apos;s key.</span>
+            <DialogButton variant="primary" busy={pending === "publik"} disabled={busy} onClick={() => void run("publik", () => call("POST", "/api/ramble/publik", { accept: true, again: true }))}>
+              {pending === "publik" ? "Setting up…" : "Set up again"}
+            </DialogButton>
+          </div>
         ) : (
           <>
             <div style={row}>

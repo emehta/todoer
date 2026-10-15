@@ -26,7 +26,7 @@ body:
     attributes:
       label: Todoer version
       description: The `version` line in package.json, in the todoer folder.
-      placeholder: "1.1.0"
+      placeholder: "1.1.2"
   - type: dropdown
     id: system
     attributes:

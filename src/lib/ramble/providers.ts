@@ -83,8 +83,11 @@ export function resolveProvider(choice: RambleChoice): Resolution {
       ? { ok: true, spec: publikSpec(choice.publikBaseUrl), apiKey: choice.publikKey }
       : { ok: false, code: "publik_setup", message: "Set up publik in Settings." };
   }
-  return { ok: false, code: "choose", message: "Choose how Ramble listens in Settings." };
+  return { ok: false, code: "choose", message: "Choose what Ramble runs on in Settings." };
 }
+
+/** Said when the model's answer cannot be read as tasks, whatever was wrong with it. */
+export const BAD_ANSWER = "Ramble couldn't read the answer. Try again.";
 
 /** A Groq key as Groq issues them. */
 export function looksLikeGroqKey(key: string): boolean {

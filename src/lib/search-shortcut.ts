@@ -43,11 +43,11 @@ function registerShortcut(input: HTMLInputElement): () => void {
   };
 }
 
-/** Lets "/" reach this input while it is on screen and `enabled`. */
-export function useSearchShortcut(ref: RefObject<HTMLInputElement | null>, enabled = true): void {
+/** Lets "/" reach this input while it is on screen. */
+export function useSearchShortcut(ref: RefObject<HTMLInputElement | null>): void {
   useEffect(() => {
     const input = ref.current;
-    if (!enabled || !input) return;
+    if (!input) return;
     return registerShortcut(input);
-  }, [ref, enabled]);
+  }, [ref]);
 }

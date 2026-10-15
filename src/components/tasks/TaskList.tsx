@@ -370,7 +370,7 @@ interface Props {
   showEmptyUpcomingDays?: boolean;
   /**
    * The latest day at the top and the earliest at the bottom, for a list of
-   * days already past (Historical). No date stays last, and the Overdue box
+   * days already past (Done). No date stays last, and the Overdue box
    * keeps its own oldest first order.
    */
   newestFirst?: boolean;
@@ -387,7 +387,7 @@ interface Props {
   overdue?: { tasks: Task[]; frame: (days: ReactNode) => ReactNode };
   /**
    * Copies one day: handed the tasks the list shows for it, in the list's
-   * order (open ones on Current and Overdue, done ones on Historical; the
+   * order (open ones on Current and Overdue, done ones on Done; the
    * page adds the rest), it resolves true once they are on the clipboard.
    * `null` is No date. Offered on every day that lists a task, never on the
    * Overdue box's days: overdue tasks are not part of what is on today.
@@ -714,7 +714,7 @@ export default function TaskList({
   /*
    * What a day's Copy copies: its tasks as the list holds them at rest, not
    * mid-drag, which are the open ones on Current and the done ones on
-   * Historical, so every day of either has a Copy. No Copy on a day with
+   * Done, so every day of either has a Copy. No Copy on a day with
    * nothing listed.
    */
   function copyFor(groupKey: string): (() => Promise<boolean>) | undefined {
@@ -825,28 +825,8 @@ export default function TaskList({
 
         {!hideAddTask && onOpenCreate && (
           <div style={{ display: "flex", justifyContent: "center", marginTop: 12 }}>
-            <button
-              type="button"
-              onClick={() => onOpenCreate()}
-              className={controls.primary}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-                border: "1px solid transparent",
-                borderRadius: "var(--ui-radius-md)",
-                padding: "10px 48px",
-                fontSize: "var(--ui-type-body-sm)",
-                fontWeight: 650,
-                color: "var(--c-on-accent)",
-                background: "var(--c-accent-strong)",
-                cursor: "pointer",
-                transition: "var(--transition-ui)",
-                minWidth: 200,
-              }}
-            >
-              <Plus size={15} weight="bold" />
+            <button type="button" onClick={() => onOpenCreate()} className={controls.addTask}>
+              <Plus size={14} weight="bold" aria-hidden="true" />
               Add task
             </button>
           </div>

@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { BrowserConfig } from "@/selfhost/config";
+import { APP, APP_NAME } from "@/selfhost/constants";
 
 /*
  * The browser's Supabase client, made when the config arrives rather than
@@ -8,7 +9,7 @@ import type { BrowserConfig } from "@/selfhost/config";
  * layout passes the config to `ConfigProvider`, which calls
  * `configureSupabase` before anything below it renders.
  *
- * `supabase` stays an object every caller imports as before; it forwards to
+ * `supabase` is an object every caller imports; it forwards to
  * the real client, and throws only if something uses it before setup.
  */
 
@@ -65,13 +66,13 @@ export function configureSupabase(config: BrowserConfig | null): void {
       flowType: "pkce",
       storage: browserLocalStorage,
       // One session per project: an old project's session must never open the app against a new one.
-      storageKey: `todoer-auth-${projectKey(config.url)}`,
+      storageKey: `${APP}-auth-${projectKey(config.url)}`,
     },
   });
 }
 
 export function getSupabase(): SupabaseClient {
-  if (!client) throw new Error("Todoer is not connected to a Supabase project yet.");
+  if (!client) throw new Error(`${APP_NAME} is not connected to a Supabase project yet.`);
   return client;
 }
 

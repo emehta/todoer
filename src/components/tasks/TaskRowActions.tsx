@@ -12,7 +12,7 @@ import {
 import type { Priority, Task } from "@/types/task";
 import { PRIORITIES, PRIORITY_COLORS, PRIORITY_LABELS } from "@/types/task";
 import Tooltip from "@/components/Tooltip";
-import { MENU_PANEL } from "@/lib/styles";
+import { MENU_PANEL, SELECTED } from "@/lib/styles";
 import { usePhone } from "@/lib/use-viewport-width";
 import DatePicker from "./DatePicker";
 import Popover from "@/components/Popover";
@@ -35,8 +35,8 @@ export interface TaskRowActionHandlers {
 }
 
 const ICON_BUTTON: React.CSSProperties = {
-  width: 30,
-  height: 30,
+  width: 32,
+  height: 32,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -48,7 +48,7 @@ const ICON_BUTTON: React.CSSProperties = {
   cursor: "pointer",
 };
 
-/* A thumb, not a pointer: two of these fit where three 30px ones did. */
+/* A thumb, not a pointer: two of these fit where three 32px ones did. */
 const PHONE_ICON_BUTTON: React.CSSProperties = { ...ICON_BUTTON, width: 38, height: 38 };
 
 /** Long enough to swallow a held spinner, short enough to feel immediate. */
@@ -159,6 +159,14 @@ export default function TaskRowActions({
     setDeleteArmed(false);
   }
 
+  /* A choice made in the menu hands focus back to its button, so the
+     keyboard carries on from the row (and a card it opens returns there). */
+  function chooseFromMenu(run: () => void) {
+    menuButtonRef.current?.focus({ preventScroll: true });
+    closeMenu();
+    run();
+  }
+
   return (
     <>
       <div
@@ -265,16 +273,12 @@ export default function TaskRowActions({
                 role="menuitemradio"
                 key={priority}
                 aria-checked={task.priority === priority}
-                onClick={() => {
-                  void actions.onPatch(task.id, { priority });
-                  closeMenu();
-                }}
-                className={`${controls.action} flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-xs`}
-                style={{
-                  color: task.priority === priority ? "var(--c-text-1)" : "var(--c-text-2)",
-                  background: task.priority === priority ? "var(--c-selected-bg)" : "transparent",
-                  fontWeight: task.priority === priority ? 600 : 400,
-                }}
+                onClick={() => chooseFromMenu(() => { void actions.onPatch(task.id, { priority }); })}
+                /* The hover is for the others: the current one keeps its look. */
+                className={`${task.priority === priority ? "" : controls.action} flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs`}
+                style={task.priority === priority
+                  ? SELECTED
+                  : { color: "var(--c-text-2)", background: "transparent", border: "1px solid transparent", fontWeight: 400 }}
               >
                 <span
                   className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
@@ -290,12 +294,12 @@ export default function TaskRowActions({
             <MenuItem
               icon={<CopySimple size={13} />}
               label="Duplicate"
-              onSelect={() => { void actions.onDuplicate(task); closeMenu(); }}
+              onSelect={() => chooseFromMenu(() => { void actions.onDuplicate(task); })}
             />
             <MenuItem
               icon={<Copy size={13} />}
               label="Copy as text"
-              onSelect={() => { void actions.onCopy(task); closeMenu(); }}
+              onSelect={() => chooseFromMenu(() => { void actions.onCopy(task); })}
             />
 
             <div role="separator" className="mx-3 my-1" style={{ borderTop: "1px solid var(--c-border-sub)" }} />
@@ -307,8 +311,7 @@ export default function TaskRowActions({
               danger
               onSelect={() => {
                 if (!deleteArmed) { setDeleteArmed(true); return; }
-                void actions.onDelete(task.id);
-                closeMenu();
+                chooseFromMenu(() => { void actions.onDelete(task.id); });
               }}
             />
           </div>

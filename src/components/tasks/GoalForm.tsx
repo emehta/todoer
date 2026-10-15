@@ -18,6 +18,7 @@ import {
 import DateField from "@/components/form/DateField";
 import StatusBanner from "@/components/StatusBanner";
 import { getErrorMessage } from "@/lib/error-utils";
+import { goalChanges } from "@/lib/task-changes";
 
 export type GoalFormValues = {
   name: string;
@@ -35,7 +36,9 @@ function asGoalType(value: string | null | undefined): "short-term" | "long-term
  * A goal's details: name, description, deadline, whether it is short or long
  * term, and its colour. The same card edits a goal and creates one, and it
  * is the task card's kind of card (29 Sep 2026), so adding a goal looks like
- * adding a task.
+ * adding a task, and like it, it asks before Escape, the X or a press
+ * outside throws away what was typed. Cancel says it throws it away, so it
+ * does not ask.
  */
 export default function GoalForm({
   category,
@@ -60,6 +63,38 @@ export default function GoalForm({
   const [nameMissing, setNameMissing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+
+  /* What the card opened with, read once, to tell an edit from a look. */
+  const [opened] = useState(() => ({
+    name: formName,
+    color: formColor,
+    description: formDesc,
+    deadline: formDeadline,
+    goal_type: formType,
+  }));
+  const unsaved = Object.keys(goalChanges(opened, {
+    name: formName,
+    color: formColor,
+    description: formDesc,
+    deadline: formDeadline,
+    goal_type: formType,
+  })).length > 0;
+
+  /* Escape, the X and a press outside: closed at once with nothing to lose,
+     otherwise asked in the footer, and any of the three again keeps editing. */
+  function requestClose() {
+    if (busy) return;
+    if (confirmingDiscard) {
+      setConfirmingDiscard(false);
+      return;
+    }
+    if (!unsaved) {
+      onClose();
+      return;
+    }
+    setConfirmingDiscard(true);
+  }
 
   async function submit() {
     if (busy) return;
@@ -92,15 +127,31 @@ export default function GoalForm({
     <DialogCard
       label={category ? `Edit ${category.name} goal` : "New goal"}
       heading={heading}
-      onClose={onClose}
+      onClose={requestClose}
       busy={busy}
-      closeLabel="Close goal"
       onKeyDown={(event) => {
         if (event.key !== "Enter" || !(event.metaKey || event.ctrlKey)) return;
         event.preventDefault();
         void submit();
       }}
-      footer={(
+      footer={confirmingDiscard ? (
+        <DialogFooter
+          start={(
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <DialogButton variant="danger" armed onClick={onClose} disabled={busy}>
+                {category ? "Discard changes" : "Discard goal"}
+              </DialogButton>
+              <DialogButton variant="ghost" onClick={() => setConfirmingDiscard(false)} disabled={busy} autoFocus>
+                Keep editing
+              </DialogButton>
+            </div>
+          )}
+        >
+          <DialogButton variant="primary" onClick={() => { void submit(); }} busy={busy} disabled={busy}>
+            {busy ? "Saving…" : category ? "Save" : "Add goal"}
+          </DialogButton>
+        </DialogFooter>
+      ) : (
         <DialogFooter>
           <DialogButton variant="secondary" onClick={onClose} disabled={busy}>
             Cancel

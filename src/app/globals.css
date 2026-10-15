@@ -119,8 +119,7 @@
   --c-info: #88aff0;
   --c-danger: #df6b62;
 
-  --dashboard-card-bg: var(--c-card-bg);
-  --dashboard-card-border: rgba(255,255,255,0.12);
+  --card-border: rgba(255,255,255,0.12);
   /* Standardized elevation: soft, contained (negative spread), not bottom-heavy */
   --shadow-xs: 0 1px 2px rgba(0,0,0,0.22);
   --shadow-soft: 0 1px 2px rgba(0,0,0,0.18), 0 6px 16px -6px rgba(0,0,0,0.30);
@@ -171,17 +170,6 @@
   --priority-high: #eb8909;
   --priority-low: #808080;
   /*
-   * Calendar events, for eventFill and eventInk in lib/styles, which CronCal
-   * shares: a tint of the event's colour over the surface, and a title mixed
-   * from that colour and the theme's text, not the raw colour with white on
-   * top, which on Light is 1.5 to 2.0:1. A past event gets half the tint.
-   * Tuned so all twenty event colours clear 4.5:1 in each theme. The ink is
-   * mostly the theme's own text, with a hint of the event's colour (14%).
-   */
-  --event-fill: 30%;
-  --event-fill-past: 15%;
-  --event-ink: 14%;
-  /*
    * Selected: a tab, a segment, a filter chip, a current value in a menu.
    * A wash and a border of the theme's own accent, with the label bold:
    * --c-tag-bg alone is 1.07 to 1.14:1 against the unselected state on
@@ -208,27 +196,6 @@
 
   --scrollbar-thumb: rgba(255,255,255,0.08);
   --scrollbar-thumb-hover: rgba(255,255,255,0.15);
-
-  /* ── Public pages ─────────────────────────────────────────────────────────
-     A separate axis from the app's themes: those switch on `data-theme` for
-     the signed-in app, these switch on `data-public-theme` and only ever have
-     two states. Light is the default, so these are the light values and the
-     dark ones live in the `[data-public-theme="dark"]` block below. */
-  --public-bg: #ffffff;
-  /* The emerald the mark and the app icon are built on, for marks and
-     highlights, never running text. 7.5:1 on the light page. */
-  --public-brand: #0a6e4f;
-}
-
-/* ── Public pages, dark ─────────────────────────────────────────────────────
-   Midnight's page colour, the signed-in app's default theme, so signing in is
-   not a jolt. */
-[data-public-theme="dark"] {
-  --public-bg: #1c1c1c;
-
-  /* Same hue as the light emerald (159° against 161°), lifted to 5.5:1 on
-     #1c1c1c, where the light one is 1.5:1 and unreadable. */
-  --public-brand: #2fa97f;
 }
 
 [data-theme="light"] {
@@ -254,17 +221,13 @@
   --hue-ink: 40%;
   --priority-high: #b45f06;
   --priority-low: #6f6f6f;
-  --event-fill: 30%;
-  --event-fill-past: 15%;
-  --event-ink: 14%;
   --c-selected-bg: color-mix(in srgb, var(--c-accent) 18%, transparent);
   --c-selected-border: color-mix(in srgb, var(--c-accent) 70%, transparent);
   --c-danger-wash: color-mix(in srgb, var(--c-danger) 12%, var(--c-surface));
   --c-danger-line: color-mix(in srgb, var(--c-danger) 34%, var(--c-surface));
   --c-danger: #b42318;
 
-  --dashboard-card-bg: var(--c-card-bg);
-  --dashboard-card-border: rgba(0,0,0,0.10);
+  --card-border: rgba(0,0,0,0.10);
   --shadow-xs: 0 1px 2px rgba(13,29,20,0.05);
   --shadow-soft: 0 1px 2px rgba(13,29,20,0.05), 0 6px 16px -6px rgba(13,29,20,0.12);
   --shadow-pop: 0 6px 16px -4px rgba(13,29,20,0.09), 0 18px 44px -12px rgba(13,29,20,0.18);
@@ -302,17 +265,13 @@
   --hue-ink: 40%;
   --priority-high: #eb8909;
   --priority-low: #8e8479;
-  --event-fill: 28%;
-  --event-fill-past: 14%;
-  --event-ink: 14%;
   --c-selected-bg: color-mix(in srgb, var(--c-accent) 18%, transparent);
   --c-selected-border: color-mix(in srgb, var(--c-accent) 70%, transparent);
   --c-danger-wash: color-mix(in srgb, var(--c-danger) 12%, #261d17);
   --c-danger-line: color-mix(in srgb, var(--c-danger) 34%, #261d17);
   --c-danger: #e4786e;
 
-  --dashboard-card-bg: var(--c-card-bg);
-  --dashboard-card-border: rgba(255,220,180,0.11);
+  --card-border: rgba(255,220,180,0.11);
   --task-shadow: var(--shadow-xs);
   --cal-toggle-off-bg: rgba(120,120,120,0.30);
   --cal-toggle-border: var(--c-field-border);
@@ -346,17 +305,13 @@
   --hue-ink: 35%;
   --priority-high: #eb8909;
   --priority-low: #808a81;
-  --event-fill: 28%;
-  --event-fill-past: 14%;
-  --event-ink: 14%;
   --c-selected-bg: color-mix(in srgb, var(--c-accent) 18%, transparent);
   --c-selected-border: color-mix(in srgb, var(--c-accent) 70%, transparent);
   --c-danger-wash: color-mix(in srgb, var(--c-danger) 18%, #1f201f);
   --c-danger-line: color-mix(in srgb, var(--c-danger) 46%, #1f201f);
   --c-danger: #ef8076;
 
-  --dashboard-card-bg: var(--c-card-bg);
-  --dashboard-card-border: rgba(144,200,130,0.11);
+  --card-border: rgba(144,200,130,0.11);
   --task-shadow: var(--shadow-xs);
   --cal-toggle-off-bg: rgba(120,120,120,0.30);
   --cal-toggle-border: var(--c-field-border);
@@ -397,16 +352,12 @@
   --hue-ink: 44%;
   --priority-high: #f2a036;
   --priority-low: #6f7275;
-  --event-fill: 32%;
-  --event-fill-past: 15%;
-  --event-ink: 8%;
   --c-selected-bg: color-mix(in srgb, var(--c-accent) 14%, transparent);
   --c-selected-border: color-mix(in srgb, var(--c-accent) 55%, transparent);
   --c-danger-wash: color-mix(in srgb, var(--c-danger) 12%, #050505);
   --c-danger-line: color-mix(in srgb, var(--c-danger) 40%, #050505);
   --c-danger: #ea5c64;
-  --dashboard-card-bg: var(--c-card-bg);
-  --dashboard-card-border: rgba(255,255,255,0.12);
+  --card-border: rgba(255,255,255,0.12);
   --task-shadow: none;
   --cal-toggle-off-bg: rgba(255,255,255,0.32);
   --cal-toggle-border: var(--c-field-border);
@@ -449,16 +400,12 @@
   --hue-ink: 40%;
   --priority-high: #ff9e3b;
   --priority-low: #938aa9;
-  --event-fill: 38%;
-  --event-fill-past: 20%;
-  --event-ink: 14%;
   --c-selected-bg: color-mix(in srgb, var(--c-accent) 18%, transparent);
   --c-selected-border: color-mix(in srgb, var(--c-accent) 70%, transparent);
   --c-danger-wash: color-mix(in srgb, var(--c-danger) 12%, #1e1b23);
   --c-danger-line: color-mix(in srgb, var(--c-danger) 34%, #1e1b23);
   --c-danger: #e46876;
-  --dashboard-card-bg: var(--c-card-bg);
-  --dashboard-card-border: rgba(127,180,202,0.13);
+  --card-border: rgba(127,180,202,0.13);
   --task-shadow: var(--shadow-xs);
   --cal-toggle-off-bg: rgba(220,215,186,0.4);
   --cal-toggle-border: var(--c-field-border);
@@ -502,16 +449,12 @@
   --hue-ink: 40%;
   --priority-high: #ebae42;
   --priority-low: #908caa;
-  --event-fill: 38%;
-  --event-fill-past: 20%;
-  --event-ink: 14%;
   --c-selected-bg: color-mix(in srgb, var(--c-accent) 18%, transparent);
   --c-selected-border: color-mix(in srgb, var(--c-accent) 70%, transparent);
   --c-danger-wash: color-mix(in srgb, var(--c-danger) 13%, #241e26);
   --c-danger-line: color-mix(in srgb, var(--c-danger) 34%, #241e26);
   --c-danger: #eb6f92;
-  --dashboard-card-bg: var(--c-card-bg);
-  --dashboard-card-border: rgba(196,167,231,0.13);
+  --card-border: rgba(196,167,231,0.13);
   --task-shadow: var(--shadow-xs);
   --cal-toggle-off-bg: rgba(224,222,244,0.37);
   --cal-toggle-border: var(--c-field-border);
@@ -554,16 +497,12 @@
   --hue-ink: 38%;
   --priority-high: #f6994b;
   --priority-low: #9b9084;
-  --event-fill: 48%;
-  --event-fill-past: 18%;
-  --event-ink: 10%;
   --c-selected-bg: color-mix(in srgb, var(--c-accent) 18%, transparent);
   --c-selected-border: color-mix(in srgb, var(--c-accent) 70%, transparent);
   --c-danger-wash: color-mix(in srgb, var(--c-danger) 13%, #1e1311);
   --c-danger-line: color-mix(in srgb, var(--c-danger) 34%, #1e1311);
   --c-danger: #fe6a56;
-  --dashboard-card-bg: var(--c-card-bg);
-  --dashboard-card-border: rgba(221,200,134,0.17);
+  --card-border: rgba(221,200,134,0.17);
   --task-shadow: var(--shadow-xs);
   --cal-toggle-off-bg: rgba(241,231,210,0.36);
   --cal-toggle-border: var(--c-field-border);
@@ -609,16 +548,12 @@
   --hue-ink: 40%;
   --priority-high: #a9531d;
   --priority-low: #7b6750;
-  --event-fill: 34%;
-  --event-fill-past: 18%;
-  --event-ink: 14%;
   --c-selected-bg: color-mix(in srgb, var(--c-accent) 14%, transparent);
   --c-selected-border: color-mix(in srgb, var(--c-accent) 78%, transparent);
   --c-danger-wash: color-mix(in srgb, var(--c-danger) 11%, var(--c-surface));
   --c-danger-line: color-mix(in srgb, var(--c-danger) 34%, var(--c-surface));
   --c-danger: #a3262c;
-  --dashboard-card-bg: var(--c-card-bg);
-  --dashboard-card-border: rgba(92,64,28,0.17);
+  --card-border: rgba(92,64,28,0.17);
   --shadow-xs: 0 1px 2px rgba(84,56,20,0.07);
   --shadow-soft: 0 1px 1px rgba(84,56,20,0.05), 0 8px 18px -10px rgba(84,56,20,0.22);
   --shadow-pop: 0 6px 16px -4px rgba(84,56,20,0.11), 0 18px 44px -12px rgba(84,56,20,0.22);
@@ -702,7 +637,7 @@
   textarea:-webkit-autofill:focus {
     -webkit-text-fill-color: var(--c-text-1);
     caret-color: var(--c-text-1);
-    box-shadow: 0 0 0 1000px var(--page-bg) inset;
+    box-shadow: 0 0 0 1000px var(--c-surface) inset;
     transition: background-color 99999s ease-in-out 0s;
   }
 
@@ -751,32 +686,17 @@
 }
 
 @layer components {
-  /*
-   * A boxed field lights its own edge when anything inside it takes focus.
-   *
-   * The shared ring is a 2px outline offset 3px from the element, so on a
-   * field that already draws a border it would paint a second, detached
-   * rectangle outside the first. The row's own outline becomes the
-   * indicator, in the accent, and the control inside stops drawing its own.
-   */
-  .ui-field:focus-within {
-    box-shadow: 0 0 0 2px var(--c-accent);
-  }
-
-  .ui-field :is(input, textarea, select):focus,
-  .ui-field :is(input, textarea, select):focus-visible {
-    outline: none;
-  }
-
   .ui-hover-control {
     background: transparent;
     color: var(--c-text-2);
   }
 
+  /* !important, like the rules below: the buttons that carry it set their
+     colours inline, and an inline style otherwise wins over the hover. */
   .ui-hover-control:not(:disabled):is(:hover, :focus-visible) {
-    background: var(--c-hover);
-    color: var(--c-text-1);
-    border-color: var(--c-border);
+    background: var(--c-hover) !important;
+    color: var(--c-text-1) !important;
+    border-color: var(--c-border) !important;
   }
 
   /* Shared pointer and keyboard interaction states. These use !important so
@@ -785,10 +705,6 @@
 
   .ui-hover-fill:not(:disabled):not([aria-disabled="true"]):is(:hover, :focus-visible) {
     background: var(--c-hover) !important;
-  }
-
-  .ui-hover-tag:not(:disabled):not([aria-disabled="true"]):is(:hover, :focus-visible) {
-    background: var(--c-tag-bg) !important;
   }
 
   /*

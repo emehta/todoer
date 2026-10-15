@@ -15,25 +15,47 @@ import { sortTasksForDisplay } from "@/lib/task-order";
 import { descriptionOutline, type OutlineItem } from "@/lib/description-lists";
 
 /**
- * A task as plain text, for pasting somewhere that is not this app.
+ * A task as plain text, for pasting somewhere that is not this app: its
+ * title, its description, and when it is due.
  *
- * Kept deliberately plain: no bullets, no markdown, no emoji. The target is a
- * WhatsApp message, where a leading dash renders as a dash and an asterisk
- * turns the line bold by accident.
+ * Kept plain: no markdown, no emoji. The description's lists are written as
+ * lists rather than as the "- " and "1. " lines they are stored as
+ * (descriptionText), since in a message a stored dash reads as a dash and a
+ * stray asterisk turns a line bold.
  *
  * Lines are only included when there is something to say, so a bare title
  * copies as one line rather than a title followed by two empty ones.
  */
 export function formatTaskForClipboard(task: Task, timeFormat: TimeFormatPref): string {
-  const lines: string[] = [task.title.trim()];
-
-  const description = task.description?.trim();
-  if (description) lines.push(description);
+  const lines: string[] = [task.title.trim(), ...descriptionText(task.description)];
 
   const due = formatTaskDueLine(task, timeFormat);
   if (due) lines.push(due);
 
   return lines.join("\n");
+}
+
+/* How a copied task's own list marks its bullets, one level in after another. */
+const TEXT_BULLETS = ["•", "◦", "▪"];
+const TEXT_STEP = 4;
+
+/**
+ * A description as the lines of a copied task: a line of text as it is, a
+ * bullet with a bullet's mark, a number with its number, and what is nested
+ * under an item four spaces further in. Blank lines go.
+ */
+export function descriptionText(description: string | null): string[] {
+  const lines: string[] = [];
+  const walk = (items: OutlineItem[], depth: number) => {
+    const indent = " ".repeat(TEXT_STEP * depth);
+    for (const item of items) {
+      const mark = item.kind === "number" ? `${item.number}. ` : item.kind === "bullet" ? `${TEXT_BULLETS[Math.min(depth, TEXT_BULLETS.length - 1)]} ` : "";
+      lines.push(`${indent}${mark}${item.text}`);
+      walk(item.children, depth + 1);
+    }
+  };
+  walk(descriptionOutline(description), 0);
+  return lines;
 }
 
 /** "Due by 9:00 AM, Sunday, September 20, 2026", or just the date, or nothing. */
@@ -82,7 +104,7 @@ const TASK_MARK = "- ";
 const DETAIL_INDENT = 9;
 const DETAIL_STEP = 4;
 const DETAIL_BULLETS = ["◦", "▪"];
-const NO_CATEGORY = "No category";
+const NO_GOAL = "No goal";
 const COMPLETED = "Completed";
 
 /**
@@ -133,10 +155,10 @@ function dueTimeSuffix(task: Task, timeFormat: TimeFormatPref): string {
 }
 
 /**
- * The tasks under one category heading each, in the order the categories
- * first appear in the list, so the day still reads top to bottom as it does
- * on screen. A task with no category, or one whose category is gone, goes in
- * a last group of its own.
+ * The tasks under one goal heading each, in the order the goals first appear
+ * in the list, so the day still reads top to bottom as it does on screen. A
+ * task with no goal, or one whose goal is gone, goes in a last group of its
+ * own, No goal.
  */
 function groupByCategory(tasks: Task[], categories: Category[]): { name: string; tasks: Task[] }[] {
   const names = new Map(categories.map((category) => [category.id, category.name.trim()]));
@@ -156,7 +178,7 @@ function groupByCategory(tasks: Task[], categories: Category[]): { name: string;
   }
 
   const ordered = [...groups.values()];
-  if (loose.length > 0) ordered.push({ name: NO_CATEGORY, tasks: loose });
+  if (loose.length > 0) ordered.push({ name: NO_GOAL, tasks: loose });
   return ordered;
 }
 
@@ -277,12 +299,12 @@ function sectionsText(dayHeading: string, sections: CopySection[]): string {
  *            ◦ Improve UI/UX
  *
  *   Completed
- *   - Calendar Page Fixes
- *            ◦ Changing event details not working
+ *   - Settings Page Fixes
+ *            ◦ Changing the theme not working
  *                ▪ A point nested under it
  *
- * The open tasks by category, then the done ones under Completed in one list
- * of their own, with no categories, each written the same way. Both in the
+ * The open tasks by goal, then the done ones under Completed in one list
+ * of their own, with no goals, each written the same way. Both in the
  * order given, which is the list's own. The HTML is the same outline as real
  * nested lists, the headings in bold and nothing coloured, so it reads the
  * same in a dark mail app.
@@ -306,7 +328,7 @@ export function formatDayForClipboard(
 
 /**
  * The done tasks a day's Copy lists under Completed: those due on that day
- * (`null` is No date) that `shown` keeps, in the order Historical shows them.
+ * (`null` is No date) that `shown` keeps, in the order Done shows them.
  * Current never draws a done task, so the page finds them here, held to the
  * same goal, search and priority as the open tasks they are copied with.
  */
@@ -319,7 +341,7 @@ export function completedOnDay(tasks: readonly Task[], dateKey: string | null, s
  * the list's order, then the day's done tasks that are not among them.
  *
  * On Current and Overdue the list holds open tasks only, so this adds the
- * day's done ones under them. On Historical the list is the done tasks, so
+ * day's done ones under them. On Done the list is the done tasks, so
  * nothing is added and the day copies as Completed alone: a past day's open
  * tasks are overdue, and overdue is never copied. No task is written twice,
  * whichever list it came from.

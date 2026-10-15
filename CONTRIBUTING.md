@@ -43,12 +43,13 @@ No test framework, on purpose: each suite is a plain Node script that exits non-
 
 ## How it fits together
 
-- **Setup.** The project's URL and keys arrive after the build, so nothing reads them at build time. `src/selfhost/config.ts` reads them on each request, from environment variables or from `config.json` in the app-data folder. The root layout passes the browser's half (the URL and the publishable key, never the secret) to `ConfigProvider`, which sets up the Supabase client in `src/lib/supabase.ts`.
+- **Setup.** The project's URL and keys arrive after the build, so nothing reads them at build time. `src/selfhost/config.ts` reads them on each request, from environment variables or from `config.json` in the app-data folder. The root layout passes the browser's half (the URL and the publishable key, never the secret) to `ConfigProvider`, which sets up the Supabase client in `src/lib/supabase.ts`. Ramble's choice and the Groq key are in `settings.json` beside the config (`src/selfhost/secrets.ts`).
 - **Which screen.** `src/selfhost/SetupGate.tsx` asks `/api/selfhost/status` where setup stands, and `src/selfhost/steps.ts` decides the screen from that and the session. It's pure, and `scripts/setup.test.mjs` tests every combination.
 - **Server routes.** `src/app/api/selfhost/` (connect, check the tables, make the account, reset a password) and `src/app/api/ramble/` and `src/app/api/tasks/ramble/` (Ramble). Everything else the browser does is Supabase, under row level security.
 - **The guard.** `src/proxy.ts` sits in front of every request. See [SECURITY.md](SECURITY.md).
+- **`/api/health`** answers with the app's name and version, so `scripts/start.mjs` can tell a Todoer already running on the port from another program, and an older copy from this one.
 - **The tasks page.** `src/app/tasks/page.tsx` and `src/components/tasks/`. The rules that decide things, like where a task lands, what an edit changed, and how a day is copied, are pure modules in `src/lib/` with suites of their own.
-- **Ramble.** `RambleCard` records, `/api/tasks/ramble` sends the recording to the provider the user chose (`src/lib/ramble/providers.ts`, `src/lib/ai.ts`), and `src/lib/ramble/drafts.ts` turns the model's answer into tasks. The model reads, code decides: dates, times and priorities are settled in `drafts.ts`, not left to the model. publik's side is `src/lib/publik.ts`. `publik-app-token.txt` is public by design: it names the app, and each computer gets its own key from it.
+- **Ramble.** `RambleCard` records, `/api/tasks/ramble` sends the recording to the provider the user chose (`src/lib/ramble/providers.ts`, `src/lib/ai.ts`), and `src/lib/ramble/drafts.ts` turns the model's answer into tasks. The model reads, code decides: dates, times and priorities are settled in `drafts.ts`, not left to the model. publik's side is `src/lib/publik.ts`. `publik-app-token.txt` is public by design: it names the app, and each computer gets its own key from it. `PUBLIK_SELF_TEST=1 npm start` is publik's check of a built copy (`src/instrumentation-node.ts`): it gets a real publik key for this computer, prints one line and exits.
 
 ## Changing the database
 
@@ -72,7 +73,7 @@ Bump `SCHEMA_VERSION` in `src/selfhost/constants.ts` and the version the SQL wri
 
 ## Where the code came from
 
-Most of Todoer was taken from a larger private app, the author's own, at one pinned commit, by `tools/extract.mjs`. `extract-manifest.json` lists each of those files. The setup, the guard, the start script and Ramble's provider choice were written for Todoer.
+Most of Todoer was taken from a larger private app at one pinned commit, by `tools/extract.mjs`. `extract-manifest.json` lists each of those files. The setup, the guard, the start script and Ramble's provider choice were written for Todoer.
 
 The extracted files keep their comments as they were, so some name things that aren't in this repo:
 
